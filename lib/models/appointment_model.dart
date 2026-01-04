@@ -8,6 +8,8 @@ class AppointmentModel {
   final DateTime date;
   final String timeSlotId;
   final String timeSlot;
+  final String? hospitalId;
+  final String? hospitalName;
   final AppointmentStatus status;
   final String? reason;
   final String? notes;
@@ -22,6 +24,8 @@ class AppointmentModel {
     required this.date,
     required this.timeSlotId,
     required this.timeSlot,
+    this.hospitalId,
+    this.hospitalName,
     required this.status,
     this.reason,
     this.notes,
@@ -38,6 +42,8 @@ class AppointmentModel {
       date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
       timeSlotId: json['timeSlotId'] ?? '',
       timeSlot: json['timeSlot'] ?? '',
+      hospitalId: json['hospitalId'],
+      hospitalName: json['hospitalName'],
       status: AppointmentStatus.values.firstWhere(
         (e) => e.toString() == 'AppointmentStatus.${json['status']}',
         orElse: () => AppointmentStatus.upcoming,
@@ -57,6 +63,8 @@ class AppointmentModel {
       'date': date.toIso8601String(),
       'timeSlotId': timeSlotId,
       'timeSlot': timeSlot,
+      'hospitalId': hospitalId,
+      'hospitalName': hospitalName,
       'status': status.name,
       'reason': reason,
       'notes': notes,

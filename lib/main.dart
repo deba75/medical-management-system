@@ -1,22 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
+import 'core/providers/theme_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/patient/home/patient_home_screen.dart';
 import 'screens/doctor/home/doctor_home_screen.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase with platform-specific options
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+    
     return MaterialApp(
       title: 'TeleMedicine',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       home: const SplashScreen(),
       routes: {
         '/login': (context) => const LoginScreen(),
@@ -49,16 +64,7 @@ class _SplashScreenState extends State<SplashScreen> {
       // For now, navigate to login
       Navigator.pushReplacementNamed(context, '/login');
       
-      // TODO: After Firebase integration:
-      // if (user is logged in) {
-      //   if (user role is patient) {
-      //     Navigator.pushReplacementNamed(context, '/patient-home');
-      //   } else if (user role is doctor) {
-      //     Navigator.pushReplacementNamed(context, '/doctor-home');
-      //   }
-      // } else {
-      //   Navigator.pushReplacementNamed(context, '/login');
-      // }
+  
     }
   }
 

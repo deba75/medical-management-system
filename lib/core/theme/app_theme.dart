@@ -203,4 +203,190 @@ class AppTheme {
       ),
     );
   }
+
+  static ThemeData get darkTheme {
+    const darkBackground = Color(0xFF121212);
+    const darkSurface = Color(0xFF1E1E1E);
+    const darkTextPrimary = Color(0xFFE0E0E0);
+    const darkTextSecondary = Color(0xFFB0B0B0);
+    const darkBorder = Color(0xFF2C2C2C);
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      colorScheme: ColorScheme.dark(
+        primary: primaryColor,
+        secondary: secondaryColor,
+        error: errorColor,
+        surface: darkSurface,
+        onPrimary: Colors.white,
+        onSecondary: Colors.white,
+        onSurface: darkTextPrimary,
+      ),
+      scaffoldBackgroundColor: darkBackground,
+      textTheme: GoogleFonts.interTextTheme(
+        const TextTheme(
+          displayLarge: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: darkTextPrimary,
+          ),
+          displayMedium: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: darkTextPrimary,
+          ),
+          displaySmall: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: darkTextPrimary,
+          ),
+          headlineMedium: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: darkTextPrimary,
+          ),
+          headlineSmall: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: darkTextPrimary,
+          ),
+          titleLarge: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: darkTextPrimary,
+          ),
+          titleMedium: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: darkTextPrimary,
+          ),
+          bodyLarge: TextStyle(
+            fontSize: 16,
+            color: darkTextPrimary,
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 14,
+            color: darkTextPrimary,
+          ),
+          bodySmall: TextStyle(
+            fontSize: 12,
+            color: darkTextSecondary,
+          ),
+          labelLarge: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: darkTextPrimary,
+          ),
+        ),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: darkSurface,
+        foregroundColor: darkTextPrimary,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.inter(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: darkTextPrimary,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryColor,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primaryColor,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          side: const BorderSide(color: primaryColor, width: 1.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: primaryColor,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          textStyle: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: darkSurface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: darkBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: darkBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: primaryColor, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: errorColor),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: errorColor, width: 2),
+        ),
+        labelStyle: GoogleFonts.inter(
+          fontSize: 14,
+          color: darkTextSecondary,
+        ),
+        hintStyle: GoogleFonts.inter(
+          fontSize: 14,
+          color: darkTextSecondary,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: darkSurface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: darkBorder, width: 1),
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: darkBackground,
+        labelStyle: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: darkBorder,
+        thickness: 1,
+      ),
+    );
+  }
 }

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_text_field.dart';
+import '../../core/providers/auth_provider.dart';
 import '../../models/user_model.dart';
 
-class SignupScreen extends StatefulWidget {
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -38,18 +41,64 @@ class _SignupScreenState extends State<SignupScreen> {
 
     setState(() => _isLoading = true);
 
-    // TODO: Implement Firebase Auth signup
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Call Firebase Auth signup
+      final authService = ref.read(authServiceProvider);
+      await authService.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        name: _nameController.text.trim(),
+        role: _selectedRole,
+        phone: _phoneController.text.trim(),
+      );
 
-    // Mock navigation based on role
-    if (mounted) {
-      setState(() => _isLoading = false);
-      
-      // Navigate to role-specific home based on selected role
-      if (_selectedRole == UserRole.patient) {
-        Navigator.pushReplacementNamed(context, '/patient-home');
-      } else if (_selectedRole == UserRole.doctor) {
-        Navigator.pushReplacementNamed(context, '/doctor-home');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created successfully!'),
+            backgroundColor: AppTheme.secondaryColor,
+          ),
+        );
+
+        // Navigate to role-specific home
+        if (_selectedRole == UserRole.doctor) {
+          Navigator.pushReplacementNamed(context, '/doctor-home');
+        } else {
+          Navigator.pushReplacementNamed(context, '/patient-home');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        String errorMessage = 'Signup failed';
+        
+        if (e is FirebaseAuthException) {
+          switch (e.code) {
+            case 'email-already-in-use':
+              errorMessage = 'This email is already registered';
+              break;
+            case 'weak-password':
+              errorMessage = 'Password is too weak';
+              break;
+            case 'invalid-email':
+              errorMessage = 'Invalid email address';
+              break;
+            default:
+              errorMessage = e.message ?? 'Signup failed';
+          }
+        } else {
+          errorMessage = 'Error: ${e.toString()}';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
       }
     }
   }

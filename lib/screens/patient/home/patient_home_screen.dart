@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/providers/theme_provider.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../models/hospital_model.dart';
+import '../../../models/appointment_model.dart';
 import '../doctors/search_doctors_screen.dart';
 import '../appointments/my_appointments_screen.dart';
 import '../history/medical_history_screen.dart';
 import '../prescriptions/prescriptions_screen.dart';
 import '../ambulance/book_ambulance_screen.dart';
 
-class PatientHomeScreen extends StatefulWidget {
+class PatientHomeScreen extends ConsumerStatefulWidget {
   const PatientHomeScreen({super.key});
 
   @override
-  State<PatientHomeScreen> createState() => _PatientHomeScreenState();
+  ConsumerState<PatientHomeScreen> createState() => _PatientHomeScreenState();
 }
 
-class _PatientHomeScreenState extends State<PatientHomeScreen> {
+class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
@@ -61,18 +65,94 @@ class _PatientHomeScreenState extends State<PatientHomeScreen> {
   }
 }
 
-class _HomeTab extends StatelessWidget {
+class _HomeTab extends ConsumerStatefulWidget {
   const _HomeTab();
 
   @override
+  ConsumerState<_HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends ConsumerState<_HomeTab> {
+  List<AppointmentModel> _upcomingAppointments = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUpcomingAppointments();
+  }
+
+  Future<void> _loadUpcomingAppointments() async {
+    // TODO: Fetch from Firestore
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    // Mock upcoming appointments
+    setState(() {
+      _upcomingAppointments = [
+        AppointmentModel(
+          appointmentId: '1',
+          doctorId: 'doc1',
+          patientId: 'current_patient',
+          doctorName: 'Dr. Sarah Johnson',
+          patientName: 'Current Patient',
+          specialization: 'Cardiologist',
+          date: DateTime.now().add(const Duration(hours: 2)),
+          timeSlotId: '1',
+          timeSlot: '14:00 - 14:30',
+          status: AppointmentStatus.upcoming,
+          reason: 'Regular checkup',
+        ),
+        AppointmentModel(
+          appointmentId: '2',
+          doctorId: 'doc2',
+          patientId: 'current_patient',
+          doctorName: 'Dr. Michael Chen',
+          patientName: 'Current Patient',
+          specialization: 'Dentist',
+          date: DateTime.now().add(const Duration(days: 1)),
+          timeSlotId: '2',
+          timeSlot: '10:00 - 10:30',
+          status: AppointmentStatus.upcoming,
+          reason: 'Dental cleaning',
+        ),
+      ];
+    });
+  }
+
+  void _showProfileMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _ProfileMenuSheet(),
+    );
+  }
+
+  void _showNotifications(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _NotificationsSheet(appointments: _upcomingAppointments),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+    
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Hello, Patient',
+              user.when(
+                data: (userData) => 'Hello, ${userData?.name ?? 'Patient'}',
+                loading: () => 'Hello, Patient',
+                error: (_, __) => 'Hello, Patient',
+              ),
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             Text(
@@ -82,17 +162,42 @@ class _HomeTab extends StatelessWidget {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              // TODO: Navigate to notifications
-            },
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () => _showNotifications(context),
+              ),
+              if (_upcomingAppointments.isNotEmpty)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '${_upcomingAppointments.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.person_outline),
-            onPressed: () {
-              // TODO: Navigate to profile
-            },
+            onPressed: () => _showProfileMenu(context),
           ),
         ],
       ),
@@ -700,6 +805,313 @@ class _HospitalCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// Profile Menu Bottom Sheet
+class _ProfileMenuSheet extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final themeNotifier = ref.watch(themeModeProvider.notifier);
+    final isDarkMode = ref.watch(themeModeProvider) == ThemeMode.dark;
+    
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 24),
+          
+          // Profile Section
+          user.when(
+            data: (userData) => Column(
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                  child: Text(
+                    userData?.name.substring(0, 1).toUpperCase() ?? 'P',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  userData?.name ?? 'Patient',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                Text(
+                  userData?.email ?? '',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+            loading: () => const CircularProgressIndicator(),
+            error: (_, __) => const Icon(Icons.error),
+          ),
+          const SizedBox(height: 24),
+          
+          // Theme Toggle
+          ListTile(
+            leading: Icon(
+              isDarkMode ? Icons.dark_mode : Icons.light_mode,
+              color: AppTheme.primaryColor,
+            ),
+            title: const Text('Dark Mode'),
+            trailing: Switch(
+              value: isDarkMode,
+              onChanged: (value) {
+                themeNotifier.toggleTheme();
+              },
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            tileColor: Theme.of(context).colorScheme.surface,
+          ),
+          const SizedBox(height: 12),
+          
+          // Profile Settings
+          ListTile(
+            leading: const Icon(Icons.settings, color: AppTheme.primaryColor),
+            title: const Text('Settings'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Settings coming soon')),
+              );
+            },
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            tileColor: Theme.of(context).colorScheme.surface,
+          ),
+          const SizedBox(height: 12),
+          
+          // Logout Button
+          ListTile(
+            leading: const Icon(Icons.logout, color: AppTheme.errorColor),
+            title: const Text(
+              'Logout',
+              style: TextStyle(color: AppTheme.errorColor),
+            ),
+            onTap: () async {
+              final shouldLogout = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Logout'),
+                  content: const Text('Are you sure you want to logout?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.errorColor,
+                      ),
+                      child: const Text('Logout'),
+                    ),
+                  ],
+                ),
+              );
+              
+              if (shouldLogout == true && context.mounted) {
+                await ref.read(authControllerProvider.notifier).signOut();
+                if (context.mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/',
+                    (route) => false,
+                  );
+                }
+              }
+            },
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            tileColor: AppTheme.errorColor.withOpacity(0.1),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+// Notifications Bottom Sheet
+class _NotificationsSheet extends StatelessWidget {
+  final List<AppointmentModel> appointments;
+  
+  const _NotificationsSheet({required this.appointments});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          
+          Text(
+            'Upcoming Appointments',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+          
+          // Appointments List
+          if (appointments.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.notifications_off_outlined,
+                      size: 64,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No upcoming appointments',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: appointments.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final appointment = appointments[index];
+                final isToday = appointment.date.day == DateTime.now().day &&
+                    appointment.date.month == DateTime.now().month &&
+                    appointment.date.year == DateTime.now().year;
+                
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppTheme.primaryColor.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.calendar_today,
+                          color: AppTheme.primaryColor,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  appointment.doctorName,
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                                if (isToday) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.errorColor,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'Today',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              appointment.specialization,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time,
+                                  size: 14,
+                                  color: AppTheme.textSecondaryColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  appointment.timeSlot,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }

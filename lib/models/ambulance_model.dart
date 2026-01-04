@@ -5,6 +5,9 @@ class AmbulanceModel {
   final AmbulanceType type;
   final String vehicleNumber;
   final AvailabilityStatus availability;
+  final double? currentLat;
+  final double? currentLng;
+  final String? currentAddress;
 
   AmbulanceModel({
     required this.ambulanceId,
@@ -13,6 +16,9 @@ class AmbulanceModel {
     required this.type,
     required this.vehicleNumber,
     required this.availability,
+    this.currentLat,
+    this.currentLng,
+    this.currentAddress,
   });
 
   factory AmbulanceModel.fromJson(Map<String, dynamic> json, String id) {
@@ -29,6 +35,9 @@ class AmbulanceModel {
         (e) => e.toString() == 'AvailabilityStatus.${json['availability']}',
         orElse: () => AvailabilityStatus.offline,
       ),
+      currentLat: json['currentLat']?.toDouble(),
+      currentLng: json['currentLng']?.toDouble(),
+      currentAddress: json['currentAddress'],
     );
   }
 
@@ -39,6 +48,9 @@ class AmbulanceModel {
       'type': type.name,
       'vehicleNumber': vehicleNumber,
       'availability': availability.name,
+      'currentLat': currentLat,
+      'currentLng': currentLng,
+      'currentAddress': currentAddress,
     };
   }
 }

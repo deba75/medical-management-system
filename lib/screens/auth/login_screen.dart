@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_text_field.dart';
+import '../../core/providers/auth_provider.dart';
+import '../../models/user_model.dart';
 import 'signup_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -30,16 +34,65 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // TODO: Implement Firebase Auth login
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Call Firebase Auth login
+      final authService = ref.read(authServiceProvider);
+      await authService.signIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
 
-    // Mock navigation based on role
-    // In real app, get role from Firestore after login
-    if (mounted) {
-      setState(() => _isLoading = false);
+      // Get user data to determine role
+      final userId = authService.currentUser?.uid;
       
-      // For demo: Navigate to patient home (change to '/doctor-home' to test doctor flow)
-      Navigator.pushReplacementNamed(context, '/patient-home');
+      if (userId != null && mounted) {
+        final userData = await authService.getUserData(userId);
+        
+        setState(() => _isLoading = false);
+        
+        // Navigate based on user role
+        if (userData?.role == UserRole.doctor) {
+          Navigator.pushReplacementNamed(context, '/doctor-home');
+        } else {
+          Navigator.pushReplacementNamed(context, '/patient-home');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        String errorMessage = 'Login failed';
+        
+        if (e is FirebaseAuthException) {
+          switch (e.code) {
+            case 'user-not-found':
+              errorMessage = 'No user found with this email';
+              break;
+            case 'wrong-password':
+              errorMessage = 'Incorrect password';
+              break;
+            case 'invalid-email':
+              errorMessage = 'Invalid email address';
+              break;
+            case 'user-disabled':
+              errorMessage = 'This account has been disabled';
+              break;
+            case 'invalid-credential':
+              errorMessage = 'Invalid email or password';
+              break;
+            default:
+              errorMessage = e.message ?? 'Login failed';
+          }
+        } else {
+          errorMessage = 'Error: ${e.toString()}';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
     }
   }
 

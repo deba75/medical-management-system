@@ -5,6 +5,7 @@ import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../models/doctor_model.dart';
 import '../../../models/time_slot_model.dart';
+import '../../../models/hospital_model.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   final DoctorModel doctor;
@@ -18,15 +19,17 @@ class BookAppointmentScreen extends StatefulWidget {
 class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   DateTime _selectedDate = DateTime.now();
   TimeSlotModel? _selectedSlot;
+  String? _selectedHospitalId;
   final _reasonController = TextEditingController();
-  List<TimeSlotModel> _availableSlots = [];
+  Map<String, List<TimeSlotModel>> _availableSlotsByHospital = {};
+  List<Hospital> _doctorHospitals = [];
   bool _isLoadingSlots = false;
   bool _isBooking = false;
 
   @override
   void initState() {
     super.initState();
-    _loadAvailableSlots();
+    _loadDoctorHospitals();
   }
 
   @override
@@ -35,25 +38,128 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     super.dispose();
   }
 
+  Future<void> _loadDoctorHospitals() async {
+    // TODO: Fetch hospitals where this doctor practices
+    // For now, using mock data
+    _doctorHospitals = [
+      Hospital(
+        id: 'h1',
+        name: 'City General Hospital',
+        address: '123 Main St',
+        city: 'Dhaka',
+        phone: '+880 1234567890',
+        email: 'info@citygeneral.com',
+        imageUrl: '',
+        rating: 4.5,
+        totalReviews: 100,
+        specialties: [],
+        isEmergencyAvailable: true,
+        description: '',
+      ),
+      Hospital(
+        id: 'h2',
+        name: 'Medicare Center',
+        address: '456 Park Ave',
+        city: 'Dhaka',
+        phone: '+880 1234567891',
+        email: 'info@medicare.com',
+        imageUrl: '',
+        rating: 4.3,
+        totalReviews: 80,
+        specialties: [],
+        isEmergencyAvailable: true,
+        description: '',
+      ),
+    ];
+    
+    if (_doctorHospitals.isNotEmpty) {
+      setState(() {
+        _selectedHospitalId = _doctorHospitals.first.id;
+      });
+      _loadAvailableSlots();
+    }
+  }
+
   Future<void> _loadAvailableSlots() async {
+    if (_selectedHospitalId == null) return;
+    
     setState(() => _isLoadingSlots = true);
 
-    // TODO: Fetch from Firestore based on doctor schedule and date
+    // TODO: Fetch from Firestore based on doctor schedule, date, and hospital
     await Future.delayed(const Duration(milliseconds: 500));
 
-    // Mock available slots
-    _availableSlots = [
-      TimeSlotModel(slotId: '1', start: '09:00', end: '09:30'),
-      TimeSlotModel(slotId: '2', start: '09:30', end: '10:00'),
-      TimeSlotModel(slotId: '3', start: '10:00', end: '10:30', isBooked: true),
-      TimeSlotModel(slotId: '4', start: '10:30', end: '11:00'),
-      TimeSlotModel(slotId: '5', start: '11:00', end: '11:30'),
-      TimeSlotModel(slotId: '6', start: '11:30', end: '12:00', isBooked: true),
-      TimeSlotModel(slotId: '7', start: '02:00', end: '02:30'),
-      TimeSlotModel(slotId: '8', start: '02:30', end: '03:00'),
-      TimeSlotModel(slotId: '9', start: '03:00', end: '03:30'),
-      TimeSlotModel(slotId: '10', start: '03:30', end: '04:00'),
-    ];
+    // Mock available slots grouped by hospital
+    _availableSlotsByHospital = {
+      'h1': [
+        TimeSlotModel(
+          slotId: '1',
+          start: '14:00',
+          end: '14:30',
+          hospitalId: 'h1',
+          hospitalName: 'City General Hospital',
+        ),
+        TimeSlotModel(
+          slotId: '2',
+          start: '14:30',
+          end: '15:00',
+          hospitalId: 'h1',
+          hospitalName: 'City General Hospital',
+        ),
+        TimeSlotModel(
+          slotId: '3',
+          start: '15:00',
+          end: '15:30',
+          isBooked: true,
+          hospitalId: 'h1',
+          hospitalName: 'City General Hospital',
+        ),
+        TimeSlotModel(
+          slotId: '4',
+          start: '15:30',
+          end: '16:00',
+          hospitalId: 'h1',
+          hospitalName: 'City General Hospital',
+        ),
+        TimeSlotModel(
+          slotId: '5',
+          start: '16:00',
+          end: '16:30',
+          hospitalId: 'h1',
+          hospitalName: 'City General Hospital',
+        ),
+      ],
+      'h2': [
+        TimeSlotModel(
+          slotId: '7',
+          start: '17:30',
+          end: '18:00',
+          hospitalId: 'h2',
+          hospitalName: 'Medicare Center',
+        ),
+        TimeSlotModel(
+          slotId: '8',
+          start: '18:00',
+          end: '18:30',
+          hospitalId: 'h2',
+          hospitalName: 'Medicare Center',
+        ),
+        TimeSlotModel(
+          slotId: '9',
+          start: '18:30',
+          end: '19:00',
+          hospitalId: 'h2',
+          hospitalName: 'Medicare Center',
+        ),
+        TimeSlotModel(
+          slotId: '10',
+          start: '19:00',
+          end: '19:30',
+          isBooked: true,
+          hospitalId: 'h2',
+          hospitalName: 'Medicare Center',
+        ),
+      ],
+    };
 
     setState(() => _isLoadingSlots = false);
   }
@@ -149,7 +255,42 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                       ],
                     ),
                   ),
+                  const Divider(height: 1),
 
+                  // Select Hospital
+                  if (_doctorHospitals.length > 1)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Select Hospital',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 16),
+                          ..._doctorHospitals.map((hospital) {
+                            final isSelected = _selectedHospitalId == hospital.id;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _HospitalCard(
+                                hospital: hospital,
+                                isSelected: isSelected,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedHospitalId = hospital.id;
+                                    _selectedSlot = null;
+                                  });
+                                  _loadAvailableSlots();
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+
+                  const Divider(height: 1),
                   // Select Date
                   Padding(
                     padding: const EdgeInsets.all(16),
@@ -214,12 +355,27 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                               child: CircularProgressIndicator(),
                             ),
                           )
-                        else if (_availableSlots.isEmpty)
+                        else if (_selectedHospitalId == null)
                           Center(
                             child: Padding(
                               padding: const EdgeInsets.all(24),
                               child: Text(
-                                'No slots available for this date',
+                                'Please select a hospital first',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                      color: AppTheme.textSecondaryColor,
+                                    ),
+                              ),
+                            ),
+                          )
+                        else if (_availableSlotsByHospital[_selectedHospitalId]?.isEmpty ?? true)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                'No slots available for this date at selected hospital',
                                 style: Theme.of(context)
                                     .textTheme
                                     .bodyMedium
@@ -233,7 +389,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                           Wrap(
                             spacing: 12,
                             runSpacing: 12,
-                            children: _availableSlots.map((slot) {
+                            children: (_availableSlotsByHospital[_selectedHospitalId] ?? []).map((slot) {
                               final isSelected = _selectedSlot?.slotId == slot.slotId;
                               return _TimeSlotChip(
                                 slot: slot,
@@ -447,6 +603,104 @@ class _TimeSlotChip extends StatelessWidget {
                 fontWeight: FontWeight.w500,
                 decoration: slot.isBooked ? TextDecoration.lineThrough : null,
               ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HospitalCard extends StatelessWidget {
+  final Hospital hospital;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _HospitalCard({
+    required this.hospital,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.secondaryColor.withOpacity(0.1)
+              : AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.secondaryColor
+                : AppTheme.borderColor,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppTheme.secondaryColor.withOpacity(0.2)
+                    : AppTheme.borderColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.local_hospital,
+                color: isSelected
+                    ? AppTheme.secondaryColor
+                    : AppTheme.textSecondaryColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hospital.name,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                          color: isSelected
+                              ? AppTheme.secondaryColor
+                              : AppTheme.textPrimaryColor,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${hospital.address}, ${hospital.city}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppTheme.textSecondaryColor,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: AppTheme.secondaryColor,
+                size: 24,
+              ),
+          ],
         ),
       ),
     );

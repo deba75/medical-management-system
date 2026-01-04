@@ -3,7 +3,7 @@ class DoctorModel {
   final String userId;
   final String name;
   final String specialization;
-  final String hospital;
+  final List<String> hospitals; // Changed from single hospital to list
   final double consultationFee;
   final double rating;
   final String profileBio;
@@ -15,7 +15,7 @@ class DoctorModel {
     required this.userId,
     required this.name,
     required this.specialization,
-    required this.hospital,
+    required this.hospitals,
     required this.consultationFee,
     this.rating = 0.0,
     required this.profileBio,
@@ -23,13 +23,26 @@ class DoctorModel {
     this.photoURL,
   });
 
+  // Legacy support - get first hospital or empty string
+  String get hospital => hospitals.isNotEmpty ? hospitals.first : '';
+
   factory DoctorModel.fromJson(Map<String, dynamic> json, String id) {
+    // Support both old format (single hospital) and new format (list)
+    List<String> hospitalsList;
+    if (json['hospitals'] != null && json['hospitals'] is List) {
+      hospitalsList = List<String>.from(json['hospitals']);
+    } else if (json['hospital'] != null && json['hospital'] is String) {
+      hospitalsList = [json['hospital']];
+    } else {
+      hospitalsList = [];
+    }
+
     return DoctorModel(
       doctorId: id,
       userId: json['userId'] ?? '',
       name: json['name'] ?? '',
       specialization: json['specialization'] ?? '',
-      hospital: json['hospital'] ?? '',
+      hospitals: hospitalsList,
       consultationFee: (json['consultationFee'] ?? 0).toDouble(),
       rating: (json['rating'] ?? 0).toDouble(),
       profileBio: json['profileBio'] ?? '',
@@ -43,7 +56,8 @@ class DoctorModel {
       'userId': userId,
       'name': name,
       'specialization': specialization,
-      'hospital': hospital,
+      'hospitals': hospitals,
+      'hospital': hospital, // Keep for backward compatibility
       'consultationFee': consultationFee,
       'rating': rating,
       'profileBio': profileBio,

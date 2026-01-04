@@ -47,7 +47,7 @@ class _SearchDoctorsScreenState extends State<SearchDoctorsScreen> {
         userId: '1',
         name: 'Dr. Sarah Johnson',
         specialization: 'Cardiologist',
-        hospital: 'City General Hospital',
+        hospitals: ['City General Hospital', 'Apollo Hospital'],
         consultationFee: 500,
         rating: 4.8,
         profileBio:
@@ -59,7 +59,7 @@ class _SearchDoctorsScreenState extends State<SearchDoctorsScreen> {
         userId: '2',
         name: 'Dr. Michael Chen',
         specialization: 'Dermatologist',
-        hospital: 'Medicare Hospital',
+        hospitals: ['Medicare Hospital'],
         consultationFee: 400,
         rating: 4.6,
         profileBio:
@@ -71,7 +71,7 @@ class _SearchDoctorsScreenState extends State<SearchDoctorsScreen> {
         userId: '3',
         name: 'Dr. Emily Brown',
         specialization: 'Pediatrician',
-        hospital: 'Apollo Hospital',
+        hospitals: ['Apollo Hospital', 'City General Hospital'],
         consultationFee: 450,
         rating: 4.9,
         profileBio:
