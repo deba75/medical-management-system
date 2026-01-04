@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/widgets/health_monitor_widget.dart';
 import '../../../models/hospital_model.dart';
 import '../../../models/appointment_model.dart';
 import '../doctors/search_doctors_screen.dart';
@@ -245,6 +246,13 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                 ),
               ),
             ),
+
+            // Health Monitor Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: HealthMonitorWidget(),
+            ),
+            const SizedBox(height: 24),
 
             // Emergency Button
             Padding(

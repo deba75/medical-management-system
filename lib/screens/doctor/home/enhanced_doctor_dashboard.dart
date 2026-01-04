@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/widgets/health_monitor_widget.dart';
 import '../../../models/appointment_model.dart';
 import '../appointments/doctor_appointments_screen.dart';
 import '../schedule/manage_schedule_screen.dart';
@@ -261,6 +262,27 @@ class _DashboardTabState extends ConsumerState<_DashboardTab> {
                         label: 'Pending',
                       ),
                     ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Health Monitor Section
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Patient Health Monitoring',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    const HealthMonitorWidget(),
                   ],
                 ),
               ),
