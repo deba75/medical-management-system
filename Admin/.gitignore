@@ -1,0 +1,13 @@
+# Firebase Service Account Key Configuration
+# Download from Firebase Console: Project Settings > Service Accounts > Generate New Private Key
+# Place the JSON file here and rename it to 'serviceAccountKey.json'
+
+*.json
+__pycache__/
+*.pyc
+.env
+venv/
+env/
+.venv/
+*.log
+.DS_Store

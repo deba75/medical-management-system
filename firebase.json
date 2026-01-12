@@ -1,0 +1,9 @@
+{
+  "firestore": {
+    "rules": "patient/firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "patient/storage.rules"
+  }
+}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Doctor Management</h2>
+        <div class="btn-group">
+            <a href="/doctors?status=all" class="btn btn-outline-primary {% if status_filter == 'all' %}active{% endif %}">All</a>
+            <a href="/doctors?status=pending" class="btn btn-outline-warning {% if status_filter == 'pending' %}active{% endif %}">Pending</a>
+            <a href="/doctors?status=approved" class="btn btn-outline-success {% if status_filter == 'approved' %}active{% endif %}">Approved</a>
+            <a href="/doctors?status=rejected" class="btn btn-outline-danger {% if status_filter == 'rejected' %}active{% endif %}">Rejected</a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Name</th>
+                    <th>BMDC Number</th>
+                    <th>Workplace</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doctor in doctors %}
+                <tr>
+                    <td>{{ doctor.get('name', 'N/A') }}</td>
+                    <td>{{ doctor.get('bmdcNumber', 'N/A') }}</td>
+                    <td>
+                        {{ doctor.get('workplaceHospital', 'N/A') }}<br>
+                        <small class="text-muted">{{ doctor.get('workplaceDepartment', 'N/A') }}</small>
+                    </td>
+                    <td>
+                        {% if doctor.verificationStatus == 'pending' %}
+                        <span class="badge badge-pending">Pending</span>
+                        {% elif doctor.verificationStatus == 'approved' %}
+                        <span class="badge badge-approved">Approved</span>
+                        {% elif doctor.verificationStatus == 'rejected' %}
+                        <span class="badge badge-rejected">Rejected</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Documents Required</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ doctor.get('submittedAt', 'N/A') }}</td>
+                    <td>
+                        <a href="/doctor/{{ doctor.id }}" class="btn btn-sm btn-primary">View Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

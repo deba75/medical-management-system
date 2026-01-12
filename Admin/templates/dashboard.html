@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Dashboard Overview</h2>
+        {% if firebase_connected %}
+        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Firebase Connected</span>
+        {% else %}
+        <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i> Firebase Disconnected</span>
+        {% endif %}
+    </div>
+    
+    <div class="row">
+        <!-- Pending Verifications Card -->
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #FF9800, #F57C00);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">Pending Verifications</h6>
+                        <h2 class="mb-0">{{ stats.pending_verifications }}</h2>
+                        <small>Doctors waiting approval</small>
+                    </div>
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Approved Doctors Card -->
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #4CAF50, #388E3C);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">Approved Doctors</h6>
+                        <h2 class="mb-0">{{ stats.approved_doctors }}</h2>
+                        <small>Active doctors</small>
+                    </div>
+                    <i class="fas fa-user-check"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Patients Card -->
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #2196F3, #1976D2);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">Total Patients</h6>
+                        <h2 class="mb-0">{{ stats.total_patients }}</h2>
+                        <small>Registered patients</small>
+                    </div>
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Appointments Card -->
+        <div class="col-md-3">
+            <div class="stat-card" style="background: linear-gradient(135deg, #9C27B0, #7B1FA2);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">Appointments</h6>
+                        <h2 class="mb-0">{{ stats.total_appointments }}</h2>
+                        <small>Total bookings</small>
+                    </div>
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="/doctors?status=pending" class="btn btn-warning btn-lg w-100">
+                                <i class="fas fa-clock"></i><br>
+                                Review Pending<br>
+                                <small>({{ stats.pending_verifications }} doctors)</small>
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="/doctors" class="btn btn-primary btn-lg w-100">
+                                <i class="fas fa-user-doctor"></i><br>
+                                Manage Doctors
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="/patients" class="btn btn-info btn-lg w-100">
+                                <i class="fas fa-users"></i><br>
+                                View Patients
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="/analytics" class="btn btn-success btn-lg w-100">
+                                <i class="fas fa-chart-line"></i><br>
+                                View Analytics
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
