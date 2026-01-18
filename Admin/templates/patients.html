@@ -157,7 +157,7 @@
                                 <span class="badge bg-danger">{{ patient.bloodGroup or 'N/A' }}</span>
                             </td>
                             <td>{{ patient.age or 'N/A' }} years</td>
-                            <td>{{ patient.createdAt.strftime('%b %d, %Y') if patient.createdAt else 'N/A' }}</td>
+                            <td>{{ patient.createdAt | safe_strftime }}</td>
                             <td>
                                 {% if patient.isRestricted %}
                                 <span class="badge bg-warning text-dark">

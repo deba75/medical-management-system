@@ -1,108 +1,196 @@
 {% extends "base.html" %}
 
+{% block title %}Dashboard{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0">Dashboard Overview</h2>
-        {% if firebase_connected %}
-        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Firebase Connected</span>
-        {% else %}
-        <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i> Firebase Disconnected</span>
-        {% endif %}
+<div class="content-area">
+    <!-- Header -->
+    <div class="main-header" style="margin: -32px -32px 32px -32px; padding: 20px 32px;">
+        <div class="header-title">
+            <h1>Dashboard Overview</h1>
+            <p>Welcome back! Here's what's happening with your platform.</p>
+        </div>
+        <div class="header-actions">
+            {% if firebase_connected %}
+            <span class="firebase-badge">
+                <i class="bi bi-check-circle-fill"></i> Firebase Connected
+            </span>
+            {% else %}
+            <span class="firebase-badge disconnected">
+                <i class="bi bi-exclamation-triangle-fill"></i> Demo Mode
+            </span>
+            {% endif %}
+        </div>
     </div>
     
-    <div class="row">
-        <!-- Pending Verifications Card -->
-        <div class="col-md-3">
-            <div class="stat-card" style="background: linear-gradient(135deg, #FF9800, #F57C00);">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="mb-1">Pending Verifications</h6>
-                        <h2 class="mb-0">{{ stats.pending_verifications }}</h2>
-                        <small>Doctors waiting approval</small>
-                    </div>
-                    <i class="fas fa-clock"></i>
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card warning fade-in">
+                <div class="stat-card-icon">
+                    <i class="bi bi-clock-history"></i>
                 </div>
+                <div class="stat-card-value">{{ stats.pending_verifications }}</div>
+                <div class="stat-card-label">Pending Verifications</div>
+                <small class="text-muted">Doctors waiting approval</small>
             </div>
         </div>
-
-        <!-- Approved Doctors Card -->
-        <div class="col-md-3">
-            <div class="stat-card" style="background: linear-gradient(135deg, #4CAF50, #388E3C);">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="mb-1">Approved Doctors</h6>
-                        <h2 class="mb-0">{{ stats.approved_doctors }}</h2>
-                        <small>Active doctors</small>
-                    </div>
-                    <i class="fas fa-user-check"></i>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card success fade-in" style="animation-delay: 0.1s;">
+                <div class="stat-card-icon">
+                    <i class="bi bi-person-check-fill"></i>
                 </div>
+                <div class="stat-card-value">{{ stats.approved_doctors }}</div>
+                <div class="stat-card-label">Approved Doctors</div>
+                <small class="text-muted">Active doctors</small>
             </div>
         </div>
-
-        <!-- Total Patients Card -->
-        <div class="col-md-3">
-            <div class="stat-card" style="background: linear-gradient(135deg, #2196F3, #1976D2);">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="mb-1">Total Patients</h6>
-                        <h2 class="mb-0">{{ stats.total_patients }}</h2>
-                        <small>Registered patients</small>
-                    </div>
-                    <i class="fas fa-users"></i>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card primary fade-in" style="animation-delay: 0.2s;">
+                <div class="stat-card-icon">
+                    <i class="bi bi-people-fill"></i>
                 </div>
+                <div class="stat-card-value">{{ stats.total_patients }}</div>
+                <div class="stat-card-label">Total Patients</div>
+                <small class="text-muted">Registered patients</small>
             </div>
         </div>
-
-        <!-- Total Appointments Card -->
-        <div class="col-md-3">
-            <div class="stat-card" style="background: linear-gradient(135deg, #9C27B0, #7B1FA2);">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="mb-1">Appointments</h6>
-                        <h2 class="mb-0">{{ stats.total_appointments }}</h2>
-                        <small>Total bookings</small>
-                    </div>
-                    <i class="fas fa-calendar-check"></i>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card info fade-in" style="animation-delay: 0.3s;">
+                <div class="stat-card-icon">
+                    <i class="bi bi-calendar-check-fill"></i>
                 </div>
+                <div class="stat-card-value">{{ stats.total_appointments }}</div>
+                <div class="stat-card-label">Appointments</div>
+                <small class="text-muted">Total bookings</small>
             </div>
         </div>
     </div>
 
     <!-- Quick Actions -->
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
+    <div class="section-header">
+        <h2 class="section-title">
+            <i class="bi bi-lightning-charge-fill"></i>
+            Quick Actions
+        </h2>
+    </div>
+    
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-lg-3">
+            <a href="{{ url_for('doctors') }}?status=pending" class="quick-action-card warning">
+                <div class="quick-action-icon">
+                    <i class="bi bi-hourglass-split"></i>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <a href="/doctors?status=pending" class="btn btn-warning btn-lg w-100">
-                                <i class="fas fa-clock"></i><br>
-                                Review Pending<br>
-                                <small>({{ stats.pending_verifications }} doctors)</small>
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="/doctors" class="btn btn-primary btn-lg w-100">
-                                <i class="fas fa-user-doctor"></i><br>
-                                Manage Doctors
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="/patients" class="btn btn-info btn-lg w-100">
-                                <i class="fas fa-users"></i><br>
-                                View Patients
-                            </a>
-                        </div>
-                        <div class="col-md-3">
-                            <a href="/analytics" class="btn btn-success btn-lg w-100">
-                                <i class="fas fa-chart-line"></i><br>
-                                View Analytics
-                            </a>
-                        </div>
+                <div class="quick-action-title">Review Pending</div>
+                <div class="quick-action-subtitle">{{ stats.pending_verifications }} doctors waiting</div>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <a href="{{ url_for('doctors') }}" class="quick-action-card primary">
+                <div class="quick-action-icon">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <div class="quick-action-title">Manage Doctors</div>
+                <div class="quick-action-subtitle">View all doctors</div>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <a href="{{ url_for('patients') }}" class="quick-action-card success">
+                <div class="quick-action-icon">
+                    <i class="bi bi-people"></i>
+                </div>
+                <div class="quick-action-title">View Patients</div>
+                <div class="quick-action-subtitle">Manage patient accounts</div>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <a href="{{ url_for('analytics') }}" class="quick-action-card info">
+                <div class="quick-action-icon">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="quick-action-title">View Analytics</div>
+                <div class="quick-action-subtitle">Charts & reports</div>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Recent Activity Section -->
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="data-table">
+                <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history text-primary me-2"></i>Recent Activity</h5>
+                    <a href="{{ url_for('doctors') }}" class="btn btn-sm btn-primary-gradient">View All</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Activity</th>
+                                <th>User</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><i class="bi bi-person-plus text-success me-2"></i>New patient registered</td>
+                                <td>System</td>
+                                <td><span class="badge-status active">Complete</span></td>
+                                <td class="text-muted">Just now</td>
+                            </tr>
+                            <tr>
+                                <td><i class="bi bi-person-badge text-warning me-2"></i>Doctor verification pending</td>
+                                <td>System</td>
+                                <td><span class="badge-status pending">Pending</span></td>
+                                <td class="text-muted">5 min ago</td>
+                            </tr>
+                            <tr>
+                                <td><i class="bi bi-calendar-check text-info me-2"></i>Appointment booked</td>
+                                <td>Patient</td>
+                                <td><span class="badge-status active">Complete</span></td>
+                                <td class="text-muted">1 hour ago</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="stat-card" style="height: auto;">
+                <h5 class="fw-bold mb-4"><i class="bi bi-pie-chart-fill text-primary me-2"></i>Platform Overview</h5>
+                <div class="d-flex justify-content-between align-items-center mb-3 p-3 rounded" style="background: #f8fafc;">
+                    <div>
+                        <div class="text-muted small">Total Users</div>
+                        <div class="fw-bold fs-5">{{ stats.total_patients + stats.approved_doctors }}</div>
+                    </div>
+                    <div class="stat-card-icon" style="width: 40px; height: 40px; margin: 0;">
+                        <i class="bi bi-people" style="font-size: 1rem;"></i>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3 p-3 rounded" style="background: #f8fafc;">
+                    <div>
+                        <div class="text-muted small">Active Rate</div>
+                        <div class="fw-bold fs-5 text-success">98%</div>
+                    </div>
+                    <div class="stat-card-icon success" style="width: 40px; height: 40px; margin: 0;">
+                        <i class="bi bi-graph-up" style="font-size: 1rem;"></i>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 rounded" style="background: #f8fafc;">
+                    <div>
+                        <div class="text-muted small">This Month</div>
+                        <div class="fw-bold fs-5 text-primary">+{{ stats.total_patients }}</div>
+                    </div>
+                    <div class="stat-card-icon primary" style="width: 40px; height: 40px; margin: 0;">
+                        <i class="bi bi-trending-up" style="font-size: 1rem;"></i>
                     </div>
                 </div>
             </div>

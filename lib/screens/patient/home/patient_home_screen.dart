@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/appointment_provider.dart';
 import '../../../core/widgets/health_monitor_widget.dart';
 import '../../../models/hospital_model.dart';
 import '../../../models/appointment_model.dart';
@@ -74,51 +75,8 @@ class _HomeTab extends ConsumerStatefulWidget {
 }
 
 class _HomeTabState extends ConsumerState<_HomeTab> {
-  List<AppointmentModel> _upcomingAppointments = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUpcomingAppointments();
-  }
-
-  Future<void> _loadUpcomingAppointments() async {
-    // TODO: Fetch from Firestore
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    // Mock upcoming appointments
-    setState(() {
-      _upcomingAppointments = [
-        AppointmentModel(
-          appointmentId: '1',
-          doctorId: 'doc1',
-          patientId: 'current_patient',
-          doctorName: 'Dr. Sarah Johnson',
-          patientName: 'Current Patient',
-          specialization: 'Cardiologist',
-          date: DateTime.now().add(const Duration(hours: 2)),
-          timeSlotId: '1',
-          timeSlot: '14:00 - 14:30',
-          status: AppointmentStatus.upcoming,
-          reason: 'Regular checkup',
-        ),
-        AppointmentModel(
-          appointmentId: '2',
-          doctorId: 'doc2',
-          patientId: 'current_patient',
-          doctorName: 'Dr. Michael Chen',
-          patientName: 'Current Patient',
-          specialization: 'Dentist',
-          date: DateTime.now().add(const Duration(days: 1)),
-          timeSlotId: '2',
-          timeSlot: '10:00 - 10:30',
-          status: AppointmentStatus.upcoming,
-          reason: 'Dental cleaning',
-        ),
-      ];
-    });
-  }
-
+  // Appointments are now managed by Riverpod provider
+  
   void _showProfileMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -130,18 +88,20 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
   }
 
   void _showNotifications(BuildContext context) {
+    final upcomingAppointments = ref.read(upcomingAppointmentsProvider);
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => _NotificationsSheet(appointments: _upcomingAppointments),
+      builder: (context) => _NotificationsSheet(appointments: upcomingAppointments),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
+    final upcomingAppointments = ref.watch(upcomingAppointmentsProvider);
     
     return Scaffold(
       appBar: AppBar(
@@ -169,7 +129,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                 icon: const Icon(Icons.notifications_outlined),
                 onPressed: () => _showNotifications(context),
               ),
-              if (_upcomingAppointments.isNotEmpty)
+              if (upcomingAppointments.isNotEmpty)
                 Positioned(
                   right: 8,
                   top: 8,
@@ -184,7 +144,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                       minHeight: 16,
                     ),
                     child: Text(
-                      '${_upcomingAppointments.length}',
+                      '${upcomingAppointments.length}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,

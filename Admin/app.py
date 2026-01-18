@@ -73,6 +73,30 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Template filter for safe date formatting
+@app.template_filter('safe_strftime')
+def safe_strftime(date_value, format='%b %d, %Y'):
+    """Safely format a date/timestamp value"""
+    if not date_value:
+        return 'N/A'
+    
+    try:
+        # If it's a Firestore timestamp, convert it
+        if hasattr(date_value, 'timestamp'):
+            date_value = datetime.fromtimestamp(date_value.timestamp())
+        # If it's a string, parse it
+        elif isinstance(date_value, str):
+            date_value = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+        # If it's already a datetime, use it
+        elif isinstance(date_value, datetime):
+            pass
+        else:
+            return 'N/A'
+        
+        return date_value.strftime(format)
+    except Exception as e:
+        return 'N/A'
+
 # Helper functions
 def get_stats():
     """Get dashboard statistics"""
@@ -390,6 +414,18 @@ def patients():
         for doc in query.stream():
             patient_data = doc.to_dict()
             patient_data['id'] = doc.id
+            
+            # Convert Firestore timestamps to datetime objects
+            if 'createdAt' in patient_data and patient_data['createdAt']:
+                if hasattr(patient_data['createdAt'], 'timestamp'):
+                    # It's a Firestore timestamp object
+                    patient_data['createdAt'] = patient_data['createdAt']
+                elif isinstance(patient_data['createdAt'], str):
+                    # It's a string, convert to datetime
+                    try:
+                        patient_data['createdAt'] = datetime.fromisoformat(patient_data['createdAt'].replace('Z', '+00:00'))
+                    except:
+                        patient_data['createdAt'] = None
             
             # Apply search filter
             if search_query:

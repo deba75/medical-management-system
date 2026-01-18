@@ -1,60 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/providers/medical_history_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../models/medical_history_model.dart';
 
-class MedicalHistoryScreen extends StatefulWidget {
+class MedicalHistoryScreen extends ConsumerWidget {
   const MedicalHistoryScreen({super.key});
 
   @override
-  State<MedicalHistoryScreen> createState() => _MedicalHistoryScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final historyAsync = ref.watch(userMedicalHistoryProvider);
 
-class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
-  List<MedicalHistoryModel> _history = [];
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadHistory();
-  }
-
-  Future<void> _loadHistory() async {
-    setState(() => _isLoading = true);
-
-    // TODO: Fetch from Firestore
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Mock data
-    _history = [
-      MedicalHistoryModel(
-        historyId: '1',
-        patientId: 'current_user',
-        doctorId: '1',
-        doctorName: 'Dr. Sarah Johnson',
-        notes: 'Patient complained of chest pain. ECG normal. Prescribed medication.',
-        diagnosis: 'Mild chest discomfort',
-        medicines: ['Aspirin 75mg', 'Atorvastatin 10mg'],
-        reportsURLs: [],
-        createdAt: DateTime.now().subtract(const Duration(days: 7)),
-      ),
-      MedicalHistoryModel(
-        historyId: '2',
-        patientId: 'current_user',
-        notes: 'Self-uploaded medical report',
-        medicines: [],
-        reportsURLs: ['url_to_report'],
-        createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      ),
-    ];
-
-    setState(() => _isLoading = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Medical History'),
@@ -62,36 +20,54 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () {
-              _showUploadDialog();
+              _showUploadDialog(context);
             },
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _history.isEmpty
-              ? EmptyStateWidget(
-                  icon: Icons.medical_information_outlined,
-                  title: 'No medical history',
-                  subtitle: 'Your medical records will appear here',
-                  actionText: 'Upload Report',
-                  onAction: _showUploadDialog,
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadHistory,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _history.length,
-                    itemBuilder: (context, index) {
-                      final record = _history[index];
-                      return _MedicalHistoryCard(record: record);
-                    },
-                  ),
+      body: historyAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Error: ${error.toString()}'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.refresh(userMedicalHistoryProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+        data: (history) => history.isEmpty
+            ? EmptyStateWidget(
+                icon: Icons.medical_information_outlined,
+                title: 'No medical history',
+                subtitle: 'Your medical records will appear here',
+                actionText: 'Upload Report',
+                onAction: () => _showUploadDialog(context),
+              )
+            : RefreshIndicator(
+                onRefresh: () async {
+                  ref.refresh(userMedicalHistoryProvider);
+                },
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: history.length,
+                  itemBuilder: (context, index) {
+                    final record = history[index];
+                    return _MedicalHistoryCard(record: record);
+                  },
                 ),
+              ),
+      ),
     );
   }
 
-  void _showUploadDialog() {
+  void _showUploadDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

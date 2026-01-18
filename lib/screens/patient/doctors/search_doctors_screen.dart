@@ -1,31 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/doctor_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../models/doctor_model.dart';
 import 'doctor_profile_screen.dart';
 
-class SearchDoctorsScreen extends StatefulWidget {
+class SearchDoctorsScreen extends ConsumerStatefulWidget {
   final String? initialSpecialization;
 
   const SearchDoctorsScreen({super.key, this.initialSpecialization});
 
   @override
-  State<SearchDoctorsScreen> createState() => _SearchDoctorsScreenState();
+  ConsumerState<SearchDoctorsScreen> createState() => _SearchDoctorsScreenState();
 }
 
-class _SearchDoctorsScreenState extends State<SearchDoctorsScreen> {
+class _SearchDoctorsScreenState extends ConsumerState<SearchDoctorsScreen> {
   final _searchController = TextEditingController();
   String? _selectedSpecialization;
   String? _selectedHospital;
-  List<DoctorModel> _doctors = [];
-  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _selectedSpecialization = widget.initialSpecialization;
-    _loadDoctors();
+    if (widget.initialSpecialization != null) {
+      // Set initial search query if specialization is provided
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(doctorSearchQueryProvider.notifier).state =
+            widget.initialSpecialization ?? '';
+      });
+    }
   }
 
   @override
@@ -34,57 +40,13 @@ class _SearchDoctorsScreenState extends State<SearchDoctorsScreen> {
     super.dispose();
   }
 
-  Future<void> _loadDoctors() async {
-    setState(() => _isLoading = true);
-
-    // TODO: Fetch from Firestore with filters
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Mock data
-    _doctors = [
-      DoctorModel(
-        doctorId: '1',
-        userId: '1',
-        name: 'Dr. Sarah Johnson',
-        specialization: 'Cardiologist',
-        hospitals: ['City General Hospital', 'Apollo Hospital'],
-        consultationFee: 500,
-        rating: 4.8,
-        profileBio:
-            'Experienced cardiologist with 15 years of practice. Specialized in heart diseases and cardiac care.',
-        photoURL: null,
-      ),
-      DoctorModel(
-        doctorId: '2',
-        userId: '2',
-        name: 'Dr. Michael Chen',
-        specialization: 'Dermatologist',
-        hospitals: ['Medicare Hospital'],
-        consultationFee: 400,
-        rating: 4.6,
-        profileBio:
-            'Board-certified dermatologist focusing on skin care and cosmetic procedures.',
-        photoURL: null,
-      ),
-      DoctorModel(
-        doctorId: '3',
-        userId: '3',
-        name: 'Dr. Emily Brown',
-        specialization: 'Pediatrician',
-        hospitals: ['Apollo Hospital', 'City General Hospital'],
-        consultationFee: 450,
-        rating: 4.9,
-        profileBio:
-            'Caring pediatrician with expertise in child healthcare and development.',
-        photoURL: null,
-      ),
-    ];
-
-    setState(() => _isLoading = false);
-  }
-
   void _applyFilters() {
-    _loadDoctors();
+    // Combine specialization with current search
+    String query = _searchController.text;
+    if (_selectedSpecialization != null) {
+      query = _selectedSpecialization!;
+    }
+    ref.read(doctorSearchQueryProvider.notifier).state = query;
     Navigator.pop(context);
   }
 
@@ -178,6 +140,8 @@ class _SearchDoctorsScreenState extends State<SearchDoctorsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final doctorsAsync = ref.watch(searchedDoctorsProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Search Doctors'),
@@ -203,13 +167,15 @@ class _SearchDoctorsScreenState extends State<SearchDoctorsScreen> {
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _searchController.clear();
-                          _loadDoctors();
+                          ref.read(doctorSearchQueryProvider.notifier).state = '';
+                          setState(() {});
                         },
                       )
                     : null,
               ),
               onChanged: (value) {
-                // TODO: Implement search
+                ref.read(doctorSearchQueryProvider.notifier).state = value;
+                setState(() {});
               },
             ),
           ),
@@ -230,7 +196,8 @@ class _SearchDoctorsScreenState extends State<SearchDoctorsScreen> {
                         deleteIcon: const Icon(Icons.close, size: 18),
                         onDeleted: () {
                           setState(() => _selectedSpecialization = null);
-                          _loadDoctors();
+                          ref.read(doctorSearchQueryProvider.notifier).state = 
+                              _searchController.text;
                         },
                       ),
                     ),
@@ -240,7 +207,6 @@ class _SearchDoctorsScreenState extends State<SearchDoctorsScreen> {
                       deleteIcon: const Icon(Icons.close, size: 18),
                       onDeleted: () {
                         setState(() => _selectedHospital = null);
-                        _loadDoctors();
                       },
                     ),
                 ],
@@ -249,20 +215,38 @@ class _SearchDoctorsScreenState extends State<SearchDoctorsScreen> {
 
           // Doctors List
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _doctors.isEmpty
-                    ? const EmptyStateWidget(
-                        icon: Icons.person_search,
-                        title: 'No doctors found',
-                        subtitle:
-                            'Try adjusting your filters or search criteria',
-                      )
-                    : ListView.builder(
+            child: doctorsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('Error: ${error.toString()}'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => ref.refresh(searchedDoctorsProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+              data: (doctors) => doctors.isEmpty
+                  ? const EmptyStateWidget(
+                      icon: Icons.person_search,
+                      title: 'No doctors found',
+                      subtitle: 'Try adjusting your filters or search criteria',
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () async {
+                        ref.refresh(searchedDoctorsProvider);
+                      },
+                      child: ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: _doctors.length,
+                        itemCount: doctors.length,
                         itemBuilder: (context, index) {
-                          final doctor = _doctors[index];
+                          final doctor = doctors[index];
                           return _DoctorCard(
                             doctor: doctor,
                             onTap: () {
@@ -278,6 +262,8 @@ class _SearchDoctorsScreenState extends State<SearchDoctorsScreen> {
                           );
                         },
                       ),
+                    ),
+            ),
           ),
         ],
       ),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../core/providers/doctor_dashboard_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../models/appointment_model.dart';
 import 'chambers/manage_chambers_screen.dart';
 import 'earnings/earnings_dashboard_screen.dart';
 import 'availability/manage_availability_screen.dart';
@@ -8,14 +11,14 @@ import 'productivity/productivity_dashboard_screen.dart';
 import 'search/patient_search_screen.dart';
 import 'settings/settings_screen.dart';
 
-class DoctorHomeScreen extends StatefulWidget {
+class DoctorHomeScreen extends ConsumerStatefulWidget {
   const DoctorHomeScreen({super.key});
 
   @override
-  State<DoctorHomeScreen> createState() => _DoctorHomeScreenState();
+  ConsumerState<DoctorHomeScreen> createState() => _DoctorHomeScreenState();
 }
 
-class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
+class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
   int _selectedIndex = 0;
   
   final List<Widget> _screens = [
@@ -58,39 +61,34 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   }
 }
 
-class _HomeTab extends StatefulWidget {
+class _HomeTab extends ConsumerWidget {
   const _HomeTab();
 
   @override
-  State<_HomeTab> createState() => _HomeTabState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final doctorProfile = ref.watch(doctorProfileProvider);
+    final dashboardStats = ref.watch(doctorDashboardStatsProvider);
+    final todayAppointments = ref.watch(doctorTodayAppointmentsProvider);
 
-class _HomeTabState extends State<_HomeTab> {
-  // Mock data - TODO: Replace with real data from Firebase
-  final String _doctorName = 'Dr. John Smith';
-  final String _specialization = 'Cardiologist';
-  final int _todayAppointments = 8;
-  final int _pendingAppointments = 3;
-  final double _todayEarnings = 12500;
-  final int _totalChambers = 2;
+    final doctorName = doctorProfile.value?.name ?? 'Doctor';
+    final specialization = doctorProfile.value?.specialization ?? '';
 
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _doctorName,
+              'Dr. $doctorName',
               style: const TextStyle(fontSize: 18),
             ),
-            Text(
-              _specialization,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-            ),
+            if (specialization.isNotEmpty)
+              Text(
+                specialization,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+              ),
           ],
         ),
         actions: [
@@ -104,28 +102,31 @@ class _HomeTabState extends State<_HomeTab> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          // TODO: Refresh data
-          await Future.delayed(const Duration(seconds: 1));
+          ref.refresh(doctorProfileProvider);
+          ref.refresh(doctorTodayAppointmentsProvider);
+          ref.refresh(doctorPendingAppointmentsProvider);
+          ref.refresh(doctorEarningsProvider);
+          ref.refresh(doctorChambersCountProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildWelcomeCard(),
+            _buildWelcomeCard(context, doctorName),
             const SizedBox(height: 20),
-            _buildQuickStats(),
+            _buildQuickStats(context, dashboardStats),
             const SizedBox(height: 20),
-            _buildQuickActions(),
+            _buildQuickActions(context),
             const SizedBox(height: 20),
-            _buildTodaySchedule(),
+            _buildTodaySchedule(context, todayAppointments),
             const SizedBox(height: 20),
-            _buildRecentActivity(),
+            _buildRecentActivity(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildWelcomeCard() {
+  Widget _buildWelcomeCard(BuildContext context, String doctorName) {
     return Card(
       color: AppTheme.primaryColor,
       child: Padding(
@@ -148,7 +149,7 @@ class _HomeTabState extends State<_HomeTab> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _doctorName.split(' ').last,
+                        doctorName.split(' ').last,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 24,
@@ -186,7 +187,7 @@ class _HomeTabState extends State<_HomeTab> {
     );
   }
 
-  Widget _buildQuickStats() {
+  Widget _buildQuickStats(BuildContext context, DoctorDashboardStats stats) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -201,7 +202,7 @@ class _HomeTabState extends State<_HomeTab> {
               child: _QuickStatCard(
                 icon: Icons.event,
                 label: 'Appointments',
-                value: _todayAppointments.toString(),
+                value: stats.todayAppointments.toString(),
                 color: Colors.blue,
                 onTap: () {
                   // TODO: Navigate to appointments
@@ -213,7 +214,7 @@ class _HomeTabState extends State<_HomeTab> {
               child: _QuickStatCard(
                 icon: Icons.schedule,
                 label: 'Pending',
-                value: _pendingAppointments.toString(),
+                value: stats.pendingAppointments.toString(),
                 color: Colors.orange,
                 onTap: () {
                   // TODO: Navigate to pending appointments
@@ -229,7 +230,7 @@ class _HomeTabState extends State<_HomeTab> {
               child: _QuickStatCard(
                 icon: Icons.account_balance_wallet,
                 label: 'Earnings',
-                value: '৳$_todayEarnings',
+                value: '৳${stats.todayEarnings.toStringAsFixed(0)}',
                 color: Colors.green,
                 onTap: () {
                   Navigator.push(
@@ -246,7 +247,7 @@ class _HomeTabState extends State<_HomeTab> {
               child: _QuickStatCard(
                 icon: Icons.business,
                 label: 'Chambers',
-                value: _totalChambers.toString(),
+                value: stats.chambersCount.toString(),
                 color: Colors.purple,
                 onTap: () {
                   Navigator.push(
@@ -264,7 +265,7 @@ class _HomeTabState extends State<_HomeTab> {
     );
   }
 
-  Widget _buildQuickActions() {
+  Widget _buildQuickActions(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -344,7 +345,8 @@ class _HomeTabState extends State<_HomeTab> {
     );
   }
 
-  Widget _buildTodaySchedule() {
+  Widget _buildTodaySchedule(
+      BuildContext context, AsyncValue<List<AppointmentModel>> appointmentsAsync) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -364,35 +366,58 @@ class _HomeTabState extends State<_HomeTab> {
           ],
         ),
         const SizedBox(height: 12),
-        // Mock appointments
-        _AppointmentCard(
-          patientName: 'John Doe',
-          time: '10:00 AM',
-          type: 'Online',
-          chamber: 'Main Clinic',
-          status: 'Upcoming',
-        ),
-        const SizedBox(height: 8),
-        _AppointmentCard(
-          patientName: 'Jane Smith',
-          time: '11:30 AM',
-          type: 'Offline',
-          chamber: 'City Hospital',
-          status: 'Upcoming',
-        ),
-        const SizedBox(height: 8),
-        _AppointmentCard(
-          patientName: 'Mike Johnson',
-          time: '2:00 PM',
-          type: 'Online',
-          chamber: 'Main Clinic',
-          status: 'Completed',
+        appointmentsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, stack) => Center(child: Text('Error: $err')),
+          data: (appointments) {
+            if (appointments.isEmpty) {
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.event_available,
+                          size: 48,
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No appointments today',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppTheme.textSecondaryColor,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return Column(
+              children: appointments.take(3).map((appointment) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _AppointmentCard(
+                    patientName: appointment.patientName,
+                    time: DateFormat('hh:mm a').format(appointment.date),
+                    type: 'Offline',
+                    chamber: appointment.hospitalName ?? 'N/A',
+                    status: appointment.status == AppointmentStatus.completed ? 'Completed' : 'Upcoming',
+                  ),
+                );
+              }).toList(),
+            );
+          },
         ),
       ],
     );
   }
 
-  Widget _buildRecentActivity() {
+  Widget _buildRecentActivity(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -402,29 +427,26 @@ class _HomeTabState extends State<_HomeTab> {
         ),
         const SizedBox(height: 12),
         Card(
-          child: Column(
-            children: [
-              _ActivityTile(
-                icon: Icons.person_add,
-                title: 'New patient registered',
-                subtitle: 'Sarah Williams',
-                time: '2 hours ago',
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.history,
+                    size: 48,
+                    color: AppTheme.textSecondaryColor,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Recent activities will appear here',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                  ),
+                ],
               ),
-              const Divider(height: 1),
-              _ActivityTile(
-                icon: Icons.event,
-                title: 'Appointment booked',
-                subtitle: 'Tom Brown - Tomorrow 10:00 AM',
-                time: '3 hours ago',
-              ),
-              const Divider(height: 1),
-              _ActivityTile(
-                icon: Icons.star,
-                title: 'New review received',
-                subtitle: '5 stars from Emily Davis',
-                time: '5 hours ago',
-              ),
-            ],
+            ),
           ),
         ),
       ],

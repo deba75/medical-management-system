@@ -1,29 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/status_chip.dart';
+import '../../../core/providers/appointment_provider.dart';
 import '../../../models/appointment_model.dart';
 import 'appointment_detail_screen.dart';
 
-class MyAppointmentsScreen extends StatefulWidget {
+class MyAppointmentsScreen extends ConsumerStatefulWidget {
   const MyAppointmentsScreen({super.key});
 
   @override
-  State<MyAppointmentsScreen> createState() => _MyAppointmentsScreenState();
+  ConsumerState<MyAppointmentsScreen> createState() => _MyAppointmentsScreenState();
 }
 
-class _MyAppointmentsScreenState extends State<MyAppointmentsScreen>
+class _MyAppointmentsScreenState extends ConsumerState<MyAppointmentsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<AppointmentModel> _appointments = [];
-  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadAppointments();
   }
 
   @override
@@ -32,52 +31,16 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen>
     super.dispose();
   }
 
-  Future<void> _loadAppointments() async {
-    setState(() => _isLoading = true);
-
-    // TODO: Fetch from Firestore
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Mock data
-    _appointments = [
-      AppointmentModel(
-        appointmentId: '1',
-        doctorId: '1',
-        patientId: 'current_user',
-        doctorName: 'Dr. Sarah Johnson',
-        patientName: 'Current User',
-        specialization: 'Cardiologist',
-        date: DateTime.now().add(const Duration(days: 2)),
-        timeSlotId: '1',
-        timeSlot: '09:00 - 09:30',
-        status: AppointmentStatus.upcoming,
-        reason: 'Regular checkup',
-      ),
-      AppointmentModel(
-        appointmentId: '2',
-        doctorId: '2',
-        patientId: 'current_user',
-        doctorName: 'Dr. Michael Chen',
-        patientName: 'Current User',
-        specialization: 'Dermatologist',
-        date: DateTime.now().subtract(const Duration(days: 7)),
-        timeSlotId: '4',
-        timeSlot: '10:30 - 11:00',
-        status: AppointmentStatus.completed,
-        reason: 'Skin consultation',
-      ),
-    ];
-
-    setState(() => _isLoading = false);
-  }
-
-  List<AppointmentModel> _getFilteredAppointments(AppointmentStatus? status) {
-    if (status == null) return _appointments;
-    return _appointments.where((apt) => apt.status == status).toList();
+  List<AppointmentModel> _getFilteredAppointments(
+      List<AppointmentModel> appointments, AppointmentStatus? status) {
+    if (status == null) return appointments;
+    return appointments.where((apt) => apt.status == status).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final appointmentsAsync = ref.watch(userAppointmentsProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Appointments'),
@@ -90,27 +53,42 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen>
           ],
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _AppointmentsList(
-                  appointments: _getFilteredAppointments(null),
-                  emptyMessage: 'No appointments yet',
-                ),
-                _AppointmentsList(
-                  appointments:
-                      _getFilteredAppointments(AppointmentStatus.upcoming),
-                  emptyMessage: 'No upcoming appointments',
-                ),
-                _AppointmentsList(
-                  appointments:
-                      _getFilteredAppointments(AppointmentStatus.completed),
-                  emptyMessage: 'No completed appointments',
-                ),
-              ],
+      body: appointmentsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Error loading appointments'),
+              TextButton(
+                onPressed: () => ref.invalidate(userAppointmentsProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+        data: (appointments) => TabBarView(
+          controller: _tabController,
+          children: [
+            _AppointmentsList(
+              appointments: _getFilteredAppointments(appointments, null),
+              emptyMessage: 'No appointments yet',
             ),
+            _AppointmentsList(
+              appointments:
+                  _getFilteredAppointments(appointments, AppointmentStatus.upcoming),
+              emptyMessage: 'No upcoming appointments',
+            ),
+            _AppointmentsList(
+              appointments:
+                  _getFilteredAppointments(appointments, AppointmentStatus.completed),
+              emptyMessage: 'No completed appointments',
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
