@@ -22,6 +22,7 @@ class AuthService {
     required String name,
     required UserRole role,
     String phone = '',
+    DateTime? dateOfBirth,
   }) async {
     try {
       // Create user in Firebase Auth
@@ -39,6 +40,7 @@ class AuthService {
         role: role,
         profileCompleted: false,
         createdAt: DateTime.now(),
+        dateOfBirth: dateOfBirth,
       );
       
       await _firestore

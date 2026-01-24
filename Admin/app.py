@@ -427,6 +427,26 @@ def patients():
                     except:
                         patient_data['createdAt'] = None
             
+            # Calculate age from dateOfBirth
+            if 'dateOfBirth' in patient_data and patient_data['dateOfBirth']:
+                try:
+                    dob = patient_data['dateOfBirth']
+                    if isinstance(dob, str):
+                        dob = datetime.fromisoformat(dob.replace('Z', '+00:00'))
+                    elif hasattr(dob, 'timestamp'):
+                        # Firestore timestamp
+                        dob = datetime.fromtimestamp(dob.timestamp())
+                    
+                    today = datetime.now()
+                    age = today.year - dob.year
+                    if (today.month, today.day) < (dob.month, dob.day):
+                        age -= 1
+                    patient_data['age'] = age
+                except:
+                    patient_data['age'] = None
+            else:
+                patient_data['age'] = None
+            
             # Apply search filter
             if search_query:
                 search_lower = search_query.lower()

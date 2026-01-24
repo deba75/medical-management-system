@@ -156,7 +156,13 @@
                             <td>
                                 <span class="badge bg-danger">{{ patient.bloodGroup or 'N/A' }}</span>
                             </td>
-                            <td>{{ patient.age or 'N/A' }} years</td>
+                            <td>
+                                {% if patient.age is not none %}
+                                    {{ patient.age }} years
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
                             <td>{{ patient.createdAt | safe_strftime }}</td>
                             <td>
                                 {% if patient.isRestricted %}

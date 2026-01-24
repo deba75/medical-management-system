@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/appointment_model.dart';
 import '../appointments/doctor_appointments_screen.dart';
@@ -15,6 +17,8 @@ class DoctorHomeScreen extends StatefulWidget {
 
 class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   int _selectedIndex = 0;
+  bool _isVerified = false;
+  bool _isCheckingVerification = true;
 
   final List<Widget> _screens = [
     const _DashboardTab(),
@@ -23,7 +27,115 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _checkVerificationStatus();
+  }
+
+  Future<void> _checkVerificationStatus() async {
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        // No user logged in, redirect to login
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
+        return;
+      }
+
+      final doctorDoc = await FirebaseFirestore.instance
+          .collection('doctors')
+          .doc(userId)
+          .get();
+
+      if (!mounted) return;
+
+      if (!doctorDoc.exists) {
+        // No doctor document, redirect to verification
+        Navigator.of(context).pushReplacementNamed('/doctor-verification');
+        return;
+      }
+
+      final verificationStatus = doctorDoc.data()?['verificationStatus'] ?? 'documentsRequired';
+
+      if (verificationStatus == 'approved') {
+        setState(() {
+          _isVerified = true;
+          _isCheckingVerification = false;
+        });
+      } else {
+        // Not approved, redirect based on status
+        if (verificationStatus == 'pending') {
+          _showPendingDialog();
+        } else if (verificationStatus == 'rejected') {
+          Navigator.of(context).pushReplacementNamed('/doctor-verification');
+        } else {
+          Navigator.of(context).pushReplacementNamed('/doctor-verification');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isCheckingVerification = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error checking verification: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showPendingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Verification Pending'),
+        content: const Text(
+          'Your account is still pending verification. '
+          'Please wait for admin approval.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pushReplacementNamed('/login');
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Show loading while checking verification
+    if (_isCheckingVerification) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Verifying account status...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // If not verified, show nothing (will be redirected)
+    if (!_isVerified) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Redirecting...'),
+        ),
+      );
+    }
+
     return Scaffold(
       body: _screens[_selectedIndex],
       bottomNavigationBar: NavigationBar(

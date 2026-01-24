@@ -7,6 +7,7 @@ import 'core/providers/theme_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/patient/home/patient_home_screen.dart';
 import 'screens/doctor/home/doctor_home_screen.dart';
+import 'screens/doctor/verification/doctor_verification_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,7 @@ class MyApp extends ConsumerWidget {
         '/login': (context) => const LoginScreen(),
         '/patient-home': (context) => const PatientHomeScreen(),
         '/doctor-home': (context) => const DoctorHomeScreen(),
+        '/doctor-verification': (context) => const DoctorVerificationScreen(),
       },
     );
   }
