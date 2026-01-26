@@ -108,7 +108,9 @@ def get_stats():
             "pending_verifications": 0,
             "approved_doctors": 0,
             "rejected_doctors": 0,
-            "total_appointments": 0
+            "total_appointments": 0,
+            "total_ambulances": 0,
+            "total_diagnostic_centres": 0
         }
     
     try:
@@ -128,13 +130,23 @@ def get_stats():
         appointments_ref = db.collection('appointments')
         total_appointments = len(list(appointments_ref.stream()))
         
+        # Get ambulance stats
+        ambulances_ref = db.collection('ambulances')
+        total_ambulances = len(list(ambulances_ref.stream()))
+        
+        # Get diagnostic centres stats
+        diagnostic_centres_ref = db.collection('diagnostic_centres')
+        total_diagnostic_centres = len(list(diagnostic_centres_ref.stream()))
+        
         return {
             "total_doctors": total_doctors,
             "total_patients": total_patients,
             "pending_verifications": pending_verifications,
             "approved_doctors": approved_doctors,
             "rejected_doctors": rejected_doctors,
-            "total_appointments": total_appointments
+            "total_appointments": total_appointments,
+            "total_ambulances": total_ambulances,
+            "total_diagnostic_centres": total_diagnostic_centres
         }
     except Exception as e:
         print(f"Error getting stats: {e}")
@@ -144,7 +156,9 @@ def get_stats():
             "pending_verifications": 0,
             "approved_doctors": 0,
             "rejected_doctors": 0,
-            "total_appointments": 0
+            "total_appointments": 0,
+            "total_ambulances": 0,
+            "total_diagnostic_centres": 0
         }
 
 # =================== Authentication Routes ===================
@@ -571,6 +585,430 @@ def patient_detail(patient_id):
     except Exception as e:
         flash(f'Error loading patient details: {str(e)}', 'danger')
         return redirect(url_for('patients'))
+
+# =================== Ambulance Management Routes ===================
+
+@app.route('/ambulances')
+@login_required
+def ambulances():
+    """Ambulance drivers management page"""
+    try:
+        if db is None:
+            flash('Firebase not connected. Please check service account key.', 'warning')
+            empty_stats = {'total': 0, 'online': 0, 'offline': 0, 'icu': 0}
+            return render_template('ambulances.html', ambulances=[], stats=empty_stats)
+        
+        search_query = request.args.get('search', '')
+        type_filter = request.args.get('type', '')
+        status_filter = request.args.get('status', '')
+        
+        # Get all ambulances from Firestore
+        ambulances_ref = db.collection('ambulances')
+        ambulances_list = []
+        
+        for doc in ambulances_ref.stream():
+            ambulance_data = doc.to_dict()
+            ambulance_data['id'] = doc.id
+            
+            # Apply search filter
+            if search_query:
+                search_lower = search_query.lower()
+                if not (search_lower in ambulance_data.get('driverName', '').lower() or
+                        search_lower in ambulance_data.get('driverPhone', '').lower() or
+                        search_lower in ambulance_data.get('vehicleNumber', '').lower()):
+                    continue
+            
+            # Apply type filter
+            if type_filter and ambulance_data.get('type') != type_filter:
+                continue
+            
+            # Apply status filter
+            if status_filter and ambulance_data.get('availability') != status_filter:
+                continue
+            
+            ambulances_list.append(ambulance_data)
+        
+        # Calculate statistics
+        all_ambulances = list(db.collection('ambulances').stream())
+        stats = {
+            'total': len(all_ambulances),
+            'online': sum(1 for a in all_ambulances if a.to_dict().get('availability') == 'online'),
+            'offline': sum(1 for a in all_ambulances if a.to_dict().get('availability') == 'offline'),
+            'icu': sum(1 for a in all_ambulances if a.to_dict().get('type') == 'icu')
+        }
+        
+        return render_template('ambulances.html', ambulances=ambulances_list, stats=stats)
+    except Exception as e:
+        flash(f'Error loading ambulances: {str(e)}', 'danger')
+        empty_stats = {'total': 0, 'online': 0, 'offline': 0, 'icu': 0}
+        return render_template('ambulances.html', ambulances=[], stats=empty_stats)
+
+
+@app.route('/ambulances/add', methods=['POST'])
+@login_required
+def add_ambulance():
+    """Add a new ambulance driver"""
+    if db is None:
+        flash('Firebase not connected. Cannot add ambulance.', 'warning')
+        return redirect(url_for('ambulances'))
+    
+    try:
+        driver_name = request.form.get('driverName', '').strip()
+        driver_phone = request.form.get('driverPhone', '').strip()
+        vehicle_number = request.form.get('vehicleNumber', '').strip()
+        ambulance_type = request.form.get('type', 'basic')
+        availability = request.form.get('availability', 'offline')
+        current_address = request.form.get('currentAddress', '').strip()
+        
+        # Validation
+        if not driver_name or not driver_phone or not vehicle_number:
+            flash('Please fill in all required fields.', 'danger')
+            return redirect(url_for('ambulances'))
+        
+        # Create ambulance document
+        ambulance_data = {
+            'driverName': driver_name,
+            'driverPhone': driver_phone,
+            'vehicleNumber': vehicle_number,
+            'type': ambulance_type,
+            'availability': availability,
+            'currentAddress': current_address,
+            'currentLat': None,
+            'currentLng': None,
+            'createdAt': datetime.now(),
+            'updatedAt': datetime.now()
+        }
+        
+        db.collection('ambulances').add(ambulance_data)
+        flash(f'Ambulance driver "{driver_name}" added successfully!', 'success')
+        
+    except Exception as e:
+        flash(f'Error adding ambulance: {str(e)}', 'danger')
+    
+    return redirect(url_for('ambulances'))
+
+
+@app.route('/ambulances/update', methods=['POST'])
+@login_required
+def update_ambulance():
+    """Update an existing ambulance driver"""
+    if db is None:
+        flash('Firebase not connected. Cannot update ambulance.', 'warning')
+        return redirect(url_for('ambulances'))
+    
+    try:
+        ambulance_id = request.form.get('ambulance_id')
+        driver_name = request.form.get('driverName', '').strip()
+        driver_phone = request.form.get('driverPhone', '').strip()
+        vehicle_number = request.form.get('vehicleNumber', '').strip()
+        ambulance_type = request.form.get('type', 'basic')
+        availability = request.form.get('availability', 'offline')
+        current_address = request.form.get('currentAddress', '').strip()
+        
+        if not ambulance_id:
+            flash('Ambulance ID is required.', 'danger')
+            return redirect(url_for('ambulances'))
+        
+        # Validation
+        if not driver_name or not driver_phone or not vehicle_number:
+            flash('Please fill in all required fields.', 'danger')
+            return redirect(url_for('ambulances'))
+        
+        # Update ambulance document
+        ambulance_ref = db.collection('ambulances').document(ambulance_id)
+        
+        if not ambulance_ref.get().exists:
+            flash('Ambulance not found.', 'danger')
+            return redirect(url_for('ambulances'))
+        
+        ambulance_ref.update({
+            'driverName': driver_name,
+            'driverPhone': driver_phone,
+            'vehicleNumber': vehicle_number,
+            'type': ambulance_type,
+            'availability': availability,
+            'currentAddress': current_address,
+            'updatedAt': datetime.now()
+        })
+        
+        flash(f'Ambulance driver "{driver_name}" updated successfully!', 'success')
+        
+    except Exception as e:
+        flash(f'Error updating ambulance: {str(e)}', 'danger')
+    
+    return redirect(url_for('ambulances'))
+
+
+@app.route('/ambulances/<ambulance_id>/delete', methods=['POST'])
+@login_required
+def delete_ambulance(ambulance_id):
+    """Delete an ambulance driver"""
+    if db is None:
+        flash('Firebase not connected. Cannot delete ambulance.', 'warning')
+        return redirect(url_for('ambulances'))
+    
+    try:
+        ambulance_ref = db.collection('ambulances').document(ambulance_id)
+        doc = ambulance_ref.get()
+        
+        if not doc.exists:
+            flash('Ambulance not found.', 'danger')
+            return redirect(url_for('ambulances'))
+        
+        driver_name = doc.to_dict().get('driverName', 'Unknown')
+        ambulance_ref.delete()
+        
+        flash(f'Ambulance driver "{driver_name}" deleted successfully!', 'success')
+        
+    except Exception as e:
+        flash(f'Error deleting ambulance: {str(e)}', 'danger')
+    
+    return redirect(url_for('ambulances'))
+
+# =================== Diagnostic Centre Management Routes ===================
+
+@app.route('/diagnostic-centres')
+@login_required
+def diagnostic_centres():
+    """Diagnostic centres management page"""
+    if db is None:
+        flash('Firebase not connected. Showing demo data.', 'warning')
+        return render_template('diagnostic_centres.html', centres=[], stats={'total': 0, 'active': 0, 'inactive': 0})
+    
+    try:
+        centres_ref = db.collection('diagnostic_centres')
+        
+        # Get filter parameters
+        search_query = request.args.get('search', '').strip()
+        status_filter = request.args.get('status', '')
+        
+        centres_list = []
+        
+        for doc in centres_ref.stream():
+            centre_data = doc.to_dict()
+            centre_data['id'] = doc.id
+            
+            # Apply search filter
+            if search_query:
+                search_lower = search_query.lower()
+                if not (search_lower in centre_data.get('name', '').lower() or
+                        search_lower in centre_data.get('address', '').lower() or
+                        search_lower in centre_data.get('contactNumber', '').lower()):
+                    continue
+            
+            # Apply status filter
+            if status_filter and centre_data.get('status') != status_filter:
+                continue
+            
+            centres_list.append(centre_data)
+        
+        # Calculate statistics
+        all_centres = list(db.collection('diagnostic_centres').stream())
+        stats = {
+            'total': len(all_centres),
+            'active': sum(1 for c in all_centres if c.to_dict().get('status') == 'active'),
+            'inactive': sum(1 for c in all_centres if c.to_dict().get('status') == 'inactive'),
+        }
+        
+        return render_template('diagnostic_centres.html', centres=centres_list, stats=stats)
+    except Exception as e:
+        flash(f'Error loading diagnostic centres: {str(e)}', 'danger')
+        empty_stats = {'total': 0, 'active': 0, 'inactive': 0}
+        return render_template('diagnostic_centres.html', centres=[], stats=empty_stats)
+
+
+@app.route('/diagnostic-centres/add', methods=['POST'])
+@login_required
+def add_diagnostic_centre():
+    """Add a new diagnostic centre with tests"""
+    if db is None:
+        flash('Firebase not connected. Cannot add diagnostic centre.', 'warning')
+        return redirect(url_for('diagnostic_centres'))
+    
+    try:
+        name = request.form.get('name', '').strip()
+        address = request.form.get('address', '').strip()
+        city = request.form.get('city', '').strip()
+        contact_number = request.form.get('contactNumber', '').strip()
+        
+        # Validation
+        if not name or not address or not city or not contact_number:
+            flash('Please fill in all required fields.', 'danger')
+            return redirect(url_for('diagnostic_centres'))
+        
+        # Test name mapping
+        test_mapping = {
+            'cbc': {'name': 'Complete Blood Count (CBC)', 'category': 'Blood Test'},
+            'blood_sugar': {'name': 'Blood Sugar (Fasting)', 'category': 'Blood Test'},
+            'lipid': {'name': 'Lipid Profile', 'category': 'Blood Test'},
+            'liver': {'name': 'Liver Function Test (LFT)', 'category': 'Blood Test'},
+            'kidney': {'name': 'Kidney Function Test (KFT)', 'category': 'Blood Test'},
+            'thyroid': {'name': 'Thyroid Profile (T3, T4, TSH)', 'category': 'Blood Test'},
+            'hba1c': {'name': 'HbA1c (Diabetes)', 'category': 'Blood Test'},
+            'vitamin_d': {'name': 'Vitamin D', 'category': 'Blood Test'},
+            'vitamin_b12': {'name': 'Vitamin B12', 'category': 'Blood Test'},
+            'uric_acid': {'name': 'Uric Acid', 'category': 'Blood Test'},
+            'xray_chest': {'name': 'X-Ray (Chest)', 'category': 'Radiology'},
+            'ultrasound': {'name': 'Ultrasound (Whole Abdomen)', 'category': 'Ultrasound'},
+            'ecg': {'name': 'ECG', 'category': 'Cardiology'},
+            'echo': {'name': 'Echo Cardiogram', 'category': 'Cardiology'},
+            'mri_brain': {'name': 'MRI (Brain)', 'category': 'Radiology'},
+            'ct_scan': {'name': 'CT Scan', 'category': 'Radiology'},
+            'endoscopy': {'name': 'Endoscopy', 'category': 'Gastroenterology'},
+            'colonoscopy': {'name': 'Colonoscopy', 'category': 'Gastroenterology'},
+            'urine': {'name': 'Urine R/E', 'category': 'Pathology'},
+            'stool': {'name': 'Stool R/E', 'category': 'Pathology'},
+        }
+        
+        # Process tests from form
+        tests = []
+        for test_key, test_info in test_mapping.items():
+            if request.form.get(f'test_{test_key}') == 'on':
+                price = request.form.get(f'price_{test_key}', '').strip()
+                if price:
+                    tests.append({
+                        'testName': test_info['name'],
+                        'category': test_info['category'],
+                        'price': int(price),
+                        'description': '',
+                        'preparationRequired': ''
+                    })
+        
+        # Create diagnostic centre document
+        centre_data = {
+            'name': name,
+            'address': address,
+            'city': city,
+            'contactNumber': contact_number,
+            'status': 'active',
+            'tests': tests,
+            'rating': 0,
+            'totalReviews': 0,
+            'createdAt': datetime.now().isoformat(),
+            'updatedAt': datetime.now().isoformat()
+        }
+        
+        db.collection('diagnostic_centres').add(centre_data)
+        flash(f'Diagnostic centre "{name}" added successfully with {len(tests)} tests!', 'success')
+        
+    except Exception as e:
+        flash(f'Error adding diagnostic centre: {str(e)}', 'danger')
+    
+    return redirect(url_for('diagnostic_centres'))
+
+
+@app.route('/diagnostic-centres/update', methods=['POST'])
+@login_required
+def update_diagnostic_centre():
+    """Update an existing diagnostic centre with tests"""
+    if db is None:
+        flash('Firebase not connected. Cannot update diagnostic centre.', 'warning')
+        return redirect(url_for('diagnostic_centres'))
+    
+    try:
+        centre_id = request.form.get('centre_id')
+        name = request.form.get('name', '').strip()
+        address = request.form.get('address', '').strip()
+        city = request.form.get('city', '').strip()
+        contact_number = request.form.get('contactNumber', '').strip()
+        
+        if not centre_id:
+            flash('Diagnostic centre ID is required.', 'danger')
+            return redirect(url_for('diagnostic_centres'))
+        
+        # Validation
+        if not name or not address or not city or not contact_number:
+            flash('Please fill in all required fields.', 'danger')
+            return redirect(url_for('diagnostic_centres'))
+        
+        # Test name mapping
+        test_mapping = {
+            'cbc': {'name': 'Complete Blood Count (CBC)', 'category': 'Blood Test'},
+            'blood_sugar': {'name': 'Blood Sugar (Fasting)', 'category': 'Blood Test'},
+            'lipid': {'name': 'Lipid Profile', 'category': 'Blood Test'},
+            'liver': {'name': 'Liver Function Test (LFT)', 'category': 'Blood Test'},
+            'kidney': {'name': 'Kidney Function Test (KFT)', 'category': 'Blood Test'},
+            'thyroid': {'name': 'Thyroid Profile (T3, T4, TSH)', 'category': 'Blood Test'},
+            'hba1c': {'name': 'HbA1c (Diabetes)', 'category': 'Blood Test'},
+            'vitamin_d': {'name': 'Vitamin D', 'category': 'Blood Test'},
+            'vitamin_b12': {'name': 'Vitamin B12', 'category': 'Blood Test'},
+            'uric_acid': {'name': 'Uric Acid', 'category': 'Blood Test'},
+            'xray_chest': {'name': 'X-Ray (Chest)', 'category': 'Radiology'},
+            'ultrasound': {'name': 'Ultrasound (Whole Abdomen)', 'category': 'Ultrasound'},
+            'ecg': {'name': 'ECG', 'category': 'Cardiology'},
+            'echo': {'name': 'Echo Cardiogram', 'category': 'Cardiology'},
+            'mri_brain': {'name': 'MRI (Brain)', 'category': 'Radiology'},
+            'ct_scan': {'name': 'CT Scan', 'category': 'Radiology'},
+            'endoscopy': {'name': 'Endoscopy', 'category': 'Gastroenterology'},
+            'colonoscopy': {'name': 'Colonoscopy', 'category': 'Gastroenterology'},
+            'urine': {'name': 'Urine R/E', 'category': 'Pathology'},
+            'stool': {'name': 'Stool R/E', 'category': 'Pathology'},
+        }
+        
+        # Process tests from form
+        tests = []
+        for test_key, test_info in test_mapping.items():
+            if request.form.get(f'test_{test_key}') == 'on':
+                price = request.form.get(f'price_{test_key}', '').strip()
+                if price:
+                    tests.append({
+                        'testName': test_info['name'],
+                        'category': test_info['category'],
+                        'price': int(price),
+                        'description': '',
+                        'preparationRequired': ''
+                    })
+        
+        # Update diagnostic centre document
+        centre_ref = db.collection('diagnostic_centres').document(centre_id)
+        
+        if not centre_ref.get().exists:
+            flash('Diagnostic centre not found.', 'danger')
+            return redirect(url_for('diagnostic_centres'))
+        
+        centre_ref.update({
+            'name': name,
+            'address': address,
+            'city': city,
+            'contactNumber': contact_number,
+            'tests': tests,
+            'updatedAt': datetime.now().isoformat()
+        })
+        
+        flash(f'Diagnostic centre "{name}" updated successfully with {len(tests)} tests!', 'success')
+        
+    except Exception as e:
+        flash(f'Error updating diagnostic centre: {str(e)}', 'danger')
+    
+    return redirect(url_for('diagnostic_centres'))
+
+
+@app.route('/diagnostic-centres/<centre_id>/delete', methods=['POST'])
+@login_required
+def delete_diagnostic_centre(centre_id):
+    """Delete a diagnostic centre"""
+    if db is None:
+        flash('Firebase not connected. Cannot delete diagnostic centre.', 'warning')
+        return redirect(url_for('diagnostic_centres'))
+    
+    try:
+        centre_ref = db.collection('diagnostic_centres').document(centre_id)
+        doc = centre_ref.get()
+        
+        if not doc.exists:
+            flash('Diagnostic centre not found.', 'danger')
+            return redirect(url_for('diagnostic_centres'))
+        
+        centre_name = doc.to_dict().get('name', 'Unknown')
+        centre_ref.delete()
+        
+        flash(f'Diagnostic centre "{centre_name}" deleted successfully!', 'success')
+        
+    except Exception as e:
+        flash(f'Error deleting diagnostic centre: {str(e)}', 'danger')
+    
+    return redirect(url_for('diagnostic_centres'))
+
 
 # =================== Analytics Routes ===================
 

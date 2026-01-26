@@ -13,6 +13,8 @@ import '../appointments/my_appointments_screen.dart';
 import '../history/medical_history_screen.dart';
 import '../prescriptions/prescriptions_screen.dart';
 import '../ambulance/book_ambulance_screen.dart';
+import '../diagnostic/diagnostic_centres_screen.dart';
+import '../chat/chatbot_screen.dart';
 
 class PatientHomeScreen extends ConsumerStatefulWidget {
   const PatientHomeScreen({super.key});
@@ -35,6 +37,7 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_selectedIndex],
+      floatingActionButton: _buildChatbotFAB(context),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
@@ -62,6 +65,58 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
             label: 'Prescriptions',
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChatbotFAB(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  const ChatbotScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  )),
+                  child: child,
+                );
+              },
+              transitionDuration: const Duration(milliseconds: 400),
+            ),
+          );
+        },
+        backgroundColor: AppTheme.primaryColor,
+        icon: const Icon(
+          Icons.smart_toy_rounded,
+          color: Colors.white,
+        ),
+        label: const Text(
+          'MediBot',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        elevation: 0,
       ),
     );
   }
@@ -275,6 +330,81 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => const BookAmbulanceScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Diagnostic Centre Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.secondaryColor,
+                      AppTheme.secondaryColor.withOpacity(0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.biotech,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Diagnostic Centres',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Find tests & health checkups',
+                            style:
+                                Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DiagnosticCentresScreen(),
                           ),
                         );
                       },

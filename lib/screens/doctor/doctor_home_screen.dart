@@ -102,11 +102,11 @@ class _HomeTab extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.refresh(doctorProfileProvider);
-          ref.refresh(doctorTodayAppointmentsProvider);
-          ref.refresh(doctorPendingAppointmentsProvider);
-          ref.refresh(doctorEarningsProvider);
-          ref.refresh(doctorChambersCountProvider);
+          ref.invalidate(doctorProfileProvider);
+          ref.invalidate(doctorTodayAppointmentsProvider);
+          ref.invalidate(doctorPendingAppointmentsProvider);
+          ref.invalidate(doctorEarningsProvider);
+          ref.invalidate(doctorChambersCountProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -657,6 +657,7 @@ class _AppointmentCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element - kept for future activity feed feature
 class _ActivityTile extends StatelessWidget {
   final IconData icon;
   final String title;

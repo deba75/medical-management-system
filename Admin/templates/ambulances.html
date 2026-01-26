@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}Ambulance Management - Telemedicine Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="main-header">
+        <div class="header-title">
+            <h1>Ambulance Management</h1>
+            <p>Manage ambulance drivers and their contact information</p>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAmbulanceModal">
+                <i class="bi bi-plus-lg me-2"></i>Add New Driver
+            </button>
+        </div>
+    </div>
+
+    <div class="content-area">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' if category == 'danger' else 'warning' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card primary">
+                    <div class="stat-card-icon">
+                        <i class="bi bi-truck"></i>
+                    </div>
+                    <div class="stat-card-value">{{ stats.total }}</div>
+                    <div class="stat-card-label">Total Ambulances</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card success">
+                    <div class="stat-card-icon">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div class="stat-card-value">{{ stats.online }}</div>
+                    <div class="stat-card-label">Online</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card warning">
+                    <div class="stat-card-icon">
+                        <i class="bi bi-pause-circle"></i>
+                    </div>
+                    <div class="stat-card-value">{{ stats.offline }}</div>
+                    <div class="stat-card-label">Offline</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card info">
+                    <div class="stat-card-icon">
+                        <i class="bi bi-heart-pulse"></i>
+                    </div>
+                    <div class="stat-card-value">{{ stats.icu }}</div>
+                    <div class="stat-card-label">ICU Ambulances</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter and Search -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('ambulances') }}">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="search" placeholder="Search by name, phone, or vehicle number..." value="{{ request.args.get('search', '') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" name="type">
+                                <option value="">All Types</option>
+                                <option value="basic" {{ 'selected' if request.args.get('type') == 'basic' else '' }}>Basic</option>
+                                <option value="icu" {{ 'selected' if request.args.get('type') == 'icu' else '' }}>ICU</option>
+                                <option value="neonatal" {{ 'selected' if request.args.get('type') == 'neonatal' else '' }}>Neonatal</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" name="status">
+                                <option value="">All Status</option>
+                                <option value="online" {{ 'selected' if request.args.get('status') == 'online' else '' }}>Online</option>
+                                <option value="offline" {{ 'selected' if request.args.get('status') == 'offline' else '' }}>Offline</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search me-1"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Ambulances Table -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Driver Info</th>
+                                <th>Contact</th>
+                                <th>Vehicle</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Location</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ambulance in ambulances %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
+                                            <i class="bi bi-person-fill text-primary"></i>
+                                        </div>
+                                        <div>
+                                            <strong>{{ ambulance.driverName }}</strong>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="tel:{{ ambulance.driverPhone }}" class="text-decoration-none">
+                                        <i class="bi bi-telephone me-1"></i>{{ ambulance.driverPhone }}
+                                    </a>
+                                </td>
+                                <td><code>{{ ambulance.vehicleNumber }}</code></td>
+                                <td>
+                                    {% if ambulance.type == 'basic' %}
+                                    <span class="badge bg-secondary">Basic</span>
+                                    {% elif ambulance.type == 'icu' %}
+                                    <span class="badge bg-danger">ICU</span>
+                                    {% elif ambulance.type == 'neonatal' %}
+                                    <span class="badge bg-info">Neonatal</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ ambulance.type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if ambulance.availability == 'online' %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Online
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Offline
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ ambulance.currentAddress or 'Not available' }}</small>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editAmbulanceModal"
+                                            data-id="{{ ambulance.id }}"
+                                            data-name="{{ ambulance.driverName }}"
+                                            data-phone="{{ ambulance.driverPhone }}"
+                                            data-vehicle="{{ ambulance.vehicleNumber }}"
+                                            data-type="{{ ambulance.type }}"
+                                            data-availability="{{ ambulance.availability }}"
+                                            data-address="{{ ambulance.currentAddress or '' }}"
+                                            onclick="editAmbulance(this)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteModal{{ ambulance.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Delete Modal for each ambulance -->
+                            <div class="modal fade" id="deleteModal{{ ambulance.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Confirm Delete</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Are you sure you want to delete this ambulance driver?</p>
+                                            <div class="alert alert-warning">
+                                                <strong>{{ ambulance.driverName }}</strong><br>
+                                                <small>{{ ambulance.vehicleNumber }} - {{ ambulance.driverPhone }}</small>
+                                            </div>
+                                            <p class="text-muted small">This action cannot be undone.</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <form method="POST" action="{{ url_for('delete_ambulance', ambulance_id=ambulance.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-danger">Delete</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    {% if not ambulances %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-truck" style="font-size: 4rem; opacity: 0.3;"></i>
+                        <p class="text-muted mt-3">No ambulance drivers found</p>
+                        <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#addAmbulanceModal">
+                            <i class="bi bi-plus-lg me-2"></i>Add First Driver
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Ambulance Modal -->
+<div class="modal fade" id="addAmbulanceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_ambulance') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-plus-circle me-2 text-primary"></i>Add New Ambulance Driver
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="driverName" class="form-label">Driver Name *</label>
+                        <input type="text" class="form-control" id="driverName" name="driverName" required placeholder="Enter driver's full name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="driverPhone" class="form-label">Phone Number *</label>
+                        <input type="tel" class="form-control" id="driverPhone" name="driverPhone" required placeholder="+880XXXXXXXXXX">
+                    </div>
+                    <div class="mb-3">
+                        <label for="vehicleNumber" class="form-label">Vehicle Number *</label>
+                        <input type="text" class="form-control" id="vehicleNumber" name="vehicleNumber" required placeholder="e.g., DHA-1234">
+                    </div>
+                    <div class="mb-3">
+                        <label for="type" class="form-label">Ambulance Type *</label>
+                        <select class="form-select" id="type" name="type" required>
+                            <option value="basic">Basic</option>
+                            <option value="icu">ICU</option>
+                            <option value="neonatal">Neonatal</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="availability" class="form-label">Initial Status</label>
+                        <select class="form-select" id="availability" name="availability">
+                            <option value="offline">Offline</option>
+                            <option value="online">Online</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="currentAddress" class="form-label">Current Location/Area</label>
+                        <input type="text" class="form-control" id="currentAddress" name="currentAddress" placeholder="e.g., Mirpur, Dhaka">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i>Add Driver
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Ambulance Modal -->
+<div class="modal fade" id="editAmbulanceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('update_ambulance') }}" id="editAmbulanceForm">
+                <input type="hidden" id="editAmbulanceId" name="ambulance_id">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-pencil-square me-2 text-primary"></i>Edit Ambulance Driver
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editDriverName" class="form-label">Driver Name *</label>
+                        <input type="text" class="form-control" id="editDriverName" name="driverName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDriverPhone" class="form-label">Phone Number *</label>
+                        <input type="tel" class="form-control" id="editDriverPhone" name="driverPhone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editVehicleNumber" class="form-label">Vehicle Number *</label>
+                        <input type="text" class="form-control" id="editVehicleNumber" name="vehicleNumber" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editType" class="form-label">Ambulance Type *</label>
+                        <select class="form-select" id="editType" name="type" required>
+                            <option value="basic">Basic</option>
+                            <option value="icu">ICU</option>
+                            <option value="neonatal">Neonatal</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editAvailability" class="form-label">Status</label>
+                        <select class="form-select" id="editAvailability" name="availability">
+                            <option value="offline">Offline</option>
+                            <option value="online">Online</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCurrentAddress" class="form-label">Current Location/Area</label>
+                        <input type="text" class="form-control" id="editCurrentAddress" name="currentAddress">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Update Driver
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function editAmbulance(button) {
+    document.getElementById('editAmbulanceId').value = button.dataset.id;
+    document.getElementById('editDriverName').value = button.dataset.name;
+    document.getElementById('editDriverPhone').value = button.dataset.phone;
+    document.getElementById('editVehicleNumber').value = button.dataset.vehicle;
+    document.getElementById('editType').value = button.dataset.type;
+    document.getElementById('editAvailability').value = button.dataset.availability;
+    document.getElementById('editCurrentAddress').value = button.dataset.address;
+}
+</script>
+{% endblock %}

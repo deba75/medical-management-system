@@ -234,6 +234,7 @@
         .stat-card.warning::before { background: linear-gradient(90deg, var(--warning), #fbbf24); }
         .stat-card.danger::before { background: linear-gradient(90deg, var(--danger), #f87171); }
         .stat-card.info::before { background: linear-gradient(90deg, var(--secondary), #22d3ee); }
+        .stat-card.secondary::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
         
         .stat-card-icon {
             width: 56px;
@@ -251,6 +252,7 @@
         .stat-card.warning .stat-card-icon { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
         .stat-card.danger .stat-card-icon { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
         .stat-card.info .stat-card-icon { background: rgba(6, 182, 212, 0.1); color: var(--secondary); }
+        .stat-card.secondary .stat-card-icon { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
         
         .stat-card-value {
             font-size: 2rem;
@@ -301,6 +303,8 @@
         .quick-action-card.success .quick-action-icon { background: linear-gradient(135deg, var(--success), #059669); color: white; }
         .quick-action-card.warning .quick-action-icon { background: linear-gradient(135deg, var(--warning), #d97706); color: white; }
         .quick-action-card.info .quick-action-icon { background: linear-gradient(135deg, var(--secondary), #0891b2); color: white; }
+        .quick-action-card.danger .quick-action-icon { background: linear-gradient(135deg, var(--danger), #dc2626); color: white; }
+        .quick-action-card.secondary .quick-action-icon { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
         
         .quick-action-title {
             font-weight: 600;
@@ -473,6 +477,14 @@
             <a href="{{ url_for('patients') }}" class="sidebar-link {% if 'patients' in request.path %}active{% endif %}">
                 <i class="bi bi-people-fill"></i>
                 <span>Patients</span>
+            </a>
+            <a href="{{ url_for('ambulances') }}" class="sidebar-link {% if 'ambulances' in request.path %}active{% endif %}">
+                <i class="bi bi-truck"></i>
+                <span>Ambulances</span>
+            </a>
+            <a href="{{ url_for('diagnostic_centres') }}" class="sidebar-link {% if 'diagnostic' in request.path %}active{% endif %}">
+                <i class="bi bi-building"></i>
+                <span>Diagnostic Centres</span>
             </a>
             
             <div class="nav-section-title">Reports</div>

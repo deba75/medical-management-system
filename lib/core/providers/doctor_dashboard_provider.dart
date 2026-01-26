@@ -210,6 +210,7 @@ final doctorDashboardStatsProvider = Provider<DoctorDashboardStats>((ref) {
 
 // Doctor Appointment Controller
 class DoctorAppointmentController extends StateNotifier<AsyncValue<void>> {
+  // ignore: unused_field - kept for future use
   final Ref _ref;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 

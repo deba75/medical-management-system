@@ -68,6 +68,28 @@
                 <small class="text-muted">Total bookings</small>
             </div>
         </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card danger fade-in" style="animation-delay: 0.4s;">
+                <div class="stat-card-icon">
+                    <i class="bi bi-truck"></i>
+                </div>
+                <div class="stat-card-value">{{ stats.total_ambulances }}</div>
+                <div class="stat-card-label">Ambulances</div>
+                <small class="text-muted">Registered drivers</small>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card secondary fade-in" style="animation-delay: 0.5s;">
+                <div class="stat-card-icon">
+                    <i class="bi bi-building"></i>
+                </div>
+                <div class="stat-card-value">{{ stats.total_diagnostic_centres }}</div>
+                <div class="stat-card-label">Diagnostic Centres</div>
+                <small class="text-muted">Registered centres</small>
+            </div>
+        </div>
     </div>
 
     <!-- Quick Actions -->
@@ -116,6 +138,26 @@
                 </div>
                 <div class="quick-action-title">View Analytics</div>
                 <div class="quick-action-subtitle">Charts & reports</div>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <a href="{{ url_for('ambulances') }}" class="quick-action-card danger">
+                <div class="quick-action-icon">
+                    <i class="bi bi-truck"></i>
+                </div>
+                <div class="quick-action-title">Manage Ambulances</div>
+                <div class="quick-action-subtitle">{{ stats.total_ambulances }} drivers registered</div>
+            </a>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <a href="{{ url_for('diagnostic_centres') }}" class="quick-action-card secondary">
+                <div class="quick-action-icon">
+                    <i class="bi bi-building"></i>
+                </div>
+                <div class="quick-action-title">Diagnostic Centres</div>
+                <div class="quick-action-subtitle">{{ stats.total_diagnostic_centres }} centres registered</div>
             </a>
         </div>
     </div>

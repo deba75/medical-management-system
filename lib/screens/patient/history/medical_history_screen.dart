@@ -52,7 +52,7 @@ class MedicalHistoryScreen extends ConsumerWidget {
               )
             : RefreshIndicator(
                 onRefresh: () async {
-                  ref.refresh(userMedicalHistoryProvider);
+                  ref.invalidate(userMedicalHistoryProvider);
                 },
                 child: ListView.builder(
                   padding: const EdgeInsets.all(16),

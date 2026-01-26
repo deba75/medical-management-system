@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math' as math;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/custom_text_field.dart';
@@ -21,13 +22,14 @@ class _BookAmbulanceScreenState extends ConsumerState<BookAmbulanceScreen> {
   final _searchController = TextEditingController();
   Position? _currentPosition;
   bool _isLoadingLocation = false;
+  bool _isLoadingAmbulances = true;
   List<AmbulanceModel> _ambulances = [];
   List<AmbulanceModel> _filteredAmbulances = [];
 
   @override
   void initState() {
     super.initState();
-    _loadMockAmbulances();
+    _loadAmbulancesFromFirestore();
   }
 
   @override
@@ -36,8 +38,35 @@ class _BookAmbulanceScreenState extends ConsumerState<BookAmbulanceScreen> {
     super.dispose();
   }
 
+  Future<void> _loadAmbulancesFromFirestore() async {
+    setState(() => _isLoadingAmbulances = true);
+    
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('ambulances')
+          .where('availability', isEqualTo: 'online')
+          .get();
+      
+      if (snapshot.docs.isEmpty) {
+        // If no ambulances in Firestore, load mock data
+        _loadMockAmbulances();
+      } else {
+        _ambulances = snapshot.docs.map((doc) {
+          return AmbulanceModel.fromJson(doc.data(), doc.id);
+        }).toList();
+        _filteredAmbulances = _ambulances;
+      }
+    } catch (e) {
+      debugPrint('Error loading ambulances: $e');
+      // On error, load mock data as fallback
+      _loadMockAmbulances();
+    }
+    
+    setState(() => _isLoadingAmbulances = false);
+  }
+
   void _loadMockAmbulances() {
-    // Mock ambulance data - replace with Firestore fetch
+    // Mock ambulance data - used as fallback when Firestore is empty
     _ambulances = [
       AmbulanceModel(
         ambulanceId: '1',
@@ -376,7 +405,18 @@ class _BookAmbulanceScreenState extends ConsumerState<BookAmbulanceScreen> {
 
           // Ambulance List
           Expanded(
-            child: _filteredAmbulances.isEmpty
+            child: _isLoadingAmbulances
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Loading ambulances...'),
+                      ],
+                    ),
+                  )
+                : _filteredAmbulances.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -395,27 +435,36 @@ class _BookAmbulanceScreenState extends ConsumerState<BookAmbulanceScreen> {
                                 color: Colors.grey[600],
                               ),
                         ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: _loadAmbulancesFromFirestore,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
                       ],
                     ),
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _filteredAmbulances.length,
-                    itemBuilder: (context, index) {
-                      final ambulance = _filteredAmbulances[index];
-                      double? distance;
-                      
-                      if (_searchMode == SearchMode.location && _currentPosition != null) {
-                        distance = _calculateDistance(
-                          _currentPosition!.latitude,
-                          _currentPosition!.longitude,
-                          ambulance.currentLat ?? 0,
-                          ambulance.currentLng ?? 0,
-                        );
-                      }
+                : RefreshIndicator(
+                    onRefresh: _loadAmbulancesFromFirestore,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _filteredAmbulances.length,
+                      itemBuilder: (context, index) {
+                        final ambulance = _filteredAmbulances[index];
+                        double? distance;
+                        
+                        if (_searchMode == SearchMode.location && _currentPosition != null) {
+                          distance = _calculateDistance(
+                            _currentPosition!.latitude,
+                            _currentPosition!.longitude,
+                            ambulance.currentLat ?? 0,
+                            ambulance.currentLng ?? 0,
+                          );
+                        }
 
-                      return _buildAmbulanceCard(ambulance, distance);
-                    },
+                        return _buildAmbulanceCard(ambulance, distance);
+                      },
+                    ),
                   ),
           ),
         ],
@@ -601,6 +650,8 @@ class _BookAmbulanceScreenState extends ConsumerState<BookAmbulanceScreen> {
         return AppTheme.errorColor;
       case AmbulanceType.neonatal:
         return AppTheme.secondaryColor;
+      case AmbulanceType.cardiac:
+        return Colors.purple;
     }
   }
 }

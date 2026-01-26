@@ -59,11 +59,13 @@ enum AmbulanceType {
   basic,
   icu,
   neonatal,
+  cardiac,
 }
 
 enum AvailabilityStatus {
   online,
   offline,
+  busy,
 }
 
 class AmbulanceRequestModel {

@@ -240,7 +240,7 @@ class _SearchDoctorsScreenState extends ConsumerState<SearchDoctorsScreen> {
                     )
                   : RefreshIndicator(
                       onRefresh: () async {
-                        ref.refresh(searchedDoctorsProvider);
+                        ref.invalidate(searchedDoctorsProvider);
                       },
                       child: ListView.builder(
                         padding: const EdgeInsets.all(16),
