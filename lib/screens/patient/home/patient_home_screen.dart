@@ -159,115 +159,153 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
     final upcomingAppointments = ref.watch(upcomingAppointmentsProvider);
     
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              user.when(
-                data: (userData) => 'Hello, ${userData?.name ?? 'Patient'}',
-                loading: () => 'Hello, Patient',
-                error: (_, __) => 'Hello, Patient',
-              ),
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            Text(
-              'How can we help you today?',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-        actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                onPressed: () => _showNotifications(context),
-              ),
-              if (upcomingAppointments.isNotEmpty)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      '${upcomingAppointments.length}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+      body: CustomScrollView(
+        slivers: [
+          // Custom AppBar with gradient
+          SliverAppBar(
+            expandedHeight: 140,
+            floating: false,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
                 ),
-            ],
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () => _showProfileMenu(context),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SearchDoctorsScreen(),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.borderColor),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.search,
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Search doctors, specializations...',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppTheme.textSecondaryColor,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    user.when(
+                                      data: (userData) => 'Hello, ${userData?.name ?? 'Patient'} 👋',
+                                      loading: () => 'Hello, Patient 👋',
+                                      error: (_, __) => 'Hello, Patient 👋',
+                                    ),
+                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'How can we help you today?',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                      ),
-                    ],
+                            Row(
+                              children: [
+                                _buildHeaderIconButton(
+                                  context,
+                                  Icons.notifications_outlined,
+                                  upcomingAppointments.length,
+                                  () => _showNotifications(context),
+                                ),
+                                const SizedBox(width: 8),
+                                _buildHeaderIconButton(
+                                  context,
+                                  Icons.person_outline,
+                                  0,
+                                  () => _showProfileMenu(context),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
+            backgroundColor: AppTheme.primaryColor,
+          ),
+          
+          // Body Content
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SearchDoctorsScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.search,
+                              color: AppTheme.primaryColor,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Search doctors, specializations...',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppTheme.textSecondaryColor,
+                                  ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.tune,
+                            color: AppTheme.textSecondaryColor,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
 
-            // Health Monitor Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: HealthMonitorWidget(),
-            ),
-            const SizedBox(height: 24),
+                // Health Monitor Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: HealthMonitorWidget(),
+                ),
+                const SizedBox(height: 24),
 
             // Emergency Button
             Padding(
@@ -552,9 +590,59 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
               ),
             ),
             const SizedBox(height: 24),
-          ],
-        ),
+              ],
+            ),
+          ),
+        ],
       ),
+    );
+  }
+  
+  Widget _buildHeaderIconButton(
+    BuildContext context,
+    IconData icon,
+    int badgeCount,
+    VoidCallback onPressed,
+  ) {
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: Icon(icon, color: Colors.white),
+            onPressed: onPressed,
+          ),
+        ),
+        if (badgeCount > 0)
+          Positioned(
+            right: 4,
+            top: 4,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppTheme.errorColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              constraints: const BoxConstraints(
+                minWidth: 18,
+                minHeight: 18,
+              ),
+              child: Text(
+                '$badgeCount',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

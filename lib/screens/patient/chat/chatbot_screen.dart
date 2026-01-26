@@ -102,36 +102,39 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        elevation: 2,
+        shadowColor: AppTheme.primaryColor.withOpacity(0.2),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.smart_toy_rounded,
-                color: AppTheme.primaryColor,
+                color: Colors.white,
                 size: 24,
               ),
             ),
             const SizedBox(width: 12),
-            Column(
+            const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'MediBot',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
                 Text(
                   'AI Health Assistant',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade600,
+                    color: Colors.white70,
                   ),
                 ),
               ],
@@ -139,10 +142,17 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: _clearChat,
-            tooltip: 'Clear chat',
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.white),
+              onPressed: _clearChat,
+              tooltip: 'Clear chat',
+            ),
           ),
         ],
       ),
@@ -152,16 +162,29 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: Colors.amber.shade50,
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              border: Border(
+                bottom: BorderSide(color: Colors.amber.shade200),
+              ),
+            ),
             child: Row(
               children: [
-                Icon(Icons.info_outline, color: Colors.amber.shade800, size: 20),
-                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.info_outline, color: Colors.amber.shade800, size: 16),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'For guidance only. Please consult a doctor for medical advice.',
                     style: TextStyle(
                       fontSize: 12,
+                      fontWeight: FontWeight.w500,
                       color: Colors.amber.shade900,
                     ),
                   ),
