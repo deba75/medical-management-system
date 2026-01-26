@@ -37,7 +37,7 @@ class _PatientHomeScreenState extends ConsumerState<PatientHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_selectedIndex],
-      floatingActionButton: _buildChatbotFAB(context),
+      floatingActionButton: _selectedIndex == 0 ? _buildChatbotFAB(context) : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {

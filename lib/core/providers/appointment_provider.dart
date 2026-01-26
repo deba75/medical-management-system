@@ -22,11 +22,15 @@ class AppointmentServiceProvider {
     return _firestore
         .collection('appointments')
         .where(field, isEqualTo: userId)
-        .orderBy('date', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => AppointmentModel.fromJson(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => AppointmentModel.fromJson(doc.data(), doc.id))
+              .toList();
+          // Sort client-side to avoid composite index requirement
+          list.sort((a, b) => b.date.compareTo(a.date));
+          return list;
+        });
   }
 
   // Get upcoming appointments
@@ -37,16 +41,21 @@ class AppointmentServiceProvider {
     final field = isDoctor ? 'doctorId' : 'patientId';
     final now = DateTime.now();
 
+    // Simplified query - filter and sort client-side to avoid index requirements
     return _firestore
         .collection('appointments')
         .where(field, isEqualTo: userId)
-        .where('date', isGreaterThanOrEqualTo: now.toIso8601String())
-        .where('status', isEqualTo: 'upcoming')
-        .orderBy('date')
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => AppointmentModel.fromJson(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => AppointmentModel.fromJson(doc.data(), doc.id))
+              .where((apt) => 
+                  apt.date.isAfter(now) && 
+                  apt.status == AppointmentStatus.upcoming)
+              .toList();
+          list.sort((a, b) => a.date.compareTo(b.date));
+          return list;
+        });
   }
 
   // Create appointment

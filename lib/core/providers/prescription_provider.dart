@@ -21,11 +21,15 @@ class PrescriptionServiceProvider {
     return _firestore
         .collection('prescriptions')
         .where('patientId', isEqualTo: patientId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => PrescriptionModel.fromJson(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => PrescriptionModel.fromJson(doc.data(), doc.id))
+              .toList();
+          // Sort client-side to avoid composite index requirement
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   // Get prescriptions by doctor
@@ -37,11 +41,15 @@ class PrescriptionServiceProvider {
     return _firestore
         .collection('prescriptions')
         .where('doctorId', isEqualTo: doctorId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => PrescriptionModel.fromJson(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => PrescriptionModel.fromJson(doc.data(), doc.id))
+              .toList();
+          // Sort client-side to avoid composite index requirement
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   // Create prescription

@@ -21,11 +21,15 @@ class MedicalHistoryServiceProvider {
     return _firestore
         .collection('medicalHistory')
         .where('patientId', isEqualTo: patientId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => MedicalHistoryModel.fromJson(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final list = snapshot.docs
+              .map((doc) => MedicalHistoryModel.fromJson(doc.data(), doc.id))
+              .toList();
+          // Sort client-side to avoid composite index requirement
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   // Add medical history entry
