@@ -277,10 +277,11 @@ class AppTheme {
         thickness: 1,
       ),
       tabBarTheme: TabBarThemeData(
-        labelColor: primaryColor,
-        unselectedLabelColor: textSecondaryColor,
-        indicatorColor: primaryColor,
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white70,
+        indicatorColor: Colors.white,
         indicatorSize: TabBarIndicatorSize.label,
+        dividerColor: Colors.transparent,
         labelStyle: GoogleFonts.poppins(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -542,10 +543,11 @@ class AppTheme {
         thickness: 1,
       ),
       tabBarTheme: TabBarThemeData(
-        labelColor: primaryLightColor,
-        unselectedLabelColor: darkTextSecondary,
-        indicatorColor: primaryLightColor,
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white70,
+        indicatorColor: Colors.white,
         indicatorSize: TabBarIndicatorSize.label,
+        dividerColor: Colors.transparent,
         labelStyle: GoogleFonts.poppins(
           fontSize: 14,
           fontWeight: FontWeight.w600,

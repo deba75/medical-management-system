@@ -326,7 +326,7 @@ class _DetailRow extends StatelessWidget {
               Text(
                 label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.textSecondaryColor,
+                      color: const Color.fromARGB(255, 135, 130, 148),
                     ),
               ),
               const SizedBox(height: 4),

@@ -11,8 +11,8 @@
 /// 4. Replace the placeholder below with your key
 
 class ApiKeys {
-  // Replace with your actual Gemini API key
-  static const String geminiApiKey = 'YOUR_GEMINI_API_KEY_HERE';
+  // Gemini API key for MediBot chatbot
+  static const String geminiApiKey = 'AIzaSyCf7M00ff41AmZHWgeQi8Wvc2-T3TtPcYY';
   
   // Check if API key is configured
   static bool get isGeminiConfigured => 

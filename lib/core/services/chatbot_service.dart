@@ -1,17 +1,68 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_keys.dart';
+import '../../models/doctor_model.dart';
+import '../../models/appointment_model.dart';
 
 class ChatMessage {
   final String text;
   final bool isUser;
   final DateTime timestamp;
+  final ChatMessageType type;
+  final Map<String, dynamic>? metadata;
 
   ChatMessage({
     required this.text,
     required this.isUser,
     DateTime? timestamp,
+    this.type = ChatMessageType.text,
+    this.metadata,
   }) : timestamp = timestamp ?? DateTime.now();
+}
+
+enum ChatMessageType {
+  text,
+  doctorList,
+  appointmentConfirmation,
+  appointmentBooked,
+}
+
+/// Appointment booking state for multi-step flow
+class AppointmentBookingState {
+  String? selectedDoctorId;
+  String? selectedDoctorName;
+  String? selectedSpecialty;
+  DateTime? selectedDate;
+  String? selectedTimeSlot;
+  String? selectedHospital;
+  bool awaitingConfirmation;
+  
+  AppointmentBookingState({
+    this.selectedDoctorId,
+    this.selectedDoctorName,
+    this.selectedSpecialty,
+    this.selectedDate,
+    this.selectedTimeSlot,
+    this.selectedHospital,
+    this.awaitingConfirmation = false,
+  });
+  
+  void reset() {
+    selectedDoctorId = null;
+    selectedDoctorName = null;
+    selectedSpecialty = null;
+    selectedDate = null;
+    selectedTimeSlot = null;
+    selectedHospital = null;
+    awaitingConfirmation = false;
+  }
+  
+  bool get isComplete => 
+    selectedDoctorId != null && 
+    selectedDate != null && 
+    selectedTimeSlot != null;
 }
 
 class ChatbotService {
@@ -20,6 +71,13 @@ class ChatbotService {
   ChatSession? _chat;
   final List<ChatMessage> _messages = [];
   bool _isInitialized = false;
+  
+  // Firebase instances
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
+  // Appointment booking state
+  final AppointmentBookingState _bookingState = AppointmentBookingState();
 
   // Singleton pattern
   static ChatbotService get instance {
@@ -31,6 +89,7 @@ class ChatbotService {
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
   bool get isInitialized => _isInitialized;
+  AppointmentBookingState get bookingState => _bookingState;
 
   /// Initialize the chatbot with Gemini API
   Future<void> initialize() async {
@@ -44,6 +103,8 @@ class ChatbotService {
         _isInitialized = true;
         return;
       }
+
+      debugPrint('🔄 Initializing Gemini with API key: ${apiKey.substring(0, 10)}...');
 
       _model = GenerativeModel(
         model: 'gemini-1.5-flash',
@@ -75,6 +136,23 @@ Your primary roles are:
 
 4. **Health Tips**: Offer general health and wellness advice.
 
+5. **Appointment Booking**: Help patients book appointments with doctors. When they want to book:
+   - Ask which specialty or doctor they prefer
+   - Suggest available dates and time slots
+   - Confirm the appointment details before booking
+   - Use [BOOK_APPOINTMENT] tag when user confirms booking
+   - Use [SHOW_DOCTORS:specialty] tag to show doctor list (e.g., [SHOW_DOCTORS:Cardiologist])
+   - Use [CHECK_SCHEDULE:doctorId] tag to check a doctor's available slots
+
+6. **Schedule Information**: Provide doctor availability when asked:
+   - Use [GET_SCHEDULE:doctorId] to fetch schedule
+   - Tell patients about available slots
+
+SPECIAL COMMANDS (use these in your response when needed):
+- [SHOW_DOCTORS:specialty] - Shows list of doctors for that specialty
+- [BOOK_APPOINTMENT] - Triggers appointment booking confirmation
+- [CONFIRM_BOOKING] - Confirms and books the appointment
+
 IMPORTANT GUIDELINES:
 - Always be empathetic and reassuring
 - Never diagnose conditions - only suggest possible specialties
@@ -83,6 +161,7 @@ IMPORTANT GUIDELINES:
 - Keep responses concise but informative
 - Use simple language that patients can understand
 - Ask clarifying questions when symptoms are vague
+- When booking appointments, always ask for confirmation before finalizing
 
 Start by greeting the patient warmly and asking how you can help them today.
 '''),
@@ -94,11 +173,195 @@ Start by greeting the patient warmly and asking how you can help them today.
 
       _chat = _model!.startChat();
       _isInitialized = true;
-      debugPrint('✅ Chatbot initialized successfully');
-    } catch (e) {
+      debugPrint('✅ Chatbot initialized successfully with Gemini API');
+    } catch (e, stackTrace) {
       debugPrint('❌ Error initializing chatbot: $e');
+      debugPrint('Stack trace: $stackTrace');
       _isInitialized = true; // Still mark as initialized to use demo mode
     }
+  }
+
+  /// Get doctors by specialty from Firebase
+  Future<List<DoctorModel>> getDoctorsBySpecialty(String specialty) async {
+    try {
+      final snapshot = await _firestore
+          .collection('doctors')
+          .where('specialization', isEqualTo: specialty)
+          .where('active', isEqualTo: true)
+          .get();
+      
+      return snapshot.docs
+          .map((doc) => DoctorModel.fromJson(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      debugPrint('Error fetching doctors: $e');
+      return [];
+    }
+  }
+
+  /// Get all available doctors from Firebase
+  Future<List<DoctorModel>> getAllDoctors() async {
+    try {
+      final snapshot = await _firestore
+          .collection('doctors')
+          .where('active', isEqualTo: true)
+          .limit(10)
+          .get();
+      
+      return snapshot.docs
+          .map((doc) => DoctorModel.fromJson(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      debugPrint('Error fetching doctors: $e');
+      return [];
+    }
+  }
+
+  /// Get doctor by ID
+  Future<DoctorModel?> getDoctorById(String doctorId) async {
+    try {
+      final doc = await _firestore.collection('doctors').doc(doctorId).get();
+      if (doc.exists) {
+        return DoctorModel.fromJson(doc.data()!, doc.id);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching doctor: $e');
+      return null;
+    }
+  }
+
+  /// Get available time slots for a doctor on a specific date
+  Future<List<String>> getAvailableSlots(String doctorId, DateTime date) async {
+    try {
+      // Get doctor's scheduled appointments for that date
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+      
+      final appointments = await _firestore
+          .collection('appointments')
+          .where('doctorId', isEqualTo: doctorId)
+          .where('date', isGreaterThanOrEqualTo: startOfDay.toIso8601String())
+          .where('date', isLessThanOrEqualTo: endOfDay.toIso8601String())
+          .where('status', isNotEqualTo: 'cancelled')
+          .get();
+      
+      final bookedSlots = appointments.docs
+          .map((doc) => doc.data()['timeSlot'] as String)
+          .toSet();
+      
+      // Default available slots (9 AM to 6 PM)
+      final allSlots = [
+        '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
+        '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
+        '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM',
+        '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM',
+      ];
+      
+      return allSlots.where((slot) => !bookedSlots.contains(slot)).toList();
+    } catch (e) {
+      debugPrint('Error fetching available slots: $e');
+      return [];
+    }
+  }
+
+  /// Book an appointment
+  Future<bool> bookAppointment() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        debugPrint('User not authenticated');
+        return false;
+      }
+      
+      if (!_bookingState.isComplete) {
+        debugPrint('Booking state incomplete');
+        return false;
+      }
+
+      // Get patient info
+      final patientDoc = await _firestore.collection('users').doc(user.uid).get();
+      final patientName = patientDoc.data()?['name'] ?? 'Patient';
+      
+      // Create appointment
+      final appointment = AppointmentModel(
+        appointmentId: '',
+        doctorId: _bookingState.selectedDoctorId!,
+        patientId: user.uid,
+        doctorName: _bookingState.selectedDoctorName ?? 'Doctor',
+        patientName: patientName,
+        specialization: _bookingState.selectedSpecialty ?? '',
+        date: _bookingState.selectedDate!,
+        timeSlotId: DateTime.now().millisecondsSinceEpoch.toString(),
+        timeSlot: _bookingState.selectedTimeSlot!,
+        hospitalName: _bookingState.selectedHospital,
+        status: AppointmentStatus.upcoming,
+        reason: 'Booked via MediBot',
+      );
+      
+      await _firestore.collection('appointments').add(appointment.toJson());
+      
+      // Reset booking state
+      _bookingState.reset();
+      
+      return true;
+    } catch (e) {
+      debugPrint('Error booking appointment: $e');
+      return false;
+    }
+  }
+
+  /// Process special commands in bot response
+  Future<String> _processSpecialCommands(String response) async {
+    String processedResponse = response;
+    
+    // Check for [SHOW_DOCTORS:specialty] command
+    final showDoctorsRegex = RegExp(r'\[SHOW_DOCTORS:([^\]]+)\]');
+    final showDoctorsMatch = showDoctorsRegex.firstMatch(response);
+    
+    if (showDoctorsMatch != null) {
+      final specialty = showDoctorsMatch.group(1)!;
+      final doctors = await getDoctorsBySpecialty(specialty);
+      
+      if (doctors.isNotEmpty) {
+        String doctorList = '\n\n**Available ${specialty}s:**\n';
+        for (int i = 0; i < doctors.length; i++) {
+          doctorList += '${i + 1}. **Dr. ${doctors[i].name}**\n';
+          doctorList += '   • Fee: ৳${doctors[i].consultationFee.toStringAsFixed(0)}\n';
+          doctorList += '   • Rating: ${doctors[i].rating}⭐\n';
+          if (doctors[i].hospitals.isNotEmpty) {
+            doctorList += '   • Hospital: ${doctors[i].hospital}\n';
+          }
+        }
+        doctorList += '\nWould you like to book an appointment with any of these doctors?';
+        processedResponse = processedResponse.replaceAll(showDoctorsMatch.group(0)!, doctorList);
+      } else {
+        processedResponse = processedResponse.replaceAll(
+          showDoctorsMatch.group(0)!, 
+          '\n\nNo $specialty doctors are currently available. Would you like to try a different specialty?'
+        );
+      }
+    }
+    
+    // Check for [BOOK_APPOINTMENT] or [CONFIRM_BOOKING] command
+    if (response.contains('[BOOK_APPOINTMENT]') || response.contains('[CONFIRM_BOOKING]')) {
+      if (_bookingState.isComplete && _bookingState.awaitingConfirmation) {
+        final success = await bookAppointment();
+        if (success) {
+          processedResponse = processedResponse
+              .replaceAll('[BOOK_APPOINTMENT]', '')
+              .replaceAll('[CONFIRM_BOOKING]', '');
+          processedResponse += '\n\n✅ **Appointment Booked Successfully!**\nYou can view your appointment in the "My Appointments" section.';
+        } else {
+          processedResponse = processedResponse
+              .replaceAll('[BOOK_APPOINTMENT]', '')
+              .replaceAll('[CONFIRM_BOOKING]', '');
+          processedResponse += '\n\n❌ Could not book appointment. Please try again or book through the app.';
+        }
+      }
+    }
+    
+    return processedResponse;
   }
 
   /// Send a message and get a response
@@ -111,41 +374,149 @@ Start by greeting the patient warmly and asking how you can help them today.
     _messages.add(ChatMessage(text: message, isUser: true));
 
     try {
-      // Check if API is configured
-      if (_model == null || _chat == null) {
-        return _getDemoResponse(message);
+      // Handle confirmation responses
+      final lowerMessage = message.toLowerCase().trim();
+      if (_bookingState.awaitingConfirmation) {
+        if (lowerMessage == 'yes' || lowerMessage == 'confirm' || lowerMessage == 'book' || lowerMessage == 'ok') {
+          final success = await bookAppointment();
+          String response;
+          if (success) {
+            response = '''✅ **Appointment Booked Successfully!**
+
+Your appointment has been confirmed:
+• Doctor: ${_bookingState.selectedDoctorName}
+• Date: ${_formatDate(_bookingState.selectedDate!)}
+• Time: ${_bookingState.selectedTimeSlot}
+
+You can view and manage your appointment in the "My Appointments" section.
+
+Is there anything else I can help you with?''';
+          } else {
+            response = '❌ Sorry, I couldn\'t book the appointment. Please try again or use the "Search Doctors" section in the app to book directly.';
+          }
+          _messages.add(ChatMessage(text: response, isUser: false));
+          return response;
+        } else if (lowerMessage == 'no' || lowerMessage == 'cancel' || lowerMessage == 'nevermind') {
+          _bookingState.reset();
+          const response = 'No problem! I\'ve cancelled the booking. Is there anything else I can help you with?';
+          _messages.add(ChatMessage(text: response, isUser: false));
+          return response;
+        }
       }
 
-      final response = await _chat!.sendMessage(Content.text(message));
-      final responseText = response.text ?? 'I apologize, but I could not process your request. Please try again.';
+      // Check if API is configured
+      if (_model == null || _chat == null) {
+        debugPrint('Model or chat is null, using demo response');
+        return await _getSmartDemoResponse(message);
+      }
+
+      // Add context about available doctors if user is asking about booking
+      String contextEnhancedMessage = message;
+      if (_shouldFetchDoctorContext(message)) {
+        final doctors = await getAllDoctors();
+        if (doctors.isNotEmpty) {
+          String doctorContext = '\n[CONTEXT: Available doctors in our system: ';
+          doctorContext += doctors.map((d) => '${d.name} (${d.specialization})').join(', ');
+          doctorContext += ']';
+          contextEnhancedMessage = message + doctorContext;
+        }
+      }
+
+      debugPrint('Sending message to Gemini API...');
+      final response = await _chat!.sendMessage(Content.text(contextEnhancedMessage));
+      var responseText = response.text ?? 'I apologize, but I could not process your request. Please try again.';
+      
+      debugPrint('Received response from Gemini API');
+      
+      // Process any special commands in the response
+      responseText = await _processSpecialCommands(responseText);
       
       // Add bot response to history
       _messages.add(ChatMessage(text: responseText, isUser: false));
       
       return responseText;
-    } catch (e) {
-      debugPrint('Error sending message: $e');
-      final errorResponse = 'I\'m having trouble connecting right now. Please try again in a moment.';
-      _messages.add(ChatMessage(text: errorResponse, isUser: false));
-      return errorResponse;
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error sending message: $e');
+      debugPrint('Stack trace: $stackTrace');
+      
+      // Try demo response as fallback
+      return await _getSmartDemoResponse(message);
     }
   }
 
-  /// Demo response when API is not configured
-  String _getDemoResponse(String message) {
+  bool _shouldFetchDoctorContext(String message) {
+    final keywords = ['book', 'appointment', 'doctor', 'schedule', 'available', 'find'];
+    final lower = message.toLowerCase();
+    return keywords.any((k) => lower.contains(k));
+  }
+
+  String _formatDate(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${date.day} ${months[date.month - 1]}, ${date.year}';
+  }
+
+  /// Smart demo response with Firebase data when API fails
+  Future<String> _getSmartDemoResponse(String message) async {
     final lowerMessage = message.toLowerCase();
     String response;
 
-    if (lowerMessage.contains('hello') || lowerMessage.contains('hi') || lowerMessage.contains('hey')) {
-      response = '''Hello! 👋 I'm MediBot, your medical assistant.
+    // Check for appointment/booking related queries
+    if (lowerMessage.contains('book') || lowerMessage.contains('appointment')) {
+      final doctors = await getAllDoctors();
+      if (doctors.isNotEmpty) {
+        response = '''I'd be happy to help you book an appointment! 🏥
 
-I can help you with:
-• Describing your symptoms
-• Finding the right doctor specialty
-• Basic first aid guidance
-• General health tips
+**Available Doctors:**
+''';
+        for (int i = 0; i < doctors.take(5).length; i++) {
+          response += '''
+${i + 1}. **Dr. ${doctors[i].name}** - ${doctors[i].specialization}
+   💰 Fee: ৳${doctors[i].consultationFee.toStringAsFixed(0)} | ⭐ ${doctors[i].rating}
+''';
+        }
+        response += '''
+Please tell me which doctor you'd like to see, or describe your symptoms and I'll recommend a specialist.''';
+      } else {
+        response = '''I'd be happy to help you book an appointment! 🏥
 
-How can I assist you today?''';
+To find the right doctor, please tell me:
+1. What symptoms are you experiencing?
+2. Or which specialty you're looking for?
+
+You can also browse doctors directly in the **Search Doctors** section of the app.''';
+      }
+    } else if (lowerMessage.contains('doctor') || lowerMessage.contains('find')) {
+      // Fetch real doctors from Firebase
+      final doctors = await getAllDoctors();
+      if (doctors.isNotEmpty) {
+        response = '''Here are some doctors available in our system:
+
+''';
+        for (int i = 0; i < doctors.take(5).length; i++) {
+          response += '''${i + 1}. **Dr. ${doctors[i].name}**
+   • Specialty: ${doctors[i].specialization}
+   • Fee: ৳${doctors[i].consultationFee.toStringAsFixed(0)}
+   • Rating: ${doctors[i].rating}⭐
+
+''';
+        }
+        response += 'Would you like to book an appointment with any of these doctors?';
+      } else {
+        response = '''To find a doctor, you can:
+
+1. **Browse by Specialty** - Go to Search Doctors in the app
+2. **Tell me your symptoms** - I'll recommend the right specialist
+
+What symptoms are you experiencing?''';
+      }
+    } else if (lowerMessage.contains('schedule') || lowerMessage.contains('available') || lowerMessage.contains('slot')) {
+      response = '''To check a doctor's schedule:
+
+1. Go to **Search Doctors** in the app
+2. Select a doctor to view their profile
+3. Click **Book Appointment** to see available slots
+
+Or tell me which doctor you're interested in, and I can help you book!''';
     } else if (lowerMessage.contains('headache') || lowerMessage.contains('head pain')) {
       response = '''I understand you're experiencing a headache. Let me help you.
 
@@ -160,7 +531,7 @@ If your headache is severe, sudden, or accompanied by fever, vision changes, or 
 
 **Recommended Specialist:** General Physician or Neurologist
 
-Would you like me to help you find a doctor?''';
+Would you like me to help you find a doctor and book an appointment?''';
     } else if (lowerMessage.contains('fever') || lowerMessage.contains('temperature')) {
       response = '''I'm sorry to hear you have a fever. Here's what you can do:
 
@@ -177,38 +548,7 @@ Would you like me to help you find a doctor?''';
 
 **Recommended Specialist:** General Physician
 
-Shall I help you book an appointment?''';
-    } else if (lowerMessage.contains('chest') || lowerMessage.contains('heart')) {
-      response = '''⚠️ **Important:** Chest pain can be serious.
-
-**If you're experiencing:**
-• Severe chest pain
-• Difficulty breathing
-• Pain radiating to arm or jaw
-
-**Please call emergency services immediately!**
-
-For mild discomfort, a **Cardiologist** would be the right specialist.
-
-Are you experiencing severe symptoms right now?''';
-    } else if (lowerMessage.contains('skin') || lowerMessage.contains('rash') || lowerMessage.contains('acne')) {
-      response = '''For skin-related concerns, I recommend seeing a **Dermatologist**.
-
-**General skin care tips:**
-• Keep the area clean and dry
-• Avoid scratching
-• Use mild, fragrance-free products
-
-Can you describe your skin condition in more detail?''';
-    } else if (lowerMessage.contains('doctor') || lowerMessage.contains('appointment') || lowerMessage.contains('book')) {
-      response = '''I'd be happy to help you find a doctor! 🏥
-
-To recommend the right specialist, please tell me:
-1. What symptoms are you experiencing?
-2. How long have you had these symptoms?
-3. Any other relevant health information?
-
-Or you can go directly to the **Search Doctors** section in the app to browse available doctors by specialty.''';
+Would you like me to help you book an appointment?''';
     } else if (lowerMessage.contains('emergency') || lowerMessage.contains('urgent')) {
       response = '''🚨 **For Medical Emergencies:**
 
@@ -216,7 +556,7 @@ Or you can go directly to the **Search Doctors** section in the app to browse av
 
 **Emergency Numbers:**
 • Ambulance: 999 / 112
-• Or use the "Book Ambulance" feature in our app
+• Or use the **Book Ambulance** feature in our app
 
 **While waiting:**
 • Stay calm
@@ -224,19 +564,26 @@ Or you can go directly to the **Search Doctors** section in the app to browse av
 • Keep someone with you if possible
 
 Is this an emergency situation?''';
+    } else if (lowerMessage.contains('hello') || lowerMessage.contains('hi') || lowerMessage.contains('hey')) {
+      response = '''Hello! 👋 I'm MediBot, your medical assistant.
+
+I can help you with:
+• 📋 Describing your symptoms
+• 👨‍⚕️ Finding the right doctor
+• 📅 Booking appointments
+• 🩹 Basic first aid guidance
+• 💊 General health tips
+
+How can I assist you today?''';
     } else {
-      response = '''Thank you for your message. To better assist you, could you please:
+      response = '''Thank you for your message. I can help you with:
 
-1. **Describe your symptoms** in detail
-2. **Tell me how long** you've been experiencing them
-3. **Mention any medications** you're currently taking
+• **Symptom Assessment** - Describe what you're feeling
+• **Find Doctors** - I'll recommend specialists based on your needs
+• **Book Appointments** - Schedule a visit with a doctor
+• **First Aid Tips** - Basic guidance for common issues
 
-This will help me suggest the right specialist for you.
-
-You can also ask me about:
-• First aid tips
-• Finding the right doctor
-• General health advice''';
+What would you like help with today?''';
     }
 
     _messages.add(ChatMessage(text: response, isUser: false));
@@ -248,10 +595,11 @@ You can also ask me about:
     const greeting = '''Hello! 👋 I'm MediBot, your AI health assistant.
 
 I'm here to help you:
-• Understand your symptoms
-• Find the right doctor
-• Get first aid guidance
-• Answer health questions
+• 🔍 Understand your symptoms
+• 👨‍⚕️ Find the right doctor
+• 📅 Book appointments
+• 🩹 Get first aid guidance
+• 💊 Answer health questions
 
 **Note:** I provide guidance only. For proper diagnosis, please consult a doctor.
 
@@ -264,9 +612,33 @@ How can I assist you today?''';
     return greeting;
   }
 
+  /// Set booking state for appointment
+  void setBookingDoctor(String doctorId, String doctorName, String specialty) {
+    _bookingState.selectedDoctorId = doctorId;
+    _bookingState.selectedDoctorName = doctorName;
+    _bookingState.selectedSpecialty = specialty;
+  }
+
+  void setBookingDate(DateTime date) {
+    _bookingState.selectedDate = date;
+  }
+
+  void setBookingTimeSlot(String timeSlot) {
+    _bookingState.selectedTimeSlot = timeSlot;
+  }
+
+  void setBookingHospital(String hospital) {
+    _bookingState.selectedHospital = hospital;
+  }
+
+  void setAwaitingConfirmation(bool value) {
+    _bookingState.awaitingConfirmation = value;
+  }
+
   /// Clear chat history
   void clearHistory() {
     _messages.clear();
+    _bookingState.reset();
     if (_model != null) {
       _chat = _model!.startChat();
     }
@@ -275,6 +647,7 @@ How can I assist you today?''';
   /// Dispose resources
   void dispose() {
     _messages.clear();
+    _bookingState.reset();
     _chat = null;
     _model = null;
     _isInitialized = false;

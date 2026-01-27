@@ -233,6 +233,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 children: [
                   _buildQuickAction('🤒 I have a fever', 'I have a fever'),
                   _buildQuickAction('🤕 Headache', 'I have a headache'),
+                  _buildQuickAction('📅 Book Appointment', 'I want to book an appointment'),
                   _buildQuickAction('🏥 Find Doctor', 'Help me find a doctor'),
                   _buildQuickAction('🚑 Emergency', 'This is an emergency'),
                   _buildQuickAction('💊 First Aid', 'Give me first aid tips'),
