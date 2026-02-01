@@ -1,3 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// Helper function to convert Firestore Timestamp or String to DateTime
+DateTime _parseDateTime(dynamic value) {
+  if (value == null) return DateTime.now();
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.parse(value);
+  return DateTime.now();
+}
+
 class PrescriptionModel {
   final String prescriptionId;
   final String appointmentId;
@@ -28,7 +39,7 @@ class PrescriptionModel {
       doctorName: json['doctorName'] ?? '',
       fileURL: json['fileURL'] ?? '',
       notes: json['notes'],
-      createdAt: DateTime.parse(json['createdAt'] ?? DateTime.now().toIso8601String()),
+      createdAt: _parseDateTime(json['createdAt']),
     );
   }
 

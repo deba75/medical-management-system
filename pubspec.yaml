@@ -74,6 +74,15 @@ dependencies:
   
   # AI Chatbot
   google_generative_ai: ^0.4.6
+  
+  # Charts
+  fl_chart: ^0.70.2
+  
+  # HTTP
+  http: ^1.2.2
+  
+  # Video Call (Agora)
+  agora_rtc_engine: ^6.3.2
 
 dev_dependencies:
   flutter_test:

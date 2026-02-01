@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'core/providers/theme_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/patient/home/patient_home_screen.dart';
+import 'screens/patient/profile/patient_profile_screen.dart';
 import 'screens/doctor/home/doctor_home_screen.dart';
 import 'screens/doctor/verification/doctor_verification_screen.dart';
 
@@ -37,6 +38,7 @@ class MyApp extends ConsumerWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/patient-home': (context) => const PatientHomeScreen(),
+        '/patient-profile': (context) => const PatientProfileScreen(),
         '/doctor-home': (context) => const DoctorHomeScreen(),
         '/doctor-verification': (context) => const DoctorVerificationScreen(),
       },

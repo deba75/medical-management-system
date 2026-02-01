@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/chatbot_service.dart';
+import '../../../models/doctor_model.dart';
+import '../doctors/search_doctors_screen.dart';
+import '../doctors/book_appointment_screen.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -16,6 +19,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   
   bool _isLoading = false;
   bool _isInitializing = true;
+  List<DoctorModel> _availableDoctors = [];  // Store fetched doctors for booking
 
   @override
   void initState() {
@@ -61,12 +65,40 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     setState(() => _isLoading = true);
     _scrollToBottom();
 
+    // Check if user wants to book an appointment - fetch doctors for selection
+    final lowerMessage = message.toLowerCase();
+    if (lowerMessage.contains('book') || lowerMessage.contains('appointment') || 
+        lowerMessage.contains('doctor') || lowerMessage.contains('find')) {
+      final doctors = await _chatbot.getAllDoctors();
+      if (doctors.isNotEmpty) {
+        setState(() => _availableDoctors = doctors);
+      }
+    }
+
     await _chatbot.sendMessage(message);
 
     if (mounted) {
       setState(() => _isLoading = false);
       _scrollToBottom();
     }
+  }
+
+  void _navigateToBookAppointment(DoctorModel doctor) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BookAppointmentScreen(doctor: doctor),
+      ),
+    );
+  }
+
+  void _navigateToSearchDoctors() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SearchDoctorsScreen(),
+      ),
+    );
   }
 
   void _clearChat() {
@@ -212,10 +244,16 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
-                    itemCount: _chatbot.messages.length + (_isLoading ? 1 : 0),
+                    itemCount: _chatbot.messages.length + (_isLoading ? 1 : 0) + (_availableDoctors.isNotEmpty ? 1 : 0),
                     itemBuilder: (context, index) {
-                      if (_isLoading && index == _chatbot.messages.length) {
+                      // Show typing indicator at the end
+                      if (_isLoading && index == _chatbot.messages.length + (_availableDoctors.isNotEmpty ? 1 : 0)) {
                         return _buildTypingIndicator();
+                      }
+                      
+                      // Show doctor cards after messages
+                      if (_availableDoctors.isNotEmpty && index == _chatbot.messages.length) {
+                        return _buildDoctorCards();
                       }
                       
                       final message = _chatbot.messages[index];
@@ -233,7 +271,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
                 children: [
                   _buildQuickAction('🤒 I have a fever', 'I have a fever'),
                   _buildQuickAction('🤕 Headache', 'I have a headache'),
-                  _buildQuickAction('📅 Book Appointment', 'I want to book an appointment'),
+                  _buildQuickActionWithNav('📅 Book Now', _navigateToSearchDoctors),
                   _buildQuickAction('🏥 Find Doctor', 'Help me find a doctor'),
                   _buildQuickAction('🚑 Emergency', 'This is an emergency'),
                   _buildQuickAction('💊 First Aid', 'Give me first aid tips'),
@@ -459,6 +497,188 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         side: BorderSide.none,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionWithNav(String label, VoidCallback onPressed) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+        onPressed: onPressed,
+        backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+        side: BorderSide(color: AppTheme.primaryColor, width: 1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDoctorCards() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.local_hospital,
+                    color: AppTheme.primaryColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Available Doctors',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: _navigateToSearchDoctors,
+                    child: Text(
+                      'View All',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 140,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _availableDoctors.length > 5 ? 5 : _availableDoctors.length,
+                  itemBuilder: (context, index) {
+                    final doctor = _availableDoctors[index];
+                    return _buildDoctorCard(doctor);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Widget _buildDoctorCard(DoctorModel doctor) {
+    return GestureDetector(
+      onTap: () => _navigateToBookAppointment(doctor),
+      child: Container(
+        width: 140,
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                  backgroundImage: (doctor.photoURL != null && doctor.photoURL!.isNotEmpty)
+                      ? NetworkImage(doctor.photoURL!)
+                      : null,
+                  child: (doctor.photoURL == null || doctor.photoURL!.isEmpty)
+                      ? Icon(
+                          Icons.person,
+                          color: AppTheme.primaryColor,
+                          size: 20,
+                        )
+                      : null,
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star, size: 12, color: Colors.amber),
+                      const SizedBox(width: 2),
+                      Text(
+                        doctor.rating.toStringAsFixed(1),
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Dr. ${doctor.name}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              doctor.specialization,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 10,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _navigateToBookAppointment(doctor),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Book'),
+              ),
+            ),
+          ],
         ),
       ),
     );

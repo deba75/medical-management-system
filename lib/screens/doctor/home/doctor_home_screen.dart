@@ -9,6 +9,11 @@ import '../appointments/doctor_appointments_screen.dart';
 import '../schedule/manage_schedule_screen.dart';
 import '../settings/settings_screen.dart';
 import '../../patient/appointments/appointment_detail_screen.dart';
+import '../referrals/referral_management_screen.dart';
+import '../templates/template_management_screen.dart';
+import '../analytics/doctor_analytics_screen.dart';
+import '../patient_records/patient_records_screen.dart';
+import '../earnings/earnings_dashboard_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DoctorHomeScreen extends StatefulWidget {
@@ -546,25 +551,61 @@ class _DashboardTabState extends ConsumerState<_DashboardTab> {
           child: Row(
             children: [
               _QuickActionCard(
-                icon: Icons.calendar_month,
-                label: 'View\nSchedule',
+                icon: Icons.folder_shared,
+                label: 'Patient\nRecords',
                 color: AppTheme.primaryColor,
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ManageScheduleScreen()),
+                    MaterialPageRoute(builder: (context) => const PatientRecordsScreen()),
                   );
                 },
               ),
               const SizedBox(width: 12),
               _QuickActionCard(
-                icon: Icons.list_alt,
-                label: 'All\nAppointments',
+                icon: Icons.description,
+                label: 'Templates',
+                color: Colors.blue,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const TemplateManagementScreen()),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              _QuickActionCard(
+                icon: Icons.swap_horiz,
+                label: 'Referrals',
+                color: Colors.orange,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ReferralManagementScreen()),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              _QuickActionCard(
+                icon: Icons.analytics,
+                label: 'Analytics',
+                color: Colors.purple,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DoctorAnalyticsScreen()),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              _QuickActionCard(
+                icon: Icons.account_balance_wallet,
+                label: 'Earnings',
                 color: Colors.green,
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const DoctorAppointmentsScreen()),
+                    MaterialPageRoute(builder: (context) => const EarningsDashboardScreen()),
                   );
                 },
               ),
@@ -572,20 +613,13 @@ class _DashboardTabState extends ConsumerState<_DashboardTab> {
               _QuickActionCard(
                 icon: Icons.settings,
                 label: 'Settings',
-                color: Colors.purple,
+                color: Colors.teal,
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const SettingsScreen()),
                   );
                 },
-              ),
-              const SizedBox(width: 12),
-              _QuickActionCard(
-                icon: Icons.refresh,
-                label: 'Refresh\nData',
-                color: Colors.teal,
-                onTap: () => _loadTodayAppointments(),
               ),
             ],
           ),

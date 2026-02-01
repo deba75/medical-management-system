@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/theme_provider.dart';
@@ -15,6 +18,12 @@ import '../prescriptions/prescriptions_screen.dart';
 import '../ambulance/book_ambulance_screen.dart';
 import '../diagnostic/diagnostic_centres_screen.dart';
 import '../chat/chatbot_screen.dart';
+import '../medicine_reminder/medicine_reminder_screen.dart';
+import '../lab_test/lab_test_booking_screen.dart';
+import '../articles/health_articles_screen.dart';
+import '../symptom_checker/symptom_checker_screen.dart';
+import '../blood_donors/blood_donors_screen.dart';
+import '../../doctor/settings/settings_screen.dart';
 
 class PatientHomeScreen extends ConsumerStatefulWidget {
   const PatientHomeScreen({super.key});
@@ -166,6 +175,32 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
             expandedHeight: 140,
             floating: false,
             pinned: true,
+            // Title shown when collapsed
+            title: const Text(
+              'TeleMedicine',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            // Actions shown when collapsed AND expanded
+            actions: [
+              _buildHeaderIconButton(
+                context,
+                Icons.notifications_outlined,
+                upcomingAppointments.length,
+                () => _showNotifications(context),
+              ),
+              const SizedBox(width: 4),
+              _buildHeaderIconButton(
+                context,
+                Icons.person_outline,
+                0,
+                () => _showProfileMenu(context),
+              ),
+              const SizedBox(width: 8),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: const BoxDecoration(
@@ -173,56 +208,27 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                 ),
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    padding: const EdgeInsets.fromLTRB(20, 56, 20, 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    user.when(
-                                      data: (userData) => 'Hello, ${userData?.name ?? 'Patient'} 👋',
-                                      loading: () => 'Hello, Patient 👋',
-                                      error: (_, __) => 'Hello, Patient 👋',
-                                    ),
-                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'How can we help you today?',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Colors.white.withOpacity(0.9),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                _buildHeaderIconButton(
-                                  context,
-                                  Icons.notifications_outlined,
-                                  upcomingAppointments.length,
-                                  () => _showNotifications(context),
-                                ),
-                                const SizedBox(width: 8),
-                                _buildHeaderIconButton(
-                                  context,
-                                  Icons.person_outline,
-                                  0,
-                                  () => _showProfileMenu(context),
-                                ),
-                              ],
-                            ),
-                          ],
+                        Text(
+                          user.when(
+                            data: (userData) => 'Hello, ${userData?.name ?? 'Patient'} 👋',
+                            loading: () => 'Hello, Patient 👋',
+                            error: (_, __) => 'Hello, Patient 👋',
+                          ),
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'How can we help you today?',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.white.withOpacity(0.9),
+                          ),
                         ),
                       ],
                     ),
@@ -489,27 +495,68 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                   },
                 ),
                 _QuickActionCard(
-                  icon: Icons.calendar_today,
-                  title: 'My Appointments',
-                  color: AppTheme.secondaryColor,
+                  icon: Icons.health_and_safety,
+                  title: 'Symptom Checker',
+                  color: Colors.teal,
                   onTap: () {
-                    // Switch to appointments tab
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SymptomCheckerScreen(),
+                      ),
+                    );
                   },
                 ),
                 _QuickActionCard(
-                  icon: Icons.receipt_long,
-                  title: 'Prescriptions',
-                  color: AppTheme.accentColor,
+                  icon: Icons.medication,
+                  title: 'Medicine Reminder',
+                  color: Colors.orange,
                   onTap: () {
-                    // Switch to prescriptions tab
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MedicineReminderScreen(),
+                      ),
+                    );
                   },
                 ),
                 _QuickActionCard(
-                  icon: Icons.medical_information,
-                  title: 'Medical History',
+                  icon: Icons.science,
+                  title: 'Lab Tests',
                   color: Colors.purple,
                   onTap: () {
-                    // Switch to history tab
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LabTestBookingScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _QuickActionCard(
+                  icon: Icons.article,
+                  title: 'Health Articles',
+                  color: Colors.indigo,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HealthArticlesScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _QuickActionCard(
+                  icon: Icons.bloodtype,
+                  title: 'Blood Donors',
+                  color: Colors.red,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BloodDonorsScreen(),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -1079,8 +1126,11 @@ class _ProfileMenuSheet extends ConsumerWidget {
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Settings coming soon')),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
               );
             },
             shape: RoundedRectangleBorder(
@@ -1141,7 +1191,7 @@ class _ProfileMenuSheet extends ConsumerWidget {
   }
 }
 
-// Notifications Bottom Sheet
+// Notifications Bottom Sheet with Blood Requests
 class _NotificationsSheet extends StatelessWidget {
   final List<AppointmentModel> appointments;
   
@@ -1149,8 +1199,13 @@ class _NotificationsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    
     return Container(
       padding: const EdgeInsets.all(24),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1169,136 +1224,331 @@ class _NotificationsSheet extends StatelessWidget {
           const SizedBox(height: 24),
           
           Text(
-            'Upcoming Appointments',
+            'Notifications',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 16),
           
-          // Appointments List
-          if (appointments.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.notifications_off_outlined,
-                      size: 64,
-                      color: Colors.grey[400],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No upcoming appointments',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey[600],
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: appointments.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final appointment = appointments[index];
-                final isToday = appointment.date.day == DateTime.now().day &&
-                    appointment.date.month == DateTime.now().month &&
-                    appointment.date.year == DateTime.now().year;
-                
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppTheme.primaryColor.withOpacity(0.2),
+          // Blood Request Notifications
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('notifications')
+                .where('userId', isEqualTo: currentUserId)
+                .where('type', isEqualTo: 'blood_request')
+                .orderBy('createdAt', descending: true)
+                .limit(5)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final bloodRequests = snapshot.data?.docs ?? [];
+              
+              if (bloodRequests.isEmpty && appointments.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.notifications_off_outlined,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No notifications',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.grey[600],
+                              ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
+                );
+              }
+              
+              return Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          Icons.calendar_today,
-                          color: AppTheme.primaryColor,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      // Blood Requests Section
+                      if (bloodRequests.isNotEmpty) ...[
+                        Row(
                           children: [
-                            Row(
-                              children: [
-                                Text(
-                                  appointment.doctorName,
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                                if (isToday) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.errorColor,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text(
-                                      'Today',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 4),
+                            Icon(Icons.bloodtype, color: Colors.red[600], size: 20),
+                            const SizedBox(width: 8),
                             Text(
-                              appointment.specialization,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.access_time,
-                                  size: 14,
-                                  color: AppTheme.textSecondaryColor,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  appointment.timeSlot,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
+                              'Blood Requests',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red[600],
+                                  ),
                             ),
                           ],
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                        ...bloodRequests.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          return _BloodRequestCard(
+                            data: data,
+                            docId: doc.id,
+                          );
+                        }),
+                        const SizedBox(height: 16),
+                      ],
+                      
+                      // Appointments Section
+                      if (appointments.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            Icon(Icons.calendar_today, color: AppTheme.primaryColor, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Upcoming Appointments',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ...appointments.map((appointment) {
+                          final isToday = appointment.date.day == DateTime.now().day &&
+                              appointment.date.month == DateTime.now().month &&
+                              appointment.date.year == DateTime.now().year;
+                          
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.calendar_today,
+                                    color: AppTheme.primaryColor,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              appointment.doctorName,
+                                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if (isToday) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.errorColor,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: const Text(
+                                                'Today',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${appointment.specialization} • ${appointment.timeSlot}',
+                                        style: Theme.of(context).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                     ],
                   ),
-                );
-              },
-            ),
-          const SizedBox(height: 24),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 }
+
+// Blood Request Card Widget
+class _BloodRequestCard extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final String docId;
+
+  const _BloodRequestCard({
+    required this.data,
+    required this.docId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final requesterName = data['requesterName'] as String? ?? 'Someone';
+    final requesterPhone = data['requesterPhone'] as String? ?? '';
+    final bloodGroup = data['bloodGroup'] as String? ?? '';
+    final isRead = data['read'] as bool? ?? false;
+    final createdAt = data['createdAt'] as Timestamp?;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isRead ? Colors.grey[50] : Colors.red[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isRead ? Colors.grey[200]! : Colors.red[200]!,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.bloodtype,
+                  color: Colors.red[600],
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Blood Request - $bloodGroup',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red[700],
+                          ),
+                    ),
+                    if (createdAt != null)
+                      Text(
+                        _formatTime(createdAt.toDate()),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (!isRead)
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Colors.red[600],
+                    shape: BoxShape.circle,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '$requesterName needs $bloodGroup blood.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          if (requesterPhone.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.phone, size: 14, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  requesterPhone,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: requesterPhone));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Phone number copied!'),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                    // Mark as read
+                    FirebaseFirestore.instance
+                        .collection('notifications')
+                        .doc(docId)
+                        .update({'read': true});
+                  },
+                  icon: Icon(Icons.copy, size: 16, color: Colors.red[600]),
+                  label: Text(
+                    'Copy',
+                    style: TextStyle(color: Colors.red[600]),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+  
+  String _formatTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+    }
+  }
+}
+

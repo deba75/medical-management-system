@@ -1,3 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// Helper function to convert Firestore Timestamp or String to DateTime
+DateTime _parseDateTime(dynamic value) {
+  if (value == null) return DateTime.now();
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.parse(value);
+  return DateTime.now();
+}
+
 class HealthMetrics {
   final int systolicBP;
   final int diastolicBP;
@@ -18,7 +29,7 @@ class HealthMetrics {
       systolicBP: json['systolicBP'] ?? 120,
       diastolicBP: json['diastolicBP'] ?? 80,
       heartRate: json['heartRate'] ?? 72,
-      timestamp: DateTime.parse(json['timestamp'] ?? DateTime.now().toIso8601String()),
+      timestamp: _parseDateTime(json['timestamp']),
       status: json['status'] ?? 'normal',
     );
   }

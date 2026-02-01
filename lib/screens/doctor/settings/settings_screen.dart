@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/theme/app_theme.dart';
+import 'change_password_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -10,7 +12,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDarkMode = false;
-  bool _isCompactMode = false;
   bool _notificationsEnabled = true;
   bool _soundEnabled = true;
   String _language = 'English';
@@ -33,25 +34,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: _isDarkMode,
                 onChanged: (value) {
                   setState(() => _isDarkMode = value);
-                  // TODO: Implement dark mode with theme provider
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(value ? 'Dark mode enabled' : 'Light mode enabled'),
-                    ),
-                  );
-                },
-              ),
-              _buildSwitchTile(
-                icon: Icons.view_compact,
-                title: 'Compact Mode',
-                subtitle: 'Reduce spacing for more content',
-                value: _isCompactMode,
-                onChanged: (value) {
-                  setState(() => _isCompactMode = value);
-                  // TODO: Implement compact mode with layout provider
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(value ? 'Compact mode enabled' : 'Normal mode enabled'),
+                      behavior: SnackBarBehavior.floating,
                     ),
                   );
                 },
@@ -100,7 +86,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Edit Profile',
                 subtitle: 'Update your profile information',
                 onTap: () {
-                  // TODO: Navigate to edit profile
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('You can edit your profile from the Profile section'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                 },
               ),
               _buildNavigationTile(
@@ -108,24 +99,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Change Password',
                 subtitle: 'Update your password',
                 onTap: () {
-                  // TODO: Navigate to change password
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChangePasswordScreen(),
+                    ),
+                  );
                 },
               ),
               _buildNavigationTile(
                 icon: Icons.privacy_tip,
                 title: 'Privacy Policy',
                 subtitle: 'View our privacy policy',
-                onTap: () {
-                  // TODO: Open privacy policy
-                },
+                onTap: () => _openUrl('https://www.telemedicine.com/privacy'),
               ),
               _buildNavigationTile(
                 icon: Icons.description,
                 title: 'Terms of Service',
                 subtitle: 'View terms and conditions',
-                onTap: () {
-                  // TODO: Open terms of service
-                },
+                onTap: () => _openUrl('https://www.telemedicine.com/terms'),
               ),
             ],
           ),
@@ -302,6 +294,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (value) {
                 setState(() => _language = value!);
                 Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Language set to English'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               },
             ),
             RadioListTile<String>(
@@ -311,6 +309,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: (value) {
                 setState(() => _language = value!);
                 Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('ভাষা বাংলায় সেট করা হয়েছে'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               },
             ),
           ],
@@ -319,6 +323,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openUrl(String url) async {
+    // Show a dialog with privacy/terms content since we don't have actual URLs
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(url.contains('privacy') ? 'Privacy Policy' : 'Terms of Service'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                url.contains('privacy') 
+                    ? 'Privacy Policy\n\nYour privacy is important to us. This telemedicine app collects and uses your personal information only for providing healthcare services.\n\n• We collect your name, email, phone, and health information\n• Your data is securely stored and encrypted\n• We do not share your information with third parties without consent\n• You can request deletion of your data at any time\n\nFor more information, contact support@telemedicine.com'
+                    : 'Terms of Service\n\nBy using this telemedicine app, you agree to the following terms:\n\n• This app is for informational purposes and does not replace professional medical advice\n• You must provide accurate health information\n• You are responsible for maintaining the confidentiality of your account\n• We reserve the right to terminate accounts that violate our terms\n\nFor more information, contact support@telemedicine.com',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -337,15 +371,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              // TODO: Implement logout
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Logged out successfully')),
-              );
+              try {
+                await FirebaseAuth.instance.signOut();
+                if (mounted) {
+                  // Navigate to login screen
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/login',
+                    (route) => false,
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to logout: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.errorColor,
+              foregroundColor: Colors.white,
             ),
             child: const Text('Logout'),
           ),
@@ -355,12 +405,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _confirmDeleteAccount() {
+    final passwordController = TextEditingController();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Account'),
-        content: const Text(
-          'This action is irreversible. All your data will be permanently deleted. Are you sure?',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'This action is irreversible. All your data will be permanently deleted.',
+              style: TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 16),
+            const Text('Enter your password to confirm:'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: InputDecoration(
+                hintText: 'Password',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -368,15 +440,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              // TODO: Implement account deletion
+            onPressed: () async {
+              if (passwordController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter your password'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+              
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Account deleted')),
-              );
+              
+              try {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null || user.email == null) {
+                  throw Exception('User not found');
+                }
+                
+                // Re-authenticate
+                final credential = EmailAuthProvider.credential(
+                  email: user.email!,
+                  password: passwordController.text,
+                );
+                await user.reauthenticateWithCredential(credential);
+                
+                // Delete account
+                await user.delete();
+                
+                if (mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/login',
+                    (route) => false,
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete account: ${e.toString().contains('wrong-password') ? 'Incorrect password' : e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.errorColor,
+              foregroundColor: Colors.white,
             ),
             child: const Text('Delete'),
           ),
