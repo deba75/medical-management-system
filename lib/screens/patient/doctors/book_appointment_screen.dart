@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
+import '../../../core/services/payment_service.dart';
 import '../../../models/doctor_model.dart';
+import '../../../models/appointment_model.dart';
 import '../../../models/time_slot_model.dart';
 import '../../../models/hospital_model.dart';
+
+// Conditional import for web payment
+import '../../../core/utils/web_payment_stub.dart'
+    if (dart.library.html) '../../../core/utils/web_payment_helper.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   final DoctorModel doctor;
@@ -25,6 +34,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   List<Hospital> _doctorHospitals = [];
   bool _isLoadingSlots = false;
   bool _isBooking = false;
+  
+  // Payment related state
+  PaymentMethod _selectedPaymentMethod = PaymentMethod.payInPerson;
+  final PaymentService _paymentService = PaymentService();
+  bool _isProcessingPayment = false;
 
   @override
   void initState() {
@@ -172,22 +186,430 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       return;
     }
 
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login to book an appointment')),
+      );
+      return;
+    }
+
+    // If online payment selected, process payment first
+    if (_selectedPaymentMethod == PaymentMethod.online) {
+      await _processOnlinePayment(user);
+    } else {
+      // Pay in person - directly book appointment
+      await _saveAppointment(
+        user: user,
+        paymentStatus: PaymentStatus.pending,
+        paymentMethod: PaymentMethod.payInPerson,
+      );
+    }
+  }
+
+  Future<void> _processOnlinePayment(User user) async {
+    setState(() => _isProcessingPayment = true);
+
+    try {
+      // Get patient info
+      final patientDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final patientData = patientDoc.data() ?? {};
+      final patientName = patientData['name'] ?? 'Patient';
+      final patientEmail = patientData['email'] ?? user.email ?? 'patient@example.com';
+      final patientPhone = patientData['phone'] ?? '01700000000';
+
+      // Ensure minimum amount for SSLCommerz (minimum 10 BDT)
+      final amount = widget.doctor.consultationFee > 0 ? widget.doctor.consultationFee : 10.0;
+
+      debugPrint('=== PAYMENT DEBUG ===');
+      debugPrint('Platform: ${kIsWeb ? "Web" : "Mobile"}');
+      debugPrint('Amount: $amount BDT');
+      debugPrint('Patient: $patientName');
+
+      if (kIsWeb) {
+        // Web: Use HTTP gateway URL approach
+        final transactionId = _paymentService.generateTransactionId();
+
+        final result = await _paymentService.initializePayment(
+          patientName: patientName,
+          patientEmail: patientEmail,
+          patientPhone: patientPhone,
+          doctorName: widget.doctor.name,
+          amount: amount,
+          transactionId: transactionId,
+        );
+
+        if (mounted) {
+          setState(() => _isProcessingPayment = false);
+
+          if (result.success && result.gatewayUrl != null) {
+            await _handleWebPayment(user, transactionId, result);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result.message),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } else {
+        // Mobile (Android/iOS): Use native SSLCommerz SDK
+        debugPrint('Using native SSLCommerz SDK...');
+        
+        final result = await _paymentService.processNativePayment(
+          context: context,
+          amount: amount,
+          patientName: patientName,
+          patientEmail: patientEmail,
+          patientPhone: patientPhone,
+          doctorName: widget.doctor.name,
+          appointmentDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
+        );
+
+        debugPrint('Payment result: ${result.status} - ${result.message}');
+
+        if (mounted) {
+          setState(() => _isProcessingPayment = false);
+
+          if (result.success) {
+            // Payment successful - save appointment
+            await _saveAppointment(
+              user: user,
+              paymentStatus: PaymentStatus.completed,
+              paymentMethod: PaymentMethod.online,
+              transactionId: result.transactionId,
+              paymentDate: DateTime.now(),
+            );
+          } else if (result.status == 'closed') {
+            // User cancelled payment
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Payment cancelled'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          } else {
+            // Payment failed
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result.message),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Payment error: $e');
+      if (mounted) {
+        setState(() => _isProcessingPayment = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleWebPayment(User user, String transactionId, PaymentResult result) async {
+    // For web, open the gateway URL in a new tab
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Online Payment'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Amount: ৳${widget.doctor.consultationFee.toStringAsFixed(0)}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'You will be redirected to SSLCommerz payment gateway.\n\n'
+              'After completing payment, return here and confirm.',
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'For sandbox testing, use card: 4111111111111111',
+                      style: TextStyle(fontSize: 12, color: Colors.blue),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+            ),
+            child: const Text('Proceed to Payment'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      // Open payment URL in browser
+      openPaymentUrl(result.gatewayUrl!);
+      
+      // Show confirmation dialog after opening payment
+      if (mounted) {
+        final paymentCompleted = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Payment Status'),
+            content: const Text(
+              'Did you complete the payment successfully?\n\n'
+              'Click "Yes" only if you received a payment confirmation from SSLCommerz.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('No, Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                ),
+                child: const Text('Yes, Payment Done'),
+              ),
+            ],
+          ),
+        );
+
+        if (paymentCompleted == true && mounted) {
+          await _saveAppointment(
+            user: user,
+            paymentStatus: PaymentStatus.completed,
+            paymentMethod: PaymentMethod.online,
+            transactionId: transactionId,
+            paymentDate: DateTime.now(),
+          );
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment cancelled'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open payment page: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveAppointment({
+    required User user,
+    required PaymentStatus paymentStatus,
+    required PaymentMethod paymentMethod,
+    String? transactionId,
+    DateTime? paymentDate,
+  }) async {
     setState(() => _isBooking = true);
 
-    // TODO: Call Cloud Function to validate and book
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Debug: Print doctor info
+      debugPrint('=== BOOKING DEBUG ===');
+      debugPrint('Doctor doctorId (doc ID): ${widget.doctor.doctorId}');
+      debugPrint('Doctor userId (Auth UID): ${widget.doctor.userId}');
+      debugPrint('Doctor name: ${widget.doctor.name}');
+      debugPrint('Payment Method: ${paymentMethod.name}');
+      debugPrint('Payment Status: ${paymentStatus.name}');
+      
+      // Get patient name from Firestore
+      final patientDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final patientName = patientDoc.data()?['name'] ?? 'Patient';
 
-    if (mounted) {
-      setState(() => _isBooking = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Appointment booked successfully!'),
-          backgroundColor: AppTheme.secondaryColor,
-        ),
+      // Get hospital name
+      final selectedHospital = _doctorHospitals.firstWhere(
+        (h) => h.id == _selectedHospitalId,
+        orElse: () => _doctorHospitals.first,
       );
-      Navigator.pop(context);
-      Navigator.pop(context);
+
+      // Use doctor.userId (Firebase Auth UID) as doctorId for proper sync
+      // Fallback to doctorId if userId is empty (for manually created doctors)
+      final effectiveDoctorId = widget.doctor.userId.isNotEmpty 
+          ? widget.doctor.userId 
+          : widget.doctor.doctorId;
+      
+      debugPrint('Using effective doctorId: $effectiveDoctorId');
+      
+      final appointment = AppointmentModel(
+        appointmentId: '',
+        doctorId: effectiveDoctorId,
+        patientId: user.uid,
+        doctorName: widget.doctor.name,
+        patientName: patientName,
+        specialization: widget.doctor.specialization,
+        date: _selectedDate,
+        timeSlotId: DateTime.now().millisecondsSinceEpoch.toString(),
+        timeSlot: '${_selectedSlot!.start} - ${_selectedSlot!.end}',
+        hospitalName: selectedHospital.name,
+        status: AppointmentStatus.upcoming,
+        reason: _reasonController.text.isNotEmpty 
+            ? _reasonController.text 
+            : 'General consultation',
+        paymentStatus: paymentStatus,
+        paymentMethod: paymentMethod,
+        consultationFee: widget.doctor.consultationFee,
+        transactionId: transactionId,
+        paymentDate: paymentDate,
+      );
+
+      // Save to Firebase
+      await FirebaseFirestore.instance
+          .collection('appointments')
+          .add(appointment.toJson());
+
+      debugPrint('=== APPOINTMENT SAVED ===');
+      debugPrint('Saved doctorId: ${appointment.doctorId}');
+      debugPrint('Saved patientId: ${appointment.patientId}');
+      debugPrint('Saved date: ${appointment.date}');
+      debugPrint('========================');
+
+      if (mounted) {
+        setState(() => _isBooking = false);
+        
+        // Show success dialog
+        _showBookingSuccessDialog(paymentMethod, paymentStatus);
+      }
+    } catch (e) {
+      debugPrint('Error booking appointment: $e');
+      if (mounted) {
+        setState(() => _isBooking = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to book appointment: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
+  }
+
+  void _showBookingSuccessDialog(PaymentMethod method, PaymentStatus status) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.secondaryColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.check_circle,
+                color: AppTheme.secondaryColor,
+                size: 64,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Appointment Booked!',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              method == PaymentMethod.online && status == PaymentStatus.completed
+                  ? 'Payment successful! Your appointment is confirmed.'
+                  : 'Your appointment is confirmed. Please pay ৳${widget.doctor.consultationFee.toStringAsFixed(0)} at the clinic.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.textSecondaryColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: method == PaymentMethod.online && status == PaymentStatus.completed
+                    ? Colors.green.withOpacity(0.1)
+                    : Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                method == PaymentMethod.online && status == PaymentStatus.completed
+                    ? '✓ Paid Online'
+                    : '⏱ Pay at Clinic',
+                style: TextStyle(
+                  color: method == PaymentMethod.online && status == PaymentStatus.completed
+                      ? Colors.green
+                      : Colors.orange,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Done', style: TextStyle(color: Colors.white)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -428,6 +850,55 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                       ],
                     ),
                   ),
+
+                  const Divider(height: 1),
+
+                  // Payment Method Selection
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Payment Method',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        
+                        // Pay Online Option
+                        _PaymentOptionTile(
+                          title: 'Pay Online',
+                          subtitle: 'Pay now using bKash, Nagad, Card, etc.',
+                          icon: Icons.payment,
+                          iconColor: Colors.green,
+                          isSelected: _selectedPaymentMethod == PaymentMethod.online,
+                          onTap: () {
+                            setState(() {
+                              _selectedPaymentMethod = PaymentMethod.online;
+                            });
+                          },
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Pay in Person Option
+                        _PaymentOptionTile(
+                          title: 'Pay at Clinic',
+                          subtitle: 'Pay in cash or card at the clinic',
+                          icon: Icons.account_balance_wallet,
+                          iconColor: Colors.orange,
+                          isSelected: _selectedPaymentMethod == PaymentMethod.payInPerson,
+                          onTap: () {
+                            setState(() {
+                              _selectedPaymentMethod = PaymentMethod.payInPerson;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -441,38 +912,175 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               border: Border(
                 top: BorderSide(color: AppTheme.borderColor),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -5),
+                ),
+              ],
             ),
             child: SafeArea(
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Consultation Fee',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(
-                        '₹${widget.doctor.consultationFee}',
-                        style:
-                            Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  color: AppTheme.primaryColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                      ),
-                    ],
+                  // Fee Summary
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Consultation Fee',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppTheme.textSecondaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _selectedPaymentMethod == PaymentMethod.online
+                                  ? 'Pay now via SSLCommerz'
+                                  : 'Pay at clinic',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: _selectedPaymentMethod == PaymentMethod.online
+                                    ? Colors.green
+                                    : Colors.orange,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '৳${widget.doctor.consultationFee.toStringAsFixed(0)}',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: AppTheme.primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
+                  
+                  // Book/Pay Button
                   CustomButton(
-                    text: 'Confirm Booking',
+                    text: _selectedPaymentMethod == PaymentMethod.online
+                        ? 'Pay ৳${widget.doctor.consultationFee.toStringAsFixed(0)} & Book'
+                        : 'Confirm Booking',
                     onPressed: _bookAppointment,
-                    isLoading: _isBooking,
+                    isLoading: _isBooking || _isProcessingPayment,
+                    icon: _selectedPaymentMethod == PaymentMethod.online
+                        ? Icons.lock
+                        : Icons.check_circle,
                   ),
+                  
+                  if (_selectedPaymentMethod == PaymentMethod.online) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.security, size: 14, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Secured by SSLCommerz',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Payment Option Tile Widget
+class _PaymentOptionTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color iconColor;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _PaymentOptionTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.iconColor,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? AppTheme.primaryColor.withOpacity(0.05) 
+              : AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected 
+                ? AppTheme.primaryColor 
+                : AppTheme.borderColor,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Radio<bool>(
+              value: true,
+              groupValue: isSelected,
+              onChanged: (_) => onTap(),
+              activeColor: AppTheme.primaryColor,
+            ),
+          ],
+        ),
       ),
     );
   }

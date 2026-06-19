@@ -301,13 +301,13 @@ class _HealthArticlesScreenState extends ConsumerState<HealthArticlesScreen> {
                         ),
                         const Spacer(),
                         Icon(
-                          Icons.favorite,
+                          Icons.remove_red_eye,
                           color: Colors.white.withValues(alpha: 0.8),
                           size: 14,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${article.likes}',
+                          '${article.views}',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 12,
@@ -487,14 +487,7 @@ class _HealthArticlesScreenState extends ConsumerState<HealthArticlesScreen> {
                         Icon(Icons.remove_red_eye, size: 14, color: Colors.grey[500]),
                         const SizedBox(width: 4),
                         Text(
-                          '${article.views}',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                        ),
-                        const SizedBox(width: 12),
-                        Icon(Icons.favorite, size: 14, color: Colors.grey[500]),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${article.likes}',
+                          '${article.views} views',
                           style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                         ),
                       ],
@@ -589,28 +582,23 @@ class ArticleDetailScreen extends StatefulWidget {
 }
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
-  final _articleService = HealthArticleService();
-  bool _hasLiked = false;
-  int _likes = 0;
+  bool _isSaved = false;
 
   @override
   void initState() {
     super.initState();
-    _likes = widget.article.likes;
-    _checkLikeStatus();
   }
 
-  void _checkLikeStatus() async {
-    final hasLiked = await _articleService.hasUserLiked(widget.article.id, widget.userId);
-    setState(() => _hasLiked = hasLiked);
-  }
-
-  void _toggleLike() async {
-    await _articleService.toggleLike(widget.article.id, widget.userId);
+  void _toggleSave() {
     setState(() {
-      _hasLiked = !_hasLiked;
-      _likes += _hasLiked ? 1 : -1;
+      _isSaved = !_isSaved;
     });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isSaved ? 'Article saved!' : 'Article removed from saved'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -643,9 +631,9 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             ),
             actions: [
               IconButton(
-                icon: Icon(_hasLiked ? Icons.favorite : Icons.favorite_border),
-                color: _hasLiked ? Colors.red : Colors.white,
-                onPressed: _toggleLike,
+                icon: Icon(_isSaved ? Icons.bookmark : Icons.bookmark_border),
+                color: _isSaved ? Colors.amber : Colors.white,
+                onPressed: _toggleSave,
               ),
               IconButton(
                 icon: const Icon(Icons.share),
@@ -702,8 +690,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                       _buildStatChip(Icons.access_time, '${widget.article.readTimeMinutes} min read'),
                       const SizedBox(width: 8),
                       _buildStatChip(Icons.remove_red_eye, '${widget.article.views} views'),
-                      const SizedBox(width: 8),
-                      _buildStatChip(Icons.favorite, '$_likes likes'),
                     ],
                   ),
                   const SizedBox(height: 16),

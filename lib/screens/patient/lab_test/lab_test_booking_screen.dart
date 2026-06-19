@@ -427,7 +427,7 @@ class _LabTestBookingScreenState extends ConsumerState<LabTestBookingScreen>
             Row(
               children: [
                 Text(
-                  '₹${test.price.toStringAsFixed(0)}',
+                  '৳${test.price.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -565,7 +565,7 @@ class _LabTestBookingScreenState extends ConsumerState<LabTestBookingScreen>
             Row(
               children: [
                 Text(
-                  '₹${booking.finalAmount.toStringAsFixed(0)}',
+                  '৳${booking.finalAmount.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -828,7 +828,7 @@ class _LabTestBookingScreenState extends ConsumerState<LabTestBookingScreen>
                       children: [
                         const Text('Total Amount'),
                         Text(
-                          '₹${_cart.fold<double>(0, (sum, item) => sum + item.price).toStringAsFixed(0)}',
+                          '৳${_cart.fold<double>(0, (sum, item) => sum + item.price).toStringAsFixed(0)}',
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,

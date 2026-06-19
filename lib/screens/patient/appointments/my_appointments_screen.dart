@@ -7,6 +7,7 @@ import '../../../core/widgets/status_chip.dart';
 import '../../../core/providers/appointment_provider.dart';
 import '../../../models/appointment_model.dart';
 import 'appointment_detail_screen.dart';
+import '../doctors/search_doctors_screen.dart';
 
 class MyAppointmentsScreen extends ConsumerStatefulWidget {
   const MyAppointmentsScreen({super.key});
@@ -33,7 +34,41 @@ class _MyAppointmentsScreenState extends ConsumerState<MyAppointmentsScreen>
 
   List<AppointmentModel> _getFilteredAppointments(
       List<AppointmentModel> appointments, AppointmentStatus? status) {
-    if (status == null) return appointments;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    if (status == null) {
+      // All tab - show only current/future upcoming appointments (exclude past ones)
+      final filtered = appointments.where((apt) {
+        final aptDate = DateTime(apt.date.year, apt.date.month, apt.date.day);
+        // Show if: upcoming and date is today or future, OR status is not completed/cancelled
+        return apt.status == AppointmentStatus.upcoming && 
+               (aptDate.isAtSameMomentAs(today) || aptDate.isAfter(today));
+      }).toList();
+      filtered.sort((a, b) => a.date.compareTo(b.date)); // Sort ascending
+      return filtered;
+    }
+    
+    if (status == AppointmentStatus.upcoming) {
+      // Only show appointments that are today or in the future AND have upcoming status
+      return appointments.where((apt) {
+        final aptDate = DateTime(apt.date.year, apt.date.month, apt.date.day);
+        return apt.status == AppointmentStatus.upcoming && 
+               (aptDate.isAtSameMomentAs(today) || aptDate.isAfter(today));
+      }).toList()
+        ..sort((a, b) => a.date.compareTo(b.date)); // Sort ascending for upcoming
+    }
+    
+    if (status == AppointmentStatus.completed) {
+      // Show completed appointments AND past appointments that were "upcoming" but date passed
+      return appointments.where((apt) {
+        final aptDate = DateTime(apt.date.year, apt.date.month, apt.date.day);
+        return apt.status == AppointmentStatus.completed ||
+               (apt.status == AppointmentStatus.upcoming && aptDate.isBefore(today));
+      }).toList()
+        ..sort((a, b) => b.date.compareTo(a.date)); // Sort descending for completed
+    }
+    
     return appointments.where((apt) => apt.status == status).toList();
   }
 
@@ -87,6 +122,22 @@ class _MyAppointmentsScreenState extends ConsumerState<MyAppointmentsScreen>
               emptyMessage: 'No completed appointments',
             ),
           ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const SearchDoctorsScreen(),
+            ),
+          );
+        },
+        backgroundColor: AppTheme.primaryColor,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'Book Appointment',
+          style: TextStyle(color: Colors.white),
         ),
       ),
     );
@@ -175,11 +226,19 @@ class _AppointmentCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                appointment.specialization,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.primaryColor,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      appointment.specialization,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.primaryColor,
+                          ),
                     ),
+                  ),
+                  // Payment Status Badge
+                  _buildPaymentBadge(context),
+                ],
               ),
               const SizedBox(height: 12),
               const Divider(),
@@ -209,6 +268,35 @@ class _AppointmentCard extends StatelessWidget {
                   ),
                 ],
               ),
+              // Consultation Fee Row
+              if (appointment.consultationFee != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.payments_outlined,
+                      size: 16,
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '৳${appointment.consultationFee!.toStringAsFixed(0)}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      appointment.paymentMethod == PaymentMethod.online
+                          ? '(Paid Online)'
+                          : '(Pay at Clinic)',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (appointment.reason != null) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -241,6 +329,63 @@ class _AppointmentCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentBadge(BuildContext context) {
+    Color bgColor;
+    Color textColor;
+    String text;
+    IconData icon;
+
+    switch (appointment.paymentStatus) {
+      case PaymentStatus.completed:
+        bgColor = Colors.green.withOpacity(0.1);
+        textColor = Colors.green;
+        text = 'Paid';
+        icon = Icons.check_circle;
+        break;
+      case PaymentStatus.pending:
+        bgColor = Colors.orange.withOpacity(0.1);
+        textColor = Colors.orange;
+        text = 'Unpaid';
+        icon = Icons.schedule;
+        break;
+      case PaymentStatus.failed:
+        bgColor = Colors.red.withOpacity(0.1);
+        textColor = Colors.red;
+        text = 'Failed';
+        icon = Icons.error;
+        break;
+      case PaymentStatus.refunded:
+        bgColor = Colors.blue.withOpacity(0.1);
+        textColor = Colors.blue;
+        text = 'Refunded';
+        icon = Icons.replay;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: textColor),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

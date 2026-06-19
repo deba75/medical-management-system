@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Doctor Details - Telemedicine Admin{% endblock %}
+{% block title %}Doctor Details - MediConnect Admin{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -110,18 +110,39 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <!-- BMDC Certificate -->
-                        <div class="col-md-6">
+                        <div class="col-md-12 mb-3">
                             <div class="border rounded p-3">
                                 <h6 class="mb-2"><i class="bi bi-file-earmark-medical me-2"></i>BMDC Certificate</h6>
-                                {% if doctor.certificateURLs and doctor.certificateURLs.bmdc %}
-                                <a href="{{ doctor.certificateURLs.bmdc }}" target="_blank" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-eye me-1"></i> View
-                                </a>
-                                <a href="{{ doctor.certificateURLs.bmdc }}" download class="btn btn-sm btn-secondary">
-                                    <i class="bi bi-download me-1"></i> Download
-                                </a>
+                                {% if doctor.bmdcCertificateUrl %}
+                                <div class="text-center mb-2">
+                                    <img src="{{ doctor.bmdcCertificateUrl }}" alt="BMDC Certificate" class="img-fluid rounded shadow-sm" style="max-height: 400px; max-width: 100%;">
+                                </div>
+                                {% if not doctor.bmdcCertificateUrl.startswith('data:') %}
+                                <div class="text-center">
+                                    <a href="{{ doctor.bmdcCertificateUrl }}" target="_blank" class="btn btn-sm btn-primary me-2">
+                                        <i class="bi bi-eye me-1"></i> View Full
+                                    </a>
+                                    <a href="{{ doctor.bmdcCertificateUrl }}" download class="btn btn-sm btn-secondary">
+                                        <i class="bi bi-download me-1"></i> Download
+                                    </a>
+                                </div>
+                                {% endif %}
+                                {% elif doctor.certificateURLs and doctor.certificateURLs is iterable and doctor.certificateURLs|length > 0 %}
+                                <div class="text-center mb-2">
+                                    <img src="{{ doctor.certificateURLs[0] }}" alt="BMDC Certificate" class="img-fluid rounded shadow-sm" style="max-height: 400px; max-width: 100%;">
+                                </div>
+                                {% if not doctor.certificateURLs[0].startswith('data:') %}
+                                <div class="text-center">
+                                    <a href="{{ doctor.certificateURLs[0] }}" target="_blank" class="btn btn-sm btn-primary me-2">
+                                        <i class="bi bi-eye me-1"></i> View Full
+                                    </a>
+                                    <a href="{{ doctor.certificateURLs[0] }}" download class="btn btn-sm btn-secondary">
+                                        <i class="bi bi-download me-1"></i> Download
+                                    </a>
+                                </div>
+                                {% endif %}
                                 {% else %}
-                                <p class="text-muted mb-0">Not uploaded</p>
+                                <p class="text-muted mb-0"><i class="bi bi-exclamation-circle me-1"></i>Not uploaded</p>
                                 {% endif %}
                             </div>
                         </div>

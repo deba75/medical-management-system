@@ -28,6 +28,7 @@ class UserModel {
   final bool profileCompleted;
   final DateTime createdAt;
   final DateTime? dateOfBirth;
+  final String? patientId;
 
   UserModel({
     required this.userId,
@@ -39,6 +40,7 @@ class UserModel {
     this.profileCompleted = false,
     required this.createdAt,
     this.dateOfBirth,
+    this.patientId,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -55,6 +57,7 @@ class UserModel {
       profileCompleted: json['profileCompleted'] ?? false,
       createdAt: _parseDateTime(json['createdAt']),
       dateOfBirth: _parseDateTimeNullable(json['dateOfBirth']),
+      patientId: json['patientId'],
     );
   }
 
@@ -69,6 +72,7 @@ class UserModel {
       'profileCompleted': profileCompleted,
       'createdAt': createdAt.toIso8601String(),
       'dateOfBirth': dateOfBirth?.toIso8601String(),
+      'patientId': patientId,
     };
   }
 }

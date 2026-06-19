@@ -1,6 +1,6 @@
 {
-    "name": "telimedicine",
-    "short_name": "telimedicine",
+    "name": "mediconnect",
+    "short_name": "mediconnect",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

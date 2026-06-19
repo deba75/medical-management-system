@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../models/doctor_model.dart';
+import '../reviews/doctor_reviews_screen.dart';
 import 'book_appointment_screen.dart';
 
 class DoctorProfileScreen extends StatelessWidget {
@@ -135,10 +136,23 @@ class DoctorProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: _StatCard(
-                            icon: Icons.star_outline,
-                            label: 'Rating',
-                            value: doctor.rating.toString(),
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => DoctorReviewsScreen(
+                                    doctorId: doctor.userId,
+                                    doctorName: doctor.name,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: _StatCard(
+                              icon: Icons.star_outline,
+                              label: 'Rating',
+                              value: doctor.rating.toString(),
+                            ),
                           ),
                         ),
                       ],
@@ -237,7 +251,7 @@ class DoctorProfileScreen extends StatelessWidget {
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
                         Text(
-                          '₹${doctor.consultationFee}',
+                          '৳${doctor.consultationFee.toStringAsFixed(0)}',
                           style:
                               Theme.of(context).textTheme.headlineSmall?.copyWith(
                                     color: AppTheme.primaryColor,

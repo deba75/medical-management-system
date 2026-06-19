@@ -10,11 +10,15 @@ class HealthArticleService {
     return _firestore
         .collection(_collection)
         .where('isPublished', isEqualTo: true)
-        .orderBy('publishedAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final articles = snapshot.docs
+              .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
+              .toList();
+          // Sort locally to avoid needing composite index
+          articles.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+          return articles;
+        });
   }
 
   // Get featured articles
@@ -23,12 +27,15 @@ class HealthArticleService {
         .collection(_collection)
         .where('isPublished', isEqualTo: true)
         .where('isFeatured', isEqualTo: true)
-        .orderBy('publishedAt', descending: true)
-        .limit(5)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final articles = snapshot.docs
+              .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
+              .toList();
+          // Sort locally and limit
+          articles.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+          return articles.take(5).toList();
+        });
   }
 
   // Get articles by category
@@ -37,11 +44,15 @@ class HealthArticleService {
         .collection(_collection)
         .where('isPublished', isEqualTo: true)
         .where('category', isEqualTo: category.name)
-        .orderBy('publishedAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final articles = snapshot.docs
+              .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
+              .toList();
+          // Sort locally to avoid needing composite index
+          articles.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+          return articles;
+        });
   }
 
   // Get article by ID
@@ -133,11 +144,15 @@ class HealthArticleService {
     return _firestore
         .collection(_collection)
         .where('authorId', isEqualTo: authorId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
-            .toList());
+        .map((snapshot) {
+          final articles = snapshot.docs
+              .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
+              .toList();
+          // Sort locally to avoid needing composite index
+          articles.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return articles;
+        });
   }
 
   // Create article (for doctors)

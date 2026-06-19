@@ -1,6 +1,6 @@
-# 🏥 TeleMedicine Admin Panel (Python FastAPI)
+# 🏥 MediConnect Admin Panel (Python FastAPI)
 
-Backend API for administrative functions of the TeleMedicine system.
+Backend API for administrative functions of the MediConnect system.
 
 ## 🚀 Quick Start
 

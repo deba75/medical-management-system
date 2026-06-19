@@ -1,4 +1,4 @@
-# telimedicine
+# mediconnect
 
 A new Flutter project.
 

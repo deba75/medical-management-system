@@ -7,12 +7,11 @@ import '../../core/providers/theme_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/appointment_model.dart';
 import 'chambers/manage_chambers_screen.dart';
-import 'earnings/earnings_dashboard_screen.dart';
 import 'availability/manage_availability_screen.dart';
-import 'productivity/productivity_dashboard_screen.dart';
 import 'search/patient_search_screen.dart';
 import 'settings/settings_screen.dart';
 import 'appointments/doctor_appointments_screen.dart';
+import 'patient_records/request_access_screen.dart';
 
 class DoctorHomeScreen extends ConsumerStatefulWidget {
   const DoctorHomeScreen({super.key});
@@ -255,7 +254,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                     const SizedBox(height: 24),
                     
                     // Quick Actions
-                    _buildQuickActionsSection(context),
+                    _buildQuickActions(context),
                     const SizedBox(height: 24),
                     
                     // Today's Schedule
@@ -379,7 +378,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
     );
   }
   
-  Widget _buildQuickActionsSection(BuildContext context) {
+  Widget _buildQuickActions(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -390,71 +389,38 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
           ),
         ),
         const SizedBox(height: 16),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _QuickActionCard(
-                icon: Icons.calendar_month,
-                label: 'Manage\nAvailability',
-                color: AppTheme.primaryColor,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ManageAvailabilityScreen()),
-                  );
-                },
-              ),
-              const SizedBox(width: 12),
-              _QuickActionCard(
-                icon: Icons.trending_up,
-                label: 'Productivity\nIndex',
-                color: Colors.green,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ProductivityDashboardScreen()),
-                  );
-                },
-              ),
-              const SizedBox(width: 12),
-              _QuickActionCard(
-                icon: Icons.account_balance_wallet,
-                label: 'Earnings\nDashboard',
-                color: Colors.amber.shade700,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const EarningsDashboardScreen()),
-                  );
-                },
-              ),
-              const SizedBox(width: 12),
-              _QuickActionCard(
-                icon: Icons.business,
-                label: 'Manage\nChambers',
-                color: Colors.purple,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ManageChambersScreen()),
-                  );
-                },
-              ),
-              const SizedBox(width: 12),
-              _QuickActionCard(
-                icon: Icons.search,
-                label: 'Search\nPatient',
-                color: Colors.teal,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const PatientSearchScreen()),
-                  );
-                },
-              ),
-            ],
-          ),
+        GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            _QuickActionCard(
+              label: 'Manage\nAvailability',
+              icon: Icons.event_available,
+              color: AppTheme.primaryColor,
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageAvailabilityScreen())),
+            ),
+            _QuickActionCard(
+              label: 'View\nAppointments',
+              icon: Icons.list_alt,
+              color: Colors.blue,
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorAppointmentsScreen())),
+            ),
+            _QuickActionCard(
+              label: 'Manage\nChambers',
+              icon: Icons.business,
+              color: Colors.orange,
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageChambersScreen())),
+            ),
+            _QuickActionCard(
+              label: 'Request\nPatient Access',
+              icon: Icons.person_search,
+              color: Colors.teal,
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RequestAccessScreen())),
+            ),
+          ],
         ),
       ],
     );

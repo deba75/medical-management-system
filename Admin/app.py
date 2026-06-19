@@ -8,7 +8,7 @@ import os
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'telemedicine-admin-secret-key-change-in-production')
+app.secret_key = os.environ.get('SECRET_KEY', 'mediconnect-admin-secret-key-change-in-production')
 
 # CORS
 CORS(app)
@@ -60,7 +60,7 @@ except Exception as e:
 
 # Admin credentials (in production, store these securely in environment variables)
 ADMIN_CREDENTIALS = {
-    'admin@telemedicine.com': generate_password_hash('admin123')  # Change this password in production!
+    'admin@mediconnect.com': generate_password_hash('admin123')  # Change this password in production!
 }
 
 # Login required decorator
@@ -1122,10 +1122,10 @@ def server_error(e):
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("TeleMedicine Admin Dashboard")
+    print("MediConnect Admin Dashboard")
     print("=" * 60)
     print("Starting Flask server...")
     print("Admin Dashboard: http://localhost:5000")
-    print("Default Login: admin@telemedicine.com / admin123")
+    print("Default Login: admin@mediconnect.com / admin123")
     print("=" * 60)
     app.run(debug=True, host="0.0.0.0", port=5000)

@@ -111,13 +111,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.privacy_tip,
                 title: 'Privacy Policy',
                 subtitle: 'View our privacy policy',
-                onTap: () => _openUrl('https://www.telemedicine.com/privacy'),
+                onTap: () => _openUrl('https://www.mediconnect.com/privacy'),
               ),
               _buildNavigationTile(
                 icon: Icons.description,
                 title: 'Terms of Service',
                 subtitle: 'View terms and conditions',
-                onTap: () => _openUrl('https://www.telemedicine.com/terms'),
+                onTap: () => _openUrl('https://www.mediconnect.com/terms'),
               ),
             ],
           ),
@@ -342,8 +342,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Text(
                 url.contains('privacy') 
-                    ? 'Privacy Policy\n\nYour privacy is important to us. This telemedicine app collects and uses your personal information only for providing healthcare services.\n\n• We collect your name, email, phone, and health information\n• Your data is securely stored and encrypted\n• We do not share your information with third parties without consent\n• You can request deletion of your data at any time\n\nFor more information, contact support@telemedicine.com'
-                    : 'Terms of Service\n\nBy using this telemedicine app, you agree to the following terms:\n\n• This app is for informational purposes and does not replace professional medical advice\n• You must provide accurate health information\n• You are responsible for maintaining the confidentiality of your account\n• We reserve the right to terminate accounts that violate our terms\n\nFor more information, contact support@telemedicine.com',
+                    ? 'Privacy Policy\n\nYour privacy is important to us. This mediconnect app collects and uses your personal information only for providing healthcare services.\n\n• We collect your name, email, phone, and health information\n• Your data is securely stored and encrypted\n• We do not share your information with third parties without consent\n• You can request deletion of your data at any time\n\nFor more information, contact support@mediconnect.com'
+                    : 'Terms of Service\n\nBy using this mediconnect app, you agree to the following terms:\n\n• This app is for informational purposes and does not replace professional medical advice\n• You must provide accurate health information\n• You are responsible for maintaining the confidentiality of your account\n• We reserve the right to terminate accounts that violate our terms\n\nFor more information, contact support@mediconnect.com',
                 style: const TextStyle(fontSize: 14),
               ),
             ],

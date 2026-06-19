@@ -10,13 +10,16 @@ class DoctorModel {
   final bool active;
   final String? photoURL;
 
+  // Fixed consultation fee for all doctors
+  static const double fixedConsultationFee = 500.0;
+
   DoctorModel({
     required this.doctorId,
     required this.userId,
     required this.name,
     required this.specialization,
     required this.hospitals,
-    required this.consultationFee,
+    this.consultationFee = fixedConsultationFee, // Default to fixed fee
     this.rating = 0.0,
     required this.profileBio,
     this.active = true,
@@ -43,7 +46,7 @@ class DoctorModel {
       name: json['name'] ?? '',
       specialization: json['specialization'] ?? '',
       hospitals: hospitalsList,
-      consultationFee: (json['consultationFee'] ?? 0).toDouble(),
+      consultationFee: fixedConsultationFee, // Always use fixed fee of 500
       rating: (json['rating'] ?? 0).toDouble(),
       profileBio: json['profileBio'] ?? '',
       active: json['active'] ?? true,

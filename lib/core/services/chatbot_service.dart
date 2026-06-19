@@ -110,7 +110,7 @@ class ChatbotService {
         model: 'gemini-1.5-flash',
         apiKey: apiKey,
         systemInstruction: Content.text('''
-You are MediBot, a helpful medical assistant for a telemedicine app called TeleMedicine.
+You are MediBot, a helpful medical assistant for a telemedicine app called MediConnect.
 
 Your primary roles are:
 1. **Symptom Assessment**: Help patients describe their symptoms clearly and ask follow-up questions to understand their condition better.

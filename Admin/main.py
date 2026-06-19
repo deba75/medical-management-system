@@ -10,8 +10,8 @@ import os
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="TeleMedicine Admin API",
-    description="Admin Panel Backend for TeleMedicine System",
+    title="MediConnect Admin API",
+    description="Admin Panel Backend for MediConnect System",
     version="1.0.0"
 )
 
@@ -78,7 +78,7 @@ def verify_admin_token(authorization: str = None):
 @app.get("/")
 async def root():
     return {
-        "message": "TeleMedicine Admin API",
+        "message": "MediConnect Admin API",
         "version": "1.0.0",
         "status": "active"
     }

@@ -376,7 +376,7 @@ class _DoctorCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          '₹${doctor.consultationFee}',
+                          '৳${doctor.consultationFee.toStringAsFixed(0)}',
                           style:
                               Theme.of(context).textTheme.titleMedium?.copyWith(
                                     color: AppTheme.primaryColor,

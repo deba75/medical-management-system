@@ -9,11 +9,11 @@ import '../appointments/doctor_appointments_screen.dart';
 import '../schedule/manage_schedule_screen.dart';
 import '../settings/settings_screen.dart';
 import '../../patient/appointments/appointment_detail_screen.dart';
-import '../referrals/referral_management_screen.dart';
 import '../templates/template_management_screen.dart';
 import '../analytics/doctor_analytics_screen.dart';
 import '../patient_records/patient_records_screen.dart';
 import '../earnings/earnings_dashboard_screen.dart';
+import '../articles/doctor_articles_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DoctorHomeScreen extends StatefulWidget {
@@ -257,40 +257,105 @@ class _DashboardTabState extends ConsumerState<_DashboardTab> {
   Future<void> _loadTodayAppointments() async {
     setState(() => _isLoading = true);
 
-    // TODO: Fetch from Firestore
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
 
-    // Mock data
-    _todayAppointments = [
-      AppointmentModel(
-        appointmentId: '1',
-        doctorId: 'current_doctor',
-        patientId: '1',
-        doctorName: 'Dr. Current',
-        patientName: 'John Doe',
-        specialization: 'Cardiologist',
-        date: DateTime.now(),
-        timeSlotId: '1',
-        timeSlot: '09:00 - 09:30',
-        status: AppointmentStatus.upcoming,
-        reason: 'Chest pain',
-      ),
-      AppointmentModel(
-        appointmentId: '2',
-        doctorId: 'current_doctor',
-        patientId: '2',
-        doctorName: 'Dr. Current',
-        patientName: 'Jane Smith',
-        specialization: 'Cardiologist',
-        date: DateTime.now(),
-        timeSlotId: '4',
-        timeSlot: '10:30 - 11:00',
-        status: AppointmentStatus.upcoming,
-        reason: 'Follow-up checkup',
-      ),
-    ];
+      // Get today's date range
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
 
-    setState(() => _isLoading = false);
+      debugPrint('=== DOCTOR DASHBOARD LOADING ===');
+      debugPrint('Logged in doctor Auth UID: $userId');
+      
+      // First, get the doctor's Firestore document ID (might be different from Auth UID for old data)
+      final doctorDoc = await FirebaseFirestore.instance
+          .collection('doctors')
+          .doc(userId)
+          .get();
+      
+      final firestoreDoctorId = doctorDoc.id;
+      final storedUserId = doctorDoc.data()?['userId'] ?? '';
+      debugPrint('Firestore doc ID: $firestoreDoctorId');
+      debugPrint('Stored userId in doc: $storedUserId');
+
+      // Fetch all appointments from Firestore for this doctor
+      // Query by Auth UID (standard case)
+      final snapshot = await FirebaseFirestore.instance
+          .collection('appointments')
+          .where('doctorId', isEqualTo: userId)
+          .get();
+
+      debugPrint('Found ${snapshot.docs.length} appointments with doctorId=$userId');
+
+      final allAppointments = snapshot.docs.map((doc) {
+        final data = doc.data();
+        debugPrint('Appointment: ${doc.id}, doctorId: ${data['doctorId']}, patientName: ${data['patientName']}, date: ${data['date']}');
+        
+        // Parse date - handle both Timestamp and String
+        DateTime parseDate(dynamic dateValue) {
+          if (dateValue == null) return DateTime.now();
+          if (dateValue is Timestamp) return dateValue.toDate();
+          if (dateValue is String) return DateTime.parse(dateValue);
+          return DateTime.now();
+        }
+        
+        return AppointmentModel(
+          appointmentId: doc.id,
+          doctorId: data['doctorId'] ?? '',
+          patientId: data['patientId'] ?? '',
+          doctorName: data['doctorName'] ?? '',
+          patientName: data['patientName'] ?? 'Unknown Patient',
+          specialization: data['specialization'] ?? '',
+          date: parseDate(data['date']),
+          timeSlotId: data['timeSlotId'] ?? '',
+          timeSlot: data['timeSlot'] ?? '',
+          status: _parseStatus(data['status']),
+          reason: data['reason'] ?? '',
+        );
+      }).toList();
+
+      // Filter upcoming appointments (today and future) with upcoming status
+      _todayAppointments = allAppointments.where((apt) {
+        final aptDate = DateTime(apt.date.year, apt.date.month, apt.date.day);
+        return apt.status == AppointmentStatus.upcoming &&
+               (aptDate.isAtSameMomentAs(today) || aptDate.isAfter(today));
+      }).toList();
+
+      // Sort by date and time slot
+      _todayAppointments.sort((a, b) {
+        final dateCompare = a.date.compareTo(b.date);
+        if (dateCompare != 0) return dateCompare;
+        return a.timeSlot.compareTo(b.timeSlot);
+      });
+
+      debugPrint('Filtered to ${_todayAppointments.length} upcoming appointments');
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading appointments: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  AppointmentStatus _parseStatus(String? status) {
+    switch (status) {
+      case 'upcoming':
+        return AppointmentStatus.upcoming;
+      case 'completed':
+        return AppointmentStatus.completed;
+      case 'cancelled':
+        return AppointmentStatus.cancelled;
+      default:
+        return AppointmentStatus.upcoming;
+    }
   }
 
   @override
@@ -575,18 +640,6 @@ class _DashboardTabState extends ConsumerState<_DashboardTab> {
               ),
               const SizedBox(width: 12),
               _QuickActionCard(
-                icon: Icons.swap_horiz,
-                label: 'Referrals',
-                color: Colors.orange,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ReferralManagementScreen()),
-                  );
-                },
-              ),
-              const SizedBox(width: 12),
-              _QuickActionCard(
                 icon: Icons.analytics,
                 label: 'Analytics',
                 color: Colors.purple,
@@ -594,6 +647,18 @@ class _DashboardTabState extends ConsumerState<_DashboardTab> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const DoctorAnalyticsScreen()),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              _QuickActionCard(
+                icon: Icons.article,
+                label: 'Articles',
+                color: Colors.indigo,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DoctorArticlesScreen()),
                   );
                 },
               ),
@@ -636,7 +701,7 @@ class _DashboardTabState extends ConsumerState<_DashboardTab> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Today\'s Appointments',
+              'Upcoming Appointments',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),

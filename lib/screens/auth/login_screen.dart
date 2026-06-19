@@ -139,6 +139,133 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
+  void _showForgotPasswordDialog(BuildContext context) {
+    final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.lock_reset, color: AppTheme.primaryColor, size: 28),
+            ),
+            const SizedBox(width: 12),
+            const Text('Reset Password'),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter your email address and we\'ll send you a link to reset your password.',
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  hintText: 'Enter your email',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(context);
+                await _sendPasswordResetEmail(emailController.text.trim());
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _sendPasswordResetEmail(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text('Password reset email sent! Check your inbox.'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        String errorMessage = 'Failed to send reset email';
+        if (e.code == 'user-not-found') {
+          errorMessage = 'No account found with this email';
+        } else if (e.code == 'invalid-email') {
+          errorMessage = 'Invalid email address';
+        }
+        _showErrorSnackBar(errorMessage);
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Failed to send reset email: $e');
+      }
+    }
+  }
+
   Future<void> _handleDoctorLogin(String userId) async {
     try {
       final doctorDoc = await FirebaseFirestore.instance
@@ -323,7 +450,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           ),
                           const SizedBox(height: 24),
                           const Text(
-                            'TeleMedicine',
+                            'MediConnect',
                             style: TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,
@@ -440,9 +567,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             Align(
                               alignment: Alignment.centerRight,
                               child: TextButton(
-                                onPressed: () {
-                                  // TODO: Implement forgot password
-                                },
+                                onPressed: () => _showForgotPasswordDialog(context),
                                 child: Text(
                                   'Forgot Password?',
                                   style: TextStyle(
