@@ -482,6 +482,10 @@
                 <i class="bi bi-building"></i>
                 <span>Diagnostic Centres</span>
             </a>
+            <a href="{{ url_for('admin_articles') }}" class="sidebar-link {% if 'article' in request.path %}active{% endif %}">
+                <i class="bi bi-journal-medical"></i>
+                <span>Doctor Articles</span>
+            </a>
             
             <div class="nav-section-title">Reports</div>
             <a href="{{ url_for('analytics') }}" class="sidebar-link {% if 'analytics' in request.path %}active{% endif %}">

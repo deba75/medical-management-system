@@ -2178,6 +2178,150 @@ def diagnostic_delete_collector(index):
                 flash('Collector staff member removed.', 'info')
     return redirect(url_for('diagnostic_collectors'))
 
+# =================== Admin Articles Management Routes ===================
+
+@app.route('/admin/articles')
+@login_required
+def admin_articles():
+    if session.get('user_role') != 'admin':
+        flash('Unauthorized access.', 'danger')
+        return redirect(url_for('login'))
+        
+    status_filter = request.args.get('status', '')
+    search_query = request.args.get('search', '').strip().lower()
+    
+    articles = []
+    stats = {'total': 0, 'published': 0, 'restricted': 0, 'draft': 0}
+    
+    if db is not None:
+        try:
+            docs = list(db.collection('health_articles').stream())
+            for d in docs:
+                data = d.to_dict()
+                data['id'] = d.id
+                
+                is_pub = data.get('isPublished', True)
+                status = data.get('status', 'published' if is_pub else 'restricted')
+                if not is_pub and status != 'draft':
+                    status = 'restricted'
+                data['status'] = status
+                
+                # Stats calculation
+                stats['total'] += 1
+                if status == 'published':
+                    stats['published'] += 1
+                elif status == 'restricted':
+                    stats['restricted'] += 1
+                elif status == 'draft':
+                    stats['draft'] += 1
+                    
+                # Search & status filtering
+                matches_status = not status_filter or status == status_filter
+                matches_search = not search_query or (
+                    search_query in (data.get('title') or '').lower() or
+                    search_query in (data.get('authorName') or data.get('doctorName') or '').lower()
+                )
+                
+                if matches_status and matches_search:
+                    articles.append(data)
+        except Exception as e:
+            print(f"Error fetching articles: {e}")
+            
+    return render_template('articles.html',
+                           articles=articles,
+                           stats=stats,
+                           current_status=status_filter,
+                           search_query=search_query)
+
+@app.route('/admin/article/edit/<article_id>')
+@login_required
+def admin_edit_article(article_id):
+    if session.get('user_role') != 'admin':
+        flash('Unauthorized access.', 'danger')
+        return redirect(url_for('login'))
+        
+    article = {'id': article_id, 'title': '', 'category': 'General Health', 'content': ''}
+    if db is not None:
+        try:
+            doc = db.collection('health_articles').document(article_id).get()
+            if doc.exists:
+                article = doc.to_dict()
+                article['id'] = doc.id
+        except Exception as e:
+            flash(f"Error fetching article: {e}", "danger")
+            
+    return render_template('edit_article.html', article=article)
+
+@app.route('/admin/article/save/<article_id>', methods=['POST'])
+@login_required
+def admin_save_article(article_id):
+    if session.get('user_role') != 'admin':
+        flash('Unauthorized access.', 'danger')
+        return redirect(url_for('login'))
+        
+    title = request.form.get('title')
+    category = request.form.get('category')
+    summary = request.form.get('summary')
+    imageUrl = request.form.get('imageUrl')
+    content = request.form.get('content')
+    status = request.form.get('status', 'published')
+    isFeatured = request.form.get('isFeatured') == 'true'
+    
+    isPublished = (status == 'published')
+    
+    if db is not None:
+        try:
+            db.collection('health_articles').document(article_id).set({
+                'title': title,
+                'category': category,
+                'summary': summary,
+                'imageUrl': imageUrl,
+                'content': content,
+                'body': content,
+                'status': status,
+                'isPublished': isPublished,
+                'isFeatured': isFeatured,
+                'updatedAt': datetime.now()
+            }, merge=True)
+            flash('Article changes saved successfully!', 'success')
+        except Exception as e:
+            flash(f'Error saving article: {e}', 'danger')
+            
+    return redirect(url_for('admin_articles'))
+
+@app.route('/admin/article/<article_id>/<action>')
+@login_required
+def admin_update_article_status(article_id, action):
+    if session.get('user_role') != 'admin':
+        flash('Unauthorized access.', 'danger')
+        return redirect(url_for('login'))
+        
+    if db is not None:
+        try:
+            doc_ref = db.collection('health_articles').document(article_id)
+            if action == 'restrict':
+                doc_ref.update({
+                    'status': 'restricted',
+                    'isPublished': False,
+                    'restrictedAt': datetime.now()
+                })
+                flash('Article restricted and blocked from patient view.', 'warning')
+            elif action == 'approve':
+                doc_ref.update({
+                    'status': 'published',
+                    'isPublished': True,
+                    'approvedAt': datetime.now()
+                })
+                flash('Article approved and published live for patients!', 'success')
+            elif action == 'delete':
+                doc_ref.delete()
+                flash('Article deleted successfully.', 'info')
+        except Exception as e:
+            flash(f'Error updating article: {e}', 'danger')
+            
+    return redirect(url_for('admin_articles'))
+
+
 # =================== Error Handlers ===================
 
 @app.errorhandler(404)

@@ -13,6 +13,7 @@ class HealthArticleService {
         .snapshots()
         .map((snapshot) {
           final articles = snapshot.docs
+              .where((doc) => doc.data()['status'] != 'restricted')
               .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
               .toList();
           // Sort locally to avoid needing composite index

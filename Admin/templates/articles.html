@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Doctor Articles Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold text-dark mb-1">Doctor Articles Management</h3>
+        <p class="text-muted small mb-0">Review, publish, edit, or restrict health articles published by doctors</p>
+    </div>
+</div>
+
+<!-- Stats Overview -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3 bg-white rounded-3 border-start border-primary border-4">
+            <small class="text-muted fw-bold">Total Doctor Articles</small>
+            <h3 class="fw-bold mb-0 text-primary">{{ stats.total if stats else articles|length }}</h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3 bg-white rounded-3 border-start border-success border-4">
+            <small class="text-muted fw-bold">Published & Live</small>
+            <h3 class="fw-bold mb-0 text-success">{{ stats.published if stats else 0 }}</h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3 bg-white rounded-3 border-start border-danger border-4">
+            <small class="text-danger fw-bold"><i class="bi bi-shield-slash me-1"></i>Restricted by Admin</small>
+            <h3 class="fw-bold mb-0 text-danger">{{ stats.restricted if stats else 0 }}</h3>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('admin_articles') }}" class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <select name="status" class="form-select fw-bold" onchange="this.form.submit()">
+                    <option value="" {% if not current_status %}selected{% endif %}>All Article Statuses</option>
+                    <option value="published" {% if current_status == 'published' %}selected{% endif %}>Published & Live</option>
+                    <option value="restricted" {% if current_status == 'restricted' %}selected{% endif %}>🚫 Restricted by Admin</option>
+                    <option value="draft" {% if current_status == 'draft' %}selected{% endif %}>Drafts</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control" placeholder="Search by title or author..." value="{{ search_query or '' }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-search me-1"></i>Filter Articles</button>
+                <a href="{{ url_for('admin_articles') }}" class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Articles List Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        {% if articles %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Article Info</th>
+                        <th>Author / Doctor</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Date Published</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in articles %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if item.imageUrl %}
+                                <img src="{{ item.imageUrl }}" class="rounded-3 me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                                {% else %}
+                                <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-2 me-3 text-center" style="width: 50px; height: 50px;">
+                                    <i class="bi bi-journal-text fs-4"></i>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <div class="fw-bold text-dark">{{ item.title or 'Untitled Article' }}</div>
+                                    <small class="text-muted d-block text-truncate" style="max-width: 280px;">
+                                        {{ item.summary or item.content[:80] if item.content else 'No summary provided' }}
+                                    </small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-bold">{{ item.authorName or item.doctorName or 'Doctor' }}</div>
+                            <small class="text-muted">ID: {{ (item.authorId or item.doctorId or 'N/A')[:8] }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ item.category or 'General Health' }}</span>
+                        </td>
+                        <td>
+                            {% if item.status == 'restricted' or item.isPublished == false %}
+                            <span class="badge bg-danger text-white"><i class="bi bi-shield-slash me-1"></i>Restricted</span>
+                            {% elif item.isPublished == true or item.status == 'published' %}
+                            <span class="badge bg-success text-white"><i class="bi bi-check-circle me-1"></i>Published</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Draft</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ item.publishedAt or item.createdAt or 'Recently' }}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('admin_edit_article', article_id=item.id) }}" class="btn btn-outline-primary">
+                                    <i class="bi bi-pencil-square me-1"></i>Edit
+                                </a>
+
+                                {% if item.status == 'restricted' or item.isPublished == false %}
+                                <a href="{{ url_for('admin_update_article_status', article_id=item.id, action='approve') }}" class="btn btn-success">
+                                    <i class="bi bi-check-circle me-1"></i>Approve / Publish
+                                </a>
+                                {% else %}
+                                <a href="{{ url_for('admin_update_article_status', article_id=item.id, action='restrict') }}" class="btn btn-warning text-dark" onclick="return confirm('Restrict/Block this article from being displayed to patients?')">
+                                    <i class="bi bi-shield-slash me-1"></i>Restrict
+                                </a>
+                                {% endif %}
+
+                                <a href="{{ url_for('admin_update_article_status', article_id=item.id, action='delete') }}" class="btn btn-outline-danger" onclick="return confirm('Permanently delete this article?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-journal-x fs-1"></i>
+            <p class="mt-2 mb-0">No doctor articles found matching filter.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
