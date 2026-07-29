@@ -1737,24 +1737,70 @@ def doctor_request_access(patient_id):
 @doctor_required
 def doctor_earnings():
     doctor_id = session.get('user_id')
-    completed_list = []
-    total_revenue = 0
+    user_email = session.get('user_email')
+    user_name = session.get('user_name', '')
+    
+    paid_patients_list = []
+    total_revenue = 0.0
+    online_revenue = 0.0
+    in_person_revenue = 0.0
+    
     if db is not None:
-        docs = db.collection('appointments').stream()
-        for d in docs:
-            data = d.to_dict()
-            data['id'] = d.id
-            if (data.get('doctorId') == doctor_id or session.get('user_role') == 'admin') and data.get('status') == 'completed':
-                completed_list.append(data)
-                total_revenue += float(data.get('fee') or 500)
+        try:
+            docs = list(db.collection('appointments').stream())
+            for d in docs:
+                data = d.to_dict()
+                data['id'] = d.id
                 
-    total_completed = len(completed_list)
-    avg_fee = round(total_revenue / total_completed, 2) if total_completed > 0 else 0
+                doc_id_match = (
+                    (data.get('doctorId') == doctor_id) or
+                    (user_email and data.get('doctorEmail') == user_email) or
+                    (user_email and data.get('doctorId') == user_email) or
+                    (user_name and data.get('doctorName', '').lower() in user_name.lower()) or
+                    (session.get('user_role') == 'admin')
+                )
+                
+                if doc_id_match:
+                    status = data.get('status', 'pending')
+                    payment_status = (data.get('paymentStatus') or '').lower()
+                    payment_method = data.get('paymentMethod') or data.get('paymentType') or 'In-Person Cash'
+                    fee = float(data.get('fee') or data.get('consultationFee') or 500)
+                    
+                    is_paid = (
+                        status == 'completed' or
+                        payment_status in ['paid', 'completed', 'success', 'pay_in_person', 'cash_on_visit', 'collected'] or
+                        data.get('isPaid') == True
+                    )
+                    
+                    if is_paid:
+                        data['fee_earned'] = fee
+                        data['payment_method_display'] = payment_method
+                        
+                        is_online = any(m in payment_method.lower() for m in ['bkash', 'nagad', 'card', 'online'])
+                        if is_online:
+                            online_revenue += fee
+                            data['payment_badge_class'] = 'bg-primary text-white'
+                            data['payment_label'] = f"Online ({payment_method})"
+                        else:
+                            in_person_revenue += fee
+                            data['payment_badge_class'] = 'bg-success text-white'
+                            data['payment_label'] = 'In-Person Cash'
+                            
+                        total_revenue += fee
+                        paid_patients_list.append(data)
+        except Exception as e:
+            print(f"Error fetching doctor earnings: {e}")
+            
+    total_paid_patients = len(paid_patients_list)
+    avg_fee = round(total_revenue / total_paid_patients, 2) if total_paid_patients > 0 else 0
+    
     return render_template('doctor/earnings.html',
                            active_page='earnings',
-                           completed_list=completed_list,
+                           completed_list=paid_patients_list,
                            total_revenue=total_revenue,
-                           total_completed=total_completed,
+                           online_revenue=online_revenue,
+                           in_person_revenue=in_person_revenue,
+                           total_completed=total_paid_patients,
                            avg_fee=avg_fee)
 
 @app.route('/doctor/profile', methods=['GET', 'POST'])
