@@ -2305,6 +2305,13 @@ def admin_update_article_status(article_id, action):
                     'isPublished': False,
                     'restrictedAt': datetime.now()
                 })
+                try:
+                    db.collection('articles').document(article_id).update({
+                        'status': 'restricted',
+                        'isPublished': False
+                    })
+                except Exception:
+                    pass
                 flash('Article restricted and blocked from patient view.', 'warning')
             elif action == 'approve':
                 doc_ref.update({
@@ -2312,10 +2319,21 @@ def admin_update_article_status(article_id, action):
                     'isPublished': True,
                     'approvedAt': datetime.now()
                 })
+                try:
+                    db.collection('articles').document(article_id).update({
+                        'status': 'published',
+                        'isPublished': True
+                    })
+                except Exception:
+                    pass
                 flash('Article approved and published live for patients!', 'success')
             elif action == 'delete':
                 doc_ref.delete()
-                flash('Article deleted successfully.', 'info')
+                try:
+                    db.collection('articles').document(article_id).delete()
+                except Exception:
+                    pass
+                flash('Article deleted permanently from database.', 'info')
         except Exception as e:
             flash(f'Error updating article: {e}', 'danger')
             

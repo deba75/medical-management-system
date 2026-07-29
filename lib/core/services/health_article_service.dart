@@ -31,6 +31,7 @@ class HealthArticleService {
         .snapshots()
         .map((snapshot) {
           final articles = snapshot.docs
+              .where((doc) => doc.data()['status'] != 'restricted')
               .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
               .toList();
           // Sort locally and limit
@@ -48,6 +49,7 @@ class HealthArticleService {
         .snapshots()
         .map((snapshot) {
           final articles = snapshot.docs
+              .where((doc) => doc.data()['status'] != 'restricted')
               .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
               .toList();
           // Sort locally to avoid needing composite index
@@ -60,7 +62,7 @@ class HealthArticleService {
   Future<HealthArticleModel?> getArticleById(String articleId) async {
     try {
       final doc = await _firestore.collection(_collection).doc(articleId).get();
-      if (doc.exists) {
+      if (doc.exists && doc.data()?['status'] != 'restricted' && doc.data()?['isPublished'] == true) {
         return HealthArticleModel.fromJson(doc.data()!, doc.id);
       }
       return null;
@@ -78,6 +80,7 @@ class HealthArticleService {
           .get();
 
       return snapshot.docs
+          .where((doc) => doc.data()['status'] != 'restricted')
           .map((doc) => HealthArticleModel.fromJson(doc.data(), doc.id))
           .where((article) =>
               article.title.toLowerCase().contains(query.toLowerCase()) ||
