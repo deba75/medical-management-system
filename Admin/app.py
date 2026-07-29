@@ -254,6 +254,9 @@ def register_diagnostic():
         phone = request.form.get('phone')
         city = request.form.get('city')
         address = request.form.get('address')
+        dghsCode = request.form.get('dghsCode')
+        pathologistName = request.form.get('pathologistName')
+        pathologistBmdcNumber = request.form.get('pathologistBmdcNumber')
         tradeLicenseNumber = request.form.get('tradeLicenseNumber')
         operatingHours = request.form.get('operatingHours')
         homeCollectionFee = float(request.form.get('homeCollectionFee', 150))
@@ -279,6 +282,9 @@ def register_diagnostic():
                     'phone': phone,
                     'role': 'diagnostic_centre',
                     'verificationStatus': 'pending',
+                    'dghsCode': dghsCode,
+                    'pathologistName': pathologistName,
+                    'pathologistBmdcNumber': pathologistBmdcNumber,
                     'createdAt': datetime.now()
                 })
 
@@ -289,11 +295,15 @@ def register_diagnostic():
                     'phone': phone,
                     'city': city,
                     'address': address,
+                    'dghsCode': dghsCode,
+                    'pathologistName': pathologistName,
+                    'pathologistBmdcNumber': pathologistBmdcNumber,
                     'tradeLicenseNumber': tradeLicenseNumber,
                     'operatingHours': operatingHours,
                     'homeCollectionFee': homeCollectionFee,
                     'isEmergencyAvailable': True,
                     'verificationStatus': 'pending',
+                    'verificationNote': 'DGHS Code & Pathologist BMDC submitted for admin review',
                     'createdAt': datetime.now()
                 })
 
@@ -304,7 +314,7 @@ def register_diagnostic():
                 session['user_name'] = name
                 session['verification_status'] = 'pending'
 
-                flash('Diagnostic Centre registration submitted! Verification is pending admin review.', 'info')
+                flash('Diagnostic Centre registration submitted with DGHS Code & Pathologist BMDC! Verification pending admin review.', 'info')
                 return redirect(url_for('verification_pending'))
             except Exception as e:
                 flash(f'Registration error: {e}', 'danger')

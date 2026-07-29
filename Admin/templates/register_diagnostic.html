@@ -10,9 +10,10 @@
     <style>
         :root { --teal: #0d9488; }
         body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #134e4a 0%, #064e3b 100%); min-height: 100vh; padding: 40px 15px; color: #1e293b; }
-        .reg-card { background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); max-width: 750px; margin: 0 auto; padding: 40px; }
+        .reg-card { background: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); max-width: 800px; margin: 0 auto; padding: 40px; }
         .reg-header { text-align: center; margin-bottom: 30px; }
         .reg-icon { width: 70px; height: 70px; background: rgba(13, 148, 136, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; color: var(--teal); font-size: 2rem; }
+        .section-badge { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: var(--teal); margin-bottom: 12px; display: inline-block; }
     </style>
 </head>
 <body>
@@ -20,7 +21,7 @@
         <div class="reg-header">
             <div class="reg-icon"><i class="bi bi-hospital-fill"></i></div>
             <h3 class="fw-bold mb-1">Diagnostic Centre Web Registration</h3>
-            <p class="text-muted">Register your pathology & diagnostic facility on MediConnect</p>
+            <p class="text-muted">Register your pathology & diagnostic facility with official DGHS & Pathologist credentials</p>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -35,47 +36,73 @@
         {% endwith %}
 
         <form method="POST" action="{{ url_for('register_diagnostic') }}">
-            <div class="row g-3">
+            <!-- Section 1: Centre Credentials -->
+            <div class="section-badge"><i class="bi bi-building me-1"></i>1. Facility Credentials</div>
+            <div class="row g-3 mb-4">
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Diagnostic Centre Name</label>
-                    <input type="text" name="name" class="form-control" placeholder="Popular Diagnostic Centre" required>
+                    <label class="form-label fw-bold">Diagnostic Centre Name <span class="text-danger">*</span></label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Popular Diagnostic Centre" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Contact Email</label>
+                    <label class="form-label fw-bold">Contact Email <span class="text-danger">*</span></label>
                     <input type="email" name="email" class="form-control" placeholder="info@populardiagnostic.com" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Password</label>
-                    <input type="password" name="password" class="form-control" placeholder="Create a secure password (min 6 characters)" required>
+                    <label class="form-label fw-bold">Password <span class="text-danger">*</span></label>
+                    <input type="password" name="password" class="form-control" placeholder="Create password (min 6 characters)" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Contact Phone Number</label>
+                    <label class="form-label fw-bold">Contact Phone Number <span class="text-danger">*</span></label>
                     <input type="text" name="phone" class="form-control" placeholder="+880 1811-000000" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Trade License / Registration Number</label>
+                    <label class="form-label fw-bold">Trade License Number <span class="text-danger">*</span></label>
                     <input type="text" name="tradeLicenseNumber" class="form-control" placeholder="e.g. TRAD/DNCC/012345/2026" required>
                 </div>
+            </div>
+
+            <!-- Section 2: Mandatory Verification Info -->
+            <div class="section-badge"><i class="bi bi-shield-check me-1"></i>2. Official DGHS & Pathologist Verification Info</div>
+            <div class="row g-3 mb-4 p-3 bg-light rounded-3 border">
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">City / District</label>
+                    <label class="form-label fw-bold">DGHS Code / Registration Number <span class="text-danger">*</span></label>
+                    <input type="text" name="dghsCode" class="form-control border-primary" placeholder="e.g. DGHS-LAB-2024-8849" required>
+                    <div class="form-text small text-muted">DGHS Code is mandatory for health ministry verification</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Chief Pathologist Name <span class="text-danger">*</span></label>
+                    <input type="text" name="pathologistName" class="form-control border-primary" placeholder="e.g. Dr. Md. Ashraful Islam" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Pathologist BMDC Reg. Number <span class="text-danger">*</span></label>
+                    <input type="text" name="pathologistBmdcNumber" class="form-control border-primary" placeholder="e.g. BMDC-A-45920" required>
+                    <div class="form-text small text-muted">Pathologist BMDC number is mandatory for lab reports</div>
+                </div>
+            </div>
+
+            <!-- Section 3: Location & Service -->
+            <div class="section-badge"><i class="bi bi-geo-alt me-1"></i>3. Location & Service Configuration</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">City / District <span class="text-danger">*</span></label>
                     <input type="text" name="city" class="form-control" placeholder="Dhaka, Chittagong, Sylhet" required>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Operating Hours</label>
+                    <label class="form-label fw-bold">Operating Hours <span class="text-danger">*</span></label>
                     <input type="text" name="operatingHours" class="form-control" placeholder="7:00 AM - 11:00 PM / 24 Hours" required>
                 </div>
                 <div class="col-md-12">
-                    <label class="form-label fw-bold">Full Address</label>
+                    <label class="form-label fw-bold">Full Address <span class="text-danger">*</span></label>
                     <textarea name="address" class="form-control" rows="2" placeholder="House #12, Road #4, Dhanmondi, Dhaka" required></textarea>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-bold">Home Sample Collection Fee (৳)</label>
+                    <label class="form-label fw-bold">Home Sample Collection Fee (৳) <span class="text-danger">*</span></label>
                     <input type="number" name="homeCollectionFee" class="form-control" value="150" required>
                 </div>
             </div>
 
             <button type="submit" class="btn btn-teal w-100 py-3 fw-bold rounded-3 mt-4" style="background: #0d9488; color: white;">
-                <i class="bi bi-building-check me-2"></i>Complete Diagnostic Centre Registration
+                <i class="bi bi-shield-lock-fill me-2"></i>Submit Application for Admin Verification
             </button>
         </form>
 

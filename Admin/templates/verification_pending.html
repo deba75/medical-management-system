@@ -54,6 +54,9 @@
                 <div class="col-6"><strong>Specialization:</strong> {{ user_data.get('specialization', 'N/A') }}</div>
                 <div class="col-12"><strong>Workplace Hospital:</strong> {{ user_data.get('workplaceHospital', 'N/A') }}</div>
                 {% elif role in ['diagnostic_centre', 'diagnostic'] %}
+                <div class="col-6"><strong>DGHS Code:</strong> <span class="text-primary fw-bold">{{ user_data.get('dghsCode', 'N/A') }}</span></div>
+                <div class="col-6"><strong>Pathologist BMDC:</strong> <span class="text-primary fw-bold">{{ user_data.get('pathologistBmdcNumber', 'N/A') }}</span></div>
+                <div class="col-6"><strong>Chief Pathologist:</strong> {{ user_data.get('pathologistName', 'N/A') }}</div>
                 <div class="col-6"><strong>Trade License No:</strong> {{ user_data.get('tradeLicenseNumber', 'N/A') }}</div>
                 <div class="col-6"><strong>City:</strong> {{ user_data.get('city', 'N/A') }}</div>
                 <div class="col-12"><strong>Address:</strong> {{ user_data.get('address', 'N/A') }}</div>
