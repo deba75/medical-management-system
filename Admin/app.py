@@ -1786,8 +1786,23 @@ def doctor_profile():
                 'updatedAt': datetime.now()
             }
             doc_ref.set(payload, merge=True)
+            
+            # Sync to users collection
+            try:
+                db.collection('users').document(doctor_id).set({
+                    'name': name,
+                    'specialization': specialization,
+                    'qualifications': qualifications,
+                    'bmdcNumber': bmdcNumber,
+                    'consultationFee': consultationFee,
+                    'phone': phone,
+                    'updatedAt': datetime.now()
+                }, merge=True)
+            except Exception as sync_err:
+                print(f"User sync error: {sync_err}")
+
             session['user_name'] = name
-            flash('Doctor profile updated successfully!', 'success')
+            flash('Doctor profile & fee updated successfully across database!', 'success')
             return redirect(url_for('doctor_profile'))
             
         doc = doc_ref.get()

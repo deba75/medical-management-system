@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/theme/app_theme.dart';
 import 'change_password_screen.dart';
 import 'manage_favorite_medicines_dialog.dart';
+import 'edit_doctor_profile_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -102,13 +103,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               _buildNavigationTile(
                 icon: Icons.person,
-                title: 'Edit Profile',
-                subtitle: 'Update your profile information',
+                title: 'Edit Profile & Consultation Fee',
+                subtitle: 'Update your degrees, qualifications, and consultation fee (৳)',
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('You can edit your profile from the Profile section'),
-                      behavior: SnackBarBehavior.floating,
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EditDoctorProfileDialog(),
                     ),
                   );
                 },

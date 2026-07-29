@@ -88,8 +88,14 @@
                             <p class="form-control-plaintext">{{ doctor.workplaceInfo.department if doctor.workplaceInfo else 'Not provided' }}</p>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Qualifications</label>
+                            <label class="form-label fw-bold">Qualifications / Degrees</label>
                             <p class="form-control-plaintext">{{ doctor.qualifications or 'Not provided' }}</p>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Consultation Fee (Read-Only)</label>
+                            <p class="form-control-plaintext text-success fw-bold fs-5">৳{{ doctor.consultationFee or 500 }} <small class="text-muted fs-6 fw-normal">(Set by Doctor)</small></p>
                         </div>
                     </div>
                     

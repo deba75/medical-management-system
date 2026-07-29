@@ -19,6 +19,7 @@
                     <th>Name</th>
                     <th>BMDC Number</th>
                     <th>Specialization</th>
+                    <th>Degrees & Fee (Read-Only)</th>
                     <th>Workplace</th>
                     <th>Status</th>
                     <th>Submitted</th>
@@ -34,6 +35,10 @@
                     </td>
                     <td><code>{{ doctor.get('bmdcNumber', 'N/A') }}</code></td>
                     <td>{{ doctor.get('specialization', 'N/A') }}</td>
+                    <td>
+                        <div class="fw-bold text-success">৳{{ doctor.get('consultationFee', 500) }} <small class="text-muted fw-normal">(Fixed by Doc)</small></div>
+                        <small class="text-muted">{{ doctor.get('qualifications', 'MBBS') }}</small>
+                    </td>
                     <td>
                         {{ doctor.get('workplaceHospital', 'N/A') }}<br>
                         <small class="text-muted">{{ doctor.get('workplaceDepartment', 'N/A') }}</small>
