@@ -2236,10 +2236,6 @@ def diagnostic_save_test_results(booking_id):
 
 @app.route('/diagnostic/report/print/<booking_id>')
 def diagnostic_report_print(booking_id):
-    if 'user_email' not in session and 'admin_email' not in session:
-        flash('Please login to view report.', 'warning')
-        return redirect(url_for('login'))
-
     booking = {'id': booking_id, 'patientName': 'Patient'}
     centre_info = {'name': 'Diagnostic Centre'}
 

@@ -109,11 +109,17 @@
                             {% endif %}
                         </td>
                         <td>
+                            {% if b.status == 'completed' %}
+                            <a href="{{ url_for('diagnostic_booking_detail', booking_id=b.id) }}" class="btn btn-sm btn-outline-success fw-bold">
+                                <i class="bi bi-check-circle me-1"></i>Done
+                            </a>
+                            {% else %}
                             <a href="{{ url_for('diagnostic_booking_detail', booking_id=b.id) }}" class="btn btn-sm btn-outline-teal" style="color: #0d9488; border-color: #0d9488;">
                                 Manage Booking
                             </a>
+                            {% endif %}
                             {% if b.status == 'completed' %}
-                            <a href="{{ url_for('diagnostic_report_print', booking_id=b.id) }}" class="btn btn-sm btn-outline-secondary" target="_blank">
+                            <a href="{{ url_for('diagnostic_report_print', booking_id=b.id) }}" class="btn btn-sm btn-outline-secondary" target="_blank" title="View PDF Report">
                                 <i class="bi bi-printer"></i>
                             </a>
                             {% endif %}
