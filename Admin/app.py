@@ -3188,11 +3188,18 @@ def patient_diagnostic_detail(centre_id):
                 centre['id'] = c_doc.id
                 tests = centre.get('tests', [])
                 
-                t_docs = list(db.collection('available_lab_tests').where('centreId', '==', centre_id).stream())
-                for t in t_docs:
-                    t_data = t.to_dict()
-                    t_data['id'] = t.id
-                    if not any(x.get('testName') == t_data.get('testName') or x.get('name') == t_data.get('name') for x in tests):
+                if not tests:
+                    t_docs = list(db.collection('available_lab_tests').where('centreId', '==', centre_id).stream())
+                    for t in t_docs:
+                        t_data = t.to_dict()
+                        t_data['id'] = t.id
+                        tests.append(t_data)
+
+                if not tests:
+                    t_docs = list(db.collection('available_lab_tests').stream())
+                    for t in t_docs:
+                        t_data = t.to_dict()
+                        t_data['id'] = t.id
                         tests.append(t_data)
         except Exception as e:
             print(f"Error fetching diagnostic detail: {e}")
