@@ -1,0 +1,69 @@
+{% extends "patient/base.html" %}
+{% block title %}Find Doctors{% endblock %}
+{% block header_title %}Find & Book Doctors{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small fw-bold">Search by Name</label>
+                <input type="text" name="search" class="form-control" placeholder="Search doctor name..." value="{{ search_query }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Specialization</label>
+                <select name="specialization" class="form-select">
+                    <option value="">All Specializations</option>
+                    {% for s in specializations %}
+                    <option value="{{ s }}" {% if s == selected_spec %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-teal w-100"><i class="bi bi-search me-1"></i>Search</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if doctors %}
+<div class="row g-4">
+    {% for doc in doctors %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 16px;">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:56px;height:56px;background:#f0fdfa;">
+                        <i class="bi bi-person-circle fs-3" style="color: #0d9488;"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0">Dr. {{ doc.get('name', 'N/A') }}</h6>
+                        <small class="text-muted">{{ doc.get('specialization', 'General') }}</small>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted"><i class="bi bi-hospital me-1"></i>{{ doc.get('workplaceHospital', 'N/A') }}</small>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted"><i class="bi bi-award me-1"></i>{{ doc.get('qualifications', 'MBBS') }}</small>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="badge bg-light text-dark border"><i class="bi bi-star-fill text-warning me-1"></i>{{ doc.get('rating', '4.5') }}</span>
+                    <span class="fw-bold" style="color: #0d9488;">৳{{ doc.get('consultationFee', 500) }}</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('patient_doctor_profile', doctor_id=doc.get('id', '')) }}" class="btn btn-sm btn-outline-secondary flex-fill">View Profile</a>
+                    <a href="{{ url_for('patient_book_appointment', doctor_id=doc.get('id', '')) }}" class="btn btn-sm btn-teal flex-fill">Book Now</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-search fs-1"></i>
+    <p class="mt-2 mb-0">No doctors found matching your criteria.</p>
+</div>
+{% endif %}
+{% endblock %}

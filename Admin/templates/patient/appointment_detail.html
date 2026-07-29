@@ -1,0 +1,126 @@
+{% extends "patient/base.html" %}
+{% block title %}Appointment Details{% endblock %}
+{% block header_title %}Appointment Details{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-md-8">
+        <!-- Appointment Info -->
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 16px;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0"><i class="bi bi-info-circle me-2" style="color: #0d9488;"></i>Booking Information</h6>
+                {% set st = appointment.get('status', 'pending') %}
+                <span class="badge-status badge-{{ st }}">{{ st|capitalize }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Doctor</small>
+                        <span class="fw-bold fs-6">Dr. {{ appointment.get('doctorName', 'N/A') }}</span>
+                        <div class="small text-muted">{{ appointment.get('specialization', 'General') }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Date & Time</small>
+                        <span class="fw-bold fs-6">{{ appointment.get('date', 'N/A') }}</span>
+                        <div class="small text-muted">{{ appointment.get('timeSlot', 'N/A') }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Chamber / Location</small>
+                        <span class="fw-bold">{{ appointment.get('chamber', appointment.get('hospital', 'Main Chamber')) }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Consultation Fee</small>
+                        <span class="fw-bold text-success fs-6">৳{{ appointment.get('fee', 500) }}</span>
+                    </div>
+                    {% if appointment.get('symptoms') %}
+                    <div class="col-12">
+                        <small class="text-muted d-block">Reported Symptoms</small>
+                        <div class="bg-light p-3 rounded-3 mt-1 text-dark small">{{ appointment.get('symptoms') }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Prescription Section if Available -->
+        {% if prescription %}
+        <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0"><i class="bi bi-file-earmark-medical me-2 text-primary"></i>Official Digital Prescription</h6>
+                <a href="{{ url_for('patient_prescription_print', appointment_id=appointment.get('id', '')) }}" target="_blank" class="btn btn-sm btn-primary">
+                    <i class="bi bi-printer me-1"></i>View / Print PDF
+                </a>
+            </div>
+            <div class="card-body">
+                {% if prescription.get('medicines') %}
+                <h6 class="fw-bold small text-muted text-uppercase mb-2">Prescribed Medicines</h6>
+                <div class="table-responsive mb-3">
+                    <table class="table table-bordered table-sm align-middle">
+                        <thead class="table-light">
+                            <tr><th>Medicine Name</th><th>Dosage</th><th>Duration</th><th>Instructions</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for m in prescription.get('medicines', []) %}
+                            <tr>
+                                <td class="fw-bold">{{ m.get('name', m.get('medicineName', 'N/A')) }}</td>
+                                <td>{{ m.get('dosage', '1-0-1') }}</td>
+                                <td>{{ m.get('duration', '7 days') }}</td>
+                                <td>{{ m.get('instructions', 'After meals') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                {% if prescription.get('diagnosticTests') %}
+                <h6 class="fw-bold small text-muted text-uppercase mb-2">Recommended Diagnostic Tests</h6>
+                <ul class="list-group list-group-flush mb-3">
+                    {% for test in prescription.get('diagnosticTests', []) %}
+                    <li class="list-group-item px-0 py-1"><i class="bi bi-check2-circle text-primary me-2"></i>{{ test }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if prescription.get('notes') or prescription.get('instructions') %}
+                <h6 class="fw-bold small text-muted text-uppercase mb-1">Doctor Advice / Notes</h6>
+                <div class="bg-light p-3 rounded-3 text-secondary small mb-2">
+                    {{ prescription.get('notes') or prescription.get('instructions') }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="card-body text-center py-4 text-muted">
+                <i class="bi bi-file-earmark-x fs-1"></i>
+                <p class="mt-2 mb-0">No digital prescription issued yet for this appointment.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-person-badge me-2" style="color: #0d9488;"></i>Doctor Details</h6>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:50px;height:50px;background:#f0fdfa;">
+                        <i class="bi bi-stethoscope fs-4" style="color: #0d9488;"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0">Dr. {{ appointment.get('doctorName', 'N/A') }}</h6>
+                        <small class="text-muted">{{ appointment.get('specialization', 'General') }}</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('patient_appointments') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Appointments
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

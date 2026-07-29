@@ -10,13 +10,14 @@
     <style>
         :root { --primary: #4f46e5; }
         body { font-family: 'Inter', sans-serif; min-height: 100vh; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #0f172a 100%); display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .login-card { background: white; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4); width: 100%; max-width: 500px; padding: 40px; }
-        .portal-tabs .nav-link { font-size: 0.9rem; font-weight: 600; color: #64748b; border: none; border-bottom: 3px solid transparent; border-radius: 0; padding: 12px 16px; }
+        .login-card { background: white; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4); width: 100%; max-width: 520px; padding: 40px; }
+        .portal-tabs .nav-link { font-size: 0.85rem; font-weight: 600; color: #64748b; border: none; border-bottom: 3px solid transparent; border-radius: 0; padding: 12px 10px; }
         .portal-tabs .nav-link.active { color: var(--primary); border-bottom-color: var(--primary); background: transparent; }
         .input-group-text { background: #f8fafc; border-right: none; }
         .form-control { border-left: none; }
         .btn-role-doc { background: #2563eb; color: white; }
         .btn-role-diag { background: #0d9488; color: white; }
+        .btn-role-patient { background: #059669; color: white; }
         .btn-role-admin { background: #4f46e5; color: white; }
     </style>
 </head>
@@ -50,7 +51,12 @@
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="diagnostic-tab" data-bs-toggle="tab" data-bs-target="#diagnostic-pane" type="button" onclick="setRole('diagnostic')">
-                    <i class="bi bi-building me-1"></i>Diagnostic Centre
+                    <i class="bi bi-building me-1"></i>Diagnostic
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="patient-tab" data-bs-toggle="tab" data-bs-target="#patient-pane" type="button" onclick="setRole('patient')">
+                    <i class="bi bi-person-heart me-1"></i>Patient
                 </button>
             </li>
         </ul>
@@ -108,7 +114,7 @@
                     <i class="bi bi-person-plus me-1"></i>Doctor Web Sign Up
                 </a>
             `;
-        } else {
+        } else if (role === 'diagnostic') {
             submitBtn.className = 'btn btn-role-diag w-100 py-3 fw-bold rounded-3 mb-3';
             submitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>Sign In to Diagnostic Portal';
             emailField.placeholder = 'diagnostic@mediconnect.com';
@@ -116,6 +122,16 @@
                 <small class="text-muted d-block mb-1">New Diagnostic Centre? Register your facility</small>
                 <a href="{{ url_for('register_diagnostic') }}" class="btn btn-sm btn-outline-success fw-bold" style="color: #0d9488; border-color: #0d9488;">
                     <i class="bi bi-building-add me-1"></i>Diagnostic Centre Sign Up
+                </a>
+            `;
+        } else if (role === 'patient') {
+            submitBtn.className = 'btn btn-role-patient w-100 py-3 fw-bold rounded-3 mb-3';
+            submitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>Sign In to Patient Portal';
+            emailField.placeholder = 'patient@mediconnect.com';
+            signupPrompt.innerHTML = `
+                <small class="text-muted d-block mb-1">New Patient? Register your healthcare account</small>
+                <a href="{{ url_for('register_patient') }}" class="btn btn-sm btn-outline-success fw-bold">
+                    <i class="bi bi-person-heart me-1"></i>Patient Sign Up
                 </a>
             `;
         }

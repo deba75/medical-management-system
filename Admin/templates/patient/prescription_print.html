@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prescription_{{ appointment.get('patientName', 'Patient') }}.pdf</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #f8fafc; color: #1e293b; padding: 20px; }
+        .prescription-box { background: white; max-width: 800px; margin: 0 auto; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .prescription-header { border-bottom: 2px solid #0d9488; padding-bottom: 20px; margin-bottom: 20px; }
+        .rx-symbol { font-size: 2.5rem; font-weight: bold; font-family: serif; color: #0d9488; }
+        @media print {
+            body { background: white; padding: 0; }
+            .prescription-box { box-shadow: none; max-width: 100%; padding: 0; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="text-center mb-3 no-print">
+        <button onclick="window.print()" class="btn btn-success me-2"><i class="bi bi-printer me-1"></i>Print / Download PDF</button>
+        <button onclick="window.close()" class="btn btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>Close</button>
+    </div>
+
+    <div class="prescription-box">
+        <!-- Header -->
+        <div class="prescription-header d-flex justify-content-between align-items-start">
+            <div>
+                <h3 class="fw-bold mb-0 text-dark">Dr. {{ appointment.get('doctorName', 'Medical Specialist') }}</h3>
+                <div class="text-muted fw-bold">{{ appointment.get('specialization', 'General Practitioner') }}</div>
+                <div class="small text-muted">{{ appointment.get('qualifications', 'MBBS, FCPS') }}</div>
+                <div class="small text-muted">BMDC Reg. No: {{ appointment.get('bmdcNumber', 'A-84920') }}</div>
+            </div>
+            <div class="text-end">
+                <h4 class="fw-bold text-success mb-0">MediConnect</h4>
+                <div class="small text-muted">{{ appointment.get('hospital', 'MediConnect Telehealth Network') }}</div>
+                <div class="small text-muted">{{ appointment.get('chamber', 'Digital E-Prescription') }}</div>
+            </div>
+        </div>
+
+        <!-- Patient Info Strip -->
+        <div class="bg-light p-3 rounded-3 mb-4 d-flex justify-content-between align-items-center">
+            <div>
+                <small class="text-muted">Patient Name:</small>
+                <div class="fw-bold">{{ appointment.get('patientName', session.get('user_name', 'Patient')) }}</div>
+            </div>
+            <div>
+                <small class="text-muted">Date:</small>
+                <div class="fw-bold">{{ appointment.get('date', 'N/A') }}</div>
+            </div>
+            <div>
+                <small class="text-muted">Prescription ID:</small>
+                <div class="fw-bold text-uppercase">PRE-{{ appointment.get('id', '1001')[:8] }}</div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left Column: Vitals & Tests -->
+            <div class="col-4 border-end">
+                <div class="rx-symbol mb-2">Rx</div>
+                {% if appointment.get('symptoms') %}
+                <div class="mb-3">
+                    <h6 class="fw-bold small text-muted text-uppercase">Clinical Notes / Symptoms</h6>
+                    <div class="small text-secondary">{{ appointment.get('symptoms') }}</div>
+                </div>
+                {% endif %}
+
+                {% if prescription.get('diagnosticTests') %}
+                <div class="mb-3">
+                    <h6 class="fw-bold small text-muted text-uppercase">Recommended Tests</h6>
+                    <ul class="list-unstyled small mb-0">
+                        {% for t in prescription.get('diagnosticTests', []) %}
+                        <li class="mb-1"><i class="bi bi-check2 text-success me-1"></i>{{ t }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Right Column: Medicines -->
+            <div class="col-8">
+                <h6 class="fw-bold small text-muted text-uppercase mb-3">Prescribed Medications</h6>
+                {% if prescription.get('medicines') %}
+                <table class="table table-bordered table-sm align-middle mb-4">
+                    <thead class="table-light">
+                        <tr><th>Medicine</th><th>Dosage</th><th>Duration</th><th>Instructions</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for m in prescription.get('medicines', []) %}
+                        <tr>
+                            <td class="fw-bold">{{ m.get('name', m.get('medicineName', 'N/A')) }}</td>
+                            <td>{{ m.get('dosage', '1-0-1') }}</td>
+                            <td>{{ m.get('duration', '7 Days') }}</td>
+                            <td><small>{{ m.get('instructions', 'After meals') }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted small">No specific medicines detailed.</p>
+                {% endif %}
+
+                {% if prescription.get('notes') or prescription.get('instructions') %}
+                <div class="mt-4 pt-3 border-top">
+                    <h6 class="fw-bold small text-muted text-uppercase">Doctor Instructions</h6>
+                    <p class="small text-secondary mb-0">{{ prescription.get('notes') or prescription.get('instructions') }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mt-5 pt-4 border-top d-flex justify-content-between align-items-end">
+            <div class="small text-muted">
+                Generated via MediConnect Web System<br>
+                Verification Code: {{ appointment.get('id', '1001') }}
+            </div>
+            <div class="text-center">
+                <div class="fw-bold text-dark border-bottom pb-1 px-4 mb-1">Dr. {{ appointment.get('doctorName', 'Specialist') }}</div>
+                <small class="text-muted d-block">Authorized Digital Signature</small>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

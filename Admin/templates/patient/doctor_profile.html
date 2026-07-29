@@ -1,0 +1,72 @@
+{% extends "patient/base.html" %}
+{% block title %}Dr. {{ doctor.get('name', 'Doctor') }}{% endblock %}
+{% block header_title %}Doctor Profile{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="card-body text-center">
+                <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width:100px;height:100px;background:#f0fdfa;">
+                    <i class="bi bi-person-circle" style="font-size: 3rem; color: #0d9488;"></i>
+                </div>
+                <h5 class="fw-bold">Dr. {{ doctor.get('name', 'N/A') }}</h5>
+                <span class="badge bg-light text-dark border mb-2">{{ doctor.get('specialization', 'General') }}</span>
+                <p class="text-muted small mb-1"><i class="bi bi-hospital me-1"></i>{{ doctor.get('workplaceHospital', 'N/A') }}</p>
+                <p class="text-muted small mb-1"><i class="bi bi-award me-1"></i>{{ doctor.get('qualifications', 'MBBS') }}</p>
+                <p class="text-muted small mb-3"><i class="bi bi-briefcase me-1"></i>{{ doctor.get('experience', '5') }} years experience</p>
+                <div class="d-flex justify-content-center gap-3 mb-3">
+                    <div><span class="badge bg-warning text-dark"><i class="bi bi-star-fill me-1"></i>{{ doctor.get('rating', '4.5') }}</span></div>
+                    <div class="fw-bold" style="color: #0d9488;">৳{{ doctor.get('consultationFee', 500) }}</div>
+                </div>
+                <a href="{{ url_for('patient_book_appointment', doctor_id=doctor.get('id', '')) }}" class="btn btn-teal w-100 py-2">
+                    <i class="bi bi-calendar-plus me-1"></i>Book Appointment
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <!-- Chambers -->
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 16px;">
+            <div class="card-header bg-white py-3"><h6 class="fw-bold mb-0"><i class="bi bi-hospital me-2" style="color: #0d9488;"></i>Practice Chambers</h6></div>
+            <div class="card-body">
+                {% if chambers %}
+                {% for c in chambers %}
+                <div class="border rounded-3 p-3 mb-2">
+                    <div class="fw-bold">{{ c.get('name', 'Chamber') }}</div>
+                    <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ c.get('address', 'N/A') }}</small><br>
+                    <small class="text-muted"><i class="bi bi-telephone me-1"></i>{{ c.get('phone', 'N/A') }}</small>
+                    {% if c.get('visitingHours') %}<br><small class="text-muted"><i class="bi bi-clock me-1"></i>{{ c.get('visitingHours') }}</small>{% endif %}
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted mb-0">No chamber information available.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Availability -->
+        <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="card-header bg-white py-3"><h6 class="fw-bold mb-0"><i class="bi bi-clock me-2" style="color: #0d9488;"></i>Availability Schedule</h6></div>
+            <div class="card-body">
+                {% if availability %}
+                <div class="row g-2">
+                    {% for day in ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'] %}
+                    {% set is_active = day in availability.get('activeDays', []) %}
+                    <div class="col-auto">
+                        <span class="badge {% if is_active %}bg-success{% else %}bg-light text-muted{% endif %} p-2">{{ day[:3] }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if availability.get('shiftStart') %}
+                <p class="mt-2 mb-0 text-muted small"><i class="bi bi-clock me-1"></i>{{ availability.get('shiftStart', '09:00') }} - {{ availability.get('shiftEnd', '17:00') }}</p>
+                {% endif %}
+                {% else %}
+                <p class="text-muted mb-0">No schedule information available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

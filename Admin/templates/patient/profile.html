@@ -1,0 +1,71 @@
+{% extends "patient/base.html" %}
+{% block title %}Patient Profile{% endblock %}
+{% block header_title %}Patient Profile & Settings{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="card-body text-center">
+                <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width:100px;height:100px;background:#f0fdfa;">
+                    <i class="bi bi-person-circle" style="font-size: 3rem; color: #0d9488;"></i>
+                </div>
+                <h5 class="fw-bold mb-1">{{ profile.get('name', session.get('user_name', 'Patient')) }}</h5>
+                <p class="text-muted small mb-2">{{ profile.get('email', session.get('user_email', '')) }}</p>
+                <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle me-1"></i>Active Patient Account</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-person-gear me-2" style="color: #0d9488;"></i>Personal Details</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('patient_profile') }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Full Name</label>
+                            <input type="text" name="name" class="form-control" value="{{ profile.get('name', '') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Phone Number</label>
+                            <input type="text" name="phone" class="form-control" value="{{ profile.get('phone', '') }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Date of Birth</label>
+                            <input type="date" name="dob" class="form-control" value="{{ profile.get('dob', '') }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Gender</label>
+                            <select name="gender" class="form-select">
+                                <option value="">Select</option>
+                                <option value="Male" {% if profile.get('gender') == 'Male' %}selected{% endif %}>Male</option>
+                                <option value="Female" {% if profile.get('gender') == 'Female' %}selected{% endif %}>Female</option>
+                                <option value="Other" {% if profile.get('gender') == 'Other' %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Blood Group</label>
+                            <select name="blood_group" class="form-select">
+                                <option value="">Select</option>
+                                {% for bg in ['A+','A-','B+','B-','AB+','AB-','O+','O-'] %}
+                                <option value="{{ bg }}" {% if profile.get('blood_group') == bg %}selected{% endif %}>{{ bg }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Emergency Contact</label>
+                            <input type="text" name="emergency_contact" class="form-control" value="{{ profile.get('emergency_contact', '') }}">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-teal mt-4 px-4 fw-bold">
+                        <i class="bi bi-check-lg me-1"></i>Save Profile Changes
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

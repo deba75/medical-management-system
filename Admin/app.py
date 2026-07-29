@@ -330,6 +330,73 @@ def register_diagnostic():
 
     return render_template('register_diagnostic.html')
 
+
+@app.route('/register/patient', methods=['GET', 'POST'])
+def register_patient():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        phone = request.form.get('phone')
+        dob = request.form.get('dob')
+        gender = request.form.get('gender')
+        blood_group = request.form.get('blood_group')
+        emergency_contact = request.form.get('emergency_contact')
+
+        if password != confirm_password:
+            flash('Passwords do not match!', 'danger')
+            return redirect(url_for('register_patient'))
+
+        if db is not None:
+            try:
+                existing = list(db.collection('users').where('email', '==', email).stream())
+                if existing:
+                    flash('Email already registered! Please sign in.', 'danger')
+                    return redirect(url_for('register_patient'))
+
+                user_id = email.replace('@', '_at_').replace('.', '_dot_')
+                try:
+                    user_record = auth.create_user(email=email, password=password, display_name=name)
+                    user_id = user_record.uid
+                except Exception as auth_err:
+                    print(f"Firebase Auth Notice: {auth_err}")
+
+                db.collection('users').document(user_id).set({
+                    'userId': user_id,
+                    'name': name,
+                    'email': email,
+                    'phone': phone,
+                    'role': 'patient',
+                    'dob': dob,
+                    'gender': gender,
+                    'blood_group': blood_group,
+                    'emergency_contact': emergency_contact,
+                    'isApproved': True,
+                    'createdAt': datetime.now()
+                })
+
+                session['admin_email'] = email
+                session['user_id'] = user_id
+                session['user_email'] = email
+                session['user_role'] = 'patient'
+                session['user_name'] = name
+
+                flash(f'Welcome to MediConnect, {name}!', 'success')
+                return redirect(url_for('patient_dashboard'))
+            except Exception as e:
+                flash(f'Registration error: {e}', 'danger')
+        else:
+            session['admin_email'] = email
+            session['user_id'] = 'demo_patient_id'
+            session['user_email'] = email
+            session['user_role'] = 'patient'
+            session['user_name'] = name
+            flash('Logged in to Patient Web Portal (Demo Mode)', 'info')
+            return redirect(url_for('patient_dashboard'))
+
+    return render_template('register_patient.html')
+
 @app.route('/admin')
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
@@ -403,6 +470,9 @@ def login():
                             return redirect(url_for('verification_pending'))
                         flash(f'Welcome back, {name}!', 'success')
                         return redirect(url_for('diagnostic_dashboard'))
+                    elif role == 'patient':
+                        flash(f'Welcome back, {name}!', 'success')
+                        return redirect(url_for('patient_dashboard'))
                 
                 # Also check doctors collection directly
                 doctor_docs = list(db.collection('doctors').where('email', '==', email).stream())
@@ -445,6 +515,15 @@ def login():
                 print(f"Error checking Firestore login: {e}")
 
         # Fallback / Quick portal login keywords for convenience
+        if 'patient' in email.lower() or login_role == 'patient':
+            session['admin_email'] = email
+            session['user_id'] = 'demo_patient_id'
+            session['user_email'] = email
+            session['user_role'] = 'patient'
+            session['user_name'] = email.split('@')[0].capitalize()
+            flash('Logged in to Patient Web Portal (Demo Mode)', 'info')
+            return redirect(url_for('patient_dashboard'))
+
         if 'doctor' in email.lower():
             session['admin_email'] = email
             session['user_id'] = 'demo_doctor_id'
@@ -2177,14 +2256,29 @@ def diagnostic_report_print(booking_id):
 @app.route('/diagnostic/catalog')
 @diagnostic_required
 def diagnostic_catalog():
+    centre_id = session.get('user_id')
     tests = []
     if db is not None:
         try:
+            # Check centre's own tests array first
+            if centre_id:
+                c_doc = db.collection('diagnostic_centres').document(centre_id).get()
+                if c_doc.exists:
+                    c_tests = c_doc.to_dict().get('tests', [])
+                    for t in c_tests:
+                        if isinstance(t, dict):
+                            t['id'] = t.get('testId', t.get('name'))
+                            t['name'] = t.get('testName', t.get('name'))
+                            t['turnaroundTime'] = t.get('reportDeliveryTime', t.get('turnaroundTime', '24 Hours'))
+                            tests.append(t)
+            
+            # Also stream available_lab_tests
             docs = db.collection('available_lab_tests').stream()
             for d in docs:
                 data = d.to_dict()
                 data['id'] = d.id
-                tests.append(data)
+                if not any(x.get('name') == data.get('name') for x in tests):
+                    tests.append(data)
         except Exception as e:
             print(f"Error fetching test catalog: {e}")
 
@@ -2193,25 +2287,52 @@ def diagnostic_catalog():
 @app.route('/diagnostic/catalog/add', methods=['POST'])
 @diagnostic_required
 def diagnostic_add_test():
+    centre_id = session.get('user_id')
     name = request.form.get('name')
     category = request.form.get('category')
     price = float(request.form.get('price', 500))
     preparation = request.form.get('preparation')
-    turnaroundTime = request.form.get('turnaroundTime')
+    turnaroundTime = request.form.get('turnaroundTime') or '24 Hours'
 
     if db is not None:
         try:
             ref = db.collection('available_lab_tests').document()
-            ref.set({
+            test_id = ref.id
+            test_data = {
+                'testId': test_id,
+                'testName': name,
                 'name': name,
                 'category': category,
                 'price': price,
                 'preparation': preparation,
+                'description': preparation,
+                'preparationInstructions': preparation,
                 'turnaroundTime': turnaroundTime,
+                'reportDeliveryTime': turnaroundTime,
                 'isAvailable': True,
+                'centreId': centre_id,
                 'createdAt': datetime.now()
-            })
-            flash('Test added to catalog!', 'success')
+            }
+            ref.set(test_data)
+
+            # Sync to diagnostic_centres/{centre_id} tests array for patient app
+            if centre_id:
+                diag_ref = db.collection('diagnostic_centres').document(centre_id)
+                diag_doc = diag_ref.get()
+                if diag_doc.exists:
+                    current_tests = diag_doc.to_dict().get('tests', [])
+                    current_tests.append({
+                        'testId': test_id,
+                        'testName': name,
+                        'category': category,
+                        'price': price,
+                        'description': preparation,
+                        'preparationInstructions': preparation,
+                        'reportDeliveryTime': turnaroundTime
+                    })
+                    diag_ref.update({'tests': current_tests})
+
+            flash('Test added to catalog & synced with Patient app!', 'success')
         except Exception as e:
             flash(f'Error adding test: {e}', 'danger')
 
@@ -2220,9 +2341,17 @@ def diagnostic_add_test():
 @app.route('/diagnostic/catalog/delete/<test_id>')
 @diagnostic_required
 def diagnostic_delete_test(test_id):
+    centre_id = session.get('user_id')
     if db is not None:
         try:
             db.collection('available_lab_tests').document(test_id).delete()
+            if centre_id:
+                diag_ref = db.collection('diagnostic_centres').document(centre_id)
+                diag_doc = diag_ref.get()
+                if diag_doc.exists:
+                    current_tests = diag_doc.to_dict().get('tests', [])
+                    updated_tests = [t for t in current_tests if t.get('testId') != test_id and t.get('name') != test_id]
+                    diag_ref.update({'tests': updated_tests})
             flash('Test removed from catalog.', 'info')
         except Exception as e:
             flash(f'Error deleting test: {e}', 'danger')
@@ -2616,6 +2745,506 @@ def admin_update_article_status(article_id, action):
             flash(f'Error updating article: {e}', 'danger')
             
     return redirect(url_for('admin_articles'))
+
+
+# =================== Patient Auth & Decorator ===================
+
+def patient_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        role = session.get('user_role')
+        if role == 'admin':
+            flash('Access restricted to Patients. You are logged in as Super Admin.', 'warning')
+            return redirect(url_for('dashboard'))
+            
+        if 'user_email' not in session or role != 'patient':
+            flash('Please login with your Patient account to access Patient Portal', 'warning')
+            return redirect(url_for('login'))
+            
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+# =================== Patient Web Portal Routes ===================
+
+@app.route('/patient/dashboard')
+@patient_required
+def patient_dashboard():
+    patient_id = session.get('user_id')
+    user_email = session.get('user_email')
+    
+    appointments = []
+    upcoming_count = 0
+    prescriptions_count = 0
+    lab_orders_count = 0
+    total_visits = 0
+
+    if db is not None:
+        try:
+            # Fetch appointments
+            docs = list(db.collection('appointments').stream())
+            for d in docs:
+                data = d.to_dict()
+                data['id'] = d.id
+                p_id = data.get('patientId', '')
+                p_email = data.get('patientEmail', '')
+                
+                if p_id == patient_id or p_email == user_email or patient_id == 'demo_patient_id':
+                    appointments.append(data)
+                    st = data.get('status', 'pending')
+                    if st in ['pending', 'confirmed']:
+                        upcoming_count += 1
+                    if st == 'completed':
+                        total_visits += 1
+                    if data.get('prescription') or data.get('prescriptionId'):
+                        prescriptions_count += 1
+                        
+            # Fetch lab test bookings
+            lab_docs = list(db.collection('lab_test_bookings').stream())
+            for d in lab_docs:
+                data = d.to_dict()
+                p_id = data.get('patientId', '')
+                p_email = data.get('patientEmail', '')
+                if p_id == patient_id or p_email == user_email or patient_id == 'demo_patient_id':
+                    lab_orders_count += 1
+
+            appointments.sort(key=lambda x: str(x.get('createdAt', '')), reverse=True)
+        except Exception as e:
+            print(f"Error fetching patient dashboard data: {e}")
+
+    stats = {
+        'upcoming_appointments': upcoming_count,
+        'total_prescriptions': prescriptions_count,
+        'lab_test_orders': lab_orders_count,
+        'total_visits': total_visits
+    }
+
+    return render_template('patient/dashboard.html', active_page='dashboard', stats=stats, appointments=appointments)
+
+
+@app.route('/patient/doctors')
+@patient_required
+def patient_find_doctors():
+    search_query = request.args.get('search', '').strip()
+    selected_spec = request.args.get('specialization', '').strip()
+    
+    doctors_list = []
+    specializations = set()
+
+    if db is not None:
+        try:
+            docs = list(db.collection('doctors').stream())
+            for d in docs:
+                data = d.to_dict()
+                data['id'] = d.id
+                v_status = data.get('verificationStatus', 'approved')
+                spec = data.get('specialization', 'General')
+                specializations.add(spec)
+                
+                if v_status == 'approved':
+                    name = data.get('name', '').lower()
+                    hosp = data.get('workplaceHospital', '').lower()
+                    
+                    matches_search = not search_query or search_query.lower() in name or search_query.lower() in spec.lower() or search_query.lower() in hosp
+                    matches_spec = not selected_spec or spec.lower() == selected_spec.lower()
+                    
+                    if matches_search and matches_spec:
+                        doctors_list.append(data)
+        except Exception as e:
+            print(f"Error fetching doctors list: {e}")
+
+    spec_list = sorted(list(specializations))
+    return render_template('patient/find_doctors.html', active_page='doctors', doctors=doctors_list, specializations=spec_list, search_query=search_query, selected_spec=selected_spec)
+
+
+@app.route('/patient/doctor/<doctor_id>')
+@patient_required
+def patient_doctor_profile(doctor_id):
+    doctor = None
+    chambers = []
+    availability = None
+
+    if db is not None:
+        try:
+            doc_ref = db.collection('doctors').document(doctor_id).get()
+            if doc_ref.exists:
+                doctor = doc_ref.to_dict()
+                doctor['id'] = doc_ref.id
+                chambers = doctor.get('chambers', [])
+                
+                # Check top-level chambers collection too
+                c_docs = db.collection('chambers').where('doctorId', '==', doctor_id).stream()
+                for c in c_docs:
+                    c_data = c.to_dict()
+                    if not any(x.get('name') == c_data.get('name') for x in chambers):
+                        chambers.append(c_data)
+                        
+                availability = doctor.get('availability')
+        except Exception as e:
+            print(f"Error fetching doctor profile: {e}")
+
+    if not doctor:
+        flash('Doctor not found.', 'warning')
+        return redirect(url_for('patient_find_doctors'))
+
+    return render_template('patient/doctor_profile.html', active_page='doctors', doctor=doctor, chambers=chambers, availability=availability)
+
+
+@app.route('/patient/book/<doctor_id>', methods=['GET', 'POST'])
+@patient_required
+def patient_book_appointment(doctor_id):
+    patient_id = session.get('user_id')
+    patient_name = session.get('user_name', 'Patient')
+    patient_email = session.get('user_email', '')
+
+    doctor = None
+    chambers = []
+    time_slots = ['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM', '04:00 PM', '06:00 PM', '07:00 PM']
+
+    if db is not None:
+        try:
+            doc_ref = db.collection('doctors').document(doctor_id).get()
+            if doc_ref.exists:
+                doctor = doc_ref.to_dict()
+                doctor['id'] = doc_ref.id
+                chambers = doctor.get('chambers', [])
+                if doctor.get('generatedSlots'):
+                    time_slots = doctor.get('generatedSlots')
+        except Exception as e:
+            print(f"Error loading doctor for booking: {e}")
+
+    if not doctor:
+        doctor = {'id': doctor_id, 'name': 'Specialist', 'specialization': 'General', 'consultationFee': 500}
+
+    if request.method == 'POST':
+        chamber = request.form.get('chamber', 'Main Chamber')
+        appt_date = request.form.get('date')
+        time_slot = request.form.get('time_slot')
+        c_type = request.form.get('consultation_type', 'in_person')
+        payment_method = request.form.get('payment_method', 'cash')
+        symptoms = request.form.get('symptoms', '')
+        fee = float(doctor.get('consultationFee', 500))
+
+        if db is not None:
+            try:
+                appt_ref = db.collection('appointments').document()
+                appt_data = {
+                    'id': appt_ref.id,
+                    'patientId': patient_id,
+                    'patientName': patient_name,
+                    'patientEmail': patient_email,
+                    'doctorId': doctor_id,
+                    'doctorName': doctor.get('name', 'Doctor'),
+                    'specialization': doctor.get('specialization', 'General Practitioner'),
+                    'hospital': doctor.get('workplaceHospital', 'MediConnect Hospital'),
+                    'chamber': chamber,
+                    'date': appt_date,
+                    'timeSlot': time_slot,
+                    'fee': fee,
+                    'consultationType': c_type,
+                    'paymentMethod': payment_method,
+                    'paymentStatus': 'paid' if payment_method == 'online' else 'pending',
+                    'status': 'pending',
+                    'symptoms': symptoms,
+                    'createdAt': datetime.now()
+                }
+                appt_ref.set(appt_data)
+                flash(f'Appointment booked with Dr. {doctor.get("name")} for {appt_date} at {time_slot}!', 'success')
+                return redirect(url_for('patient_appointments'))
+            except Exception as e:
+                flash(f'Booking error: {e}', 'danger')
+        else:
+            flash('Demo Mode: Appointment booked successfully!', 'success')
+            return redirect(url_for('patient_appointments'))
+
+    min_date = datetime.now().strftime('%Y-%m-%d')
+    return render_template('patient/book_appointment.html', active_page='doctors', doctor=doctor, chambers=chambers, time_slots=time_slots, min_date=min_date)
+
+
+@app.route('/patient/appointments')
+@patient_required
+def patient_appointments():
+    patient_id = session.get('user_id')
+    user_email = session.get('user_email')
+    appointments = []
+
+    if db is not None:
+        try:
+            docs = list(db.collection('appointments').stream())
+            for d in docs:
+                data = d.to_dict()
+                data['id'] = d.id
+                p_id = data.get('patientId', '')
+                p_email = data.get('patientEmail', '')
+                if p_id == patient_id or p_email == user_email or patient_id == 'demo_patient_id':
+                    appointments.append(data)
+            appointments.sort(key=lambda x: str(x.get('createdAt', '')), reverse=True)
+        except Exception as e:
+            print(f"Error fetching patient appointments: {e}")
+
+    return render_template('patient/appointments.html', active_page='appointments', appointments=appointments)
+
+
+@app.route('/patient/appointment/<appointment_id>')
+@patient_required
+def patient_appointment_detail(appointment_id):
+    appointment = None
+    prescription = None
+
+    if db is not None:
+        try:
+            a_doc = db.collection('appointments').document(appointment_id).get()
+            if a_doc.exists:
+                appointment = a_doc.to_dict()
+                appointment['id'] = a_doc.id
+                if appointment.get('prescription'):
+                    prescription = appointment.get('prescription')
+        except Exception as e:
+            print(f"Error fetching appointment detail: {e}")
+
+    if not appointment:
+        flash('Appointment record not found.', 'warning')
+        return redirect(url_for('patient_appointments'))
+
+    return render_template('patient/appointment_detail.html', active_page='appointments', appointment=appointment, prescription=prescription)
+
+
+@app.route('/patient/prescriptions')
+@patient_required
+def patient_prescriptions():
+    patient_id = session.get('user_id')
+    user_email = session.get('user_email')
+    prescriptions = []
+
+    if db is not None:
+        try:
+            docs = list(db.collection('appointments').stream())
+            for d in docs:
+                data = d.to_dict()
+                p_id = data.get('patientId', '')
+                p_email = data.get('patientEmail', '')
+                if p_id == patient_id or p_email == user_email or patient_id == 'demo_patient_id':
+                    if data.get('prescription'):
+                        p_obj = data.get('prescription')
+                        p_obj['appointmentId'] = d.id
+                        p_obj['doctorName'] = data.get('doctorName')
+                        p_obj['date'] = data.get('date')
+                        p_obj['specialization'] = data.get('specialization')
+                        prescriptions.append(p_obj)
+        except Exception as e:
+            print(f"Error fetching patient prescriptions: {e}")
+
+    return render_template('patient/prescriptions.html', active_page='prescriptions', prescriptions=prescriptions)
+
+
+@app.route('/patient/prescription/<appointment_id>/print')
+@patient_required
+def patient_prescription_print(appointment_id):
+    appointment = None
+    prescription = None
+
+    if db is not None:
+        try:
+            a_doc = db.collection('appointments').document(appointment_id).get()
+            if a_doc.exists:
+                appointment = a_doc.to_dict()
+                appointment['id'] = a_doc.id
+                prescription = appointment.get('prescription', {})
+        except Exception as e:
+            print(f"Error fetching prescription print data: {e}")
+
+    if not appointment:
+        appointment = {'id': appointment_id, 'doctorName': 'Specialist Doctor', 'date': datetime.now().strftime('%Y-%m-%d')}
+        prescription = {'medicines': [{'name': 'Paracetamol 500mg', 'dosage': '1-0-1', 'duration': '5 Days'}]}
+
+    return render_template('patient/prescription_print.html', appointment=appointment, prescription=prescription)
+
+
+@app.route('/patient/diagnostic-centres')
+@patient_required
+def patient_diagnostic_centres():
+    search_query = request.args.get('search', '').strip()
+    centres = []
+
+    if db is not None:
+        try:
+            docs = list(db.collection('diagnostic_centres').stream())
+            for d in docs:
+                data = d.to_dict()
+                data['id'] = d.id
+                v_status = data.get('verificationStatus', 'approved')
+                if v_status == 'approved':
+                    name = data.get('name', '').lower()
+                    city = data.get('city', '').lower()
+                    if not search_query or search_query.lower() in name or search_query.lower() in city:
+                        centres.append(data)
+        except Exception as e:
+            print(f"Error fetching diagnostic centres: {e}")
+
+    return render_template('patient/diagnostic_centres.html', active_page='diagnostics', centres=centres, search_query=search_query)
+
+
+@app.route('/patient/diagnostic/<centre_id>')
+@patient_required
+def patient_diagnostic_detail(centre_id):
+    centre = None
+    tests = []
+
+    if db is not None:
+        try:
+            c_doc = db.collection('diagnostic_centres').document(centre_id).get()
+            if c_doc.exists:
+                centre = c_doc.to_dict()
+                centre['id'] = c_doc.id
+                tests = centre.get('tests', [])
+                
+                # Fallback to available_lab_tests if centre.tests is empty
+                if not tests:
+                    t_docs = db.collection('available_lab_tests').stream()
+                    for t in t_docs:
+                        t_data = t.to_dict()
+                        t_data['id'] = t.id
+                        tests.append(t_data)
+        except Exception as e:
+            print(f"Error fetching diagnostic detail: {e}")
+
+    if not centre:
+        flash('Diagnostic centre not found.', 'warning')
+        return redirect(url_for('patient_diagnostic_centres'))
+
+    min_date = datetime.now().strftime('%Y-%m-%d')
+    return render_template('patient/diagnostic_detail.html', active_page='diagnostics', centre=centre, tests=tests, min_date=min_date)
+
+
+@app.route('/patient/book-tests/<centre_id>', methods=['POST'])
+@patient_required
+def patient_book_lab_tests(centre_id):
+    patient_id = session.get('user_id')
+    patient_name = session.get('user_name', 'Patient')
+    patient_email = session.get('user_email', '')
+
+    test_id = request.form.get('test_id')
+    test_name = request.form.get('test_name')
+    test_category = request.form.get('test_category', 'General')
+    test_price = float(request.form.get('test_price', 500))
+    collection_type = request.form.get('collection_type', 'homeSample')
+    scheduled_date = request.form.get('scheduled_date')
+    time_slot = request.form.get('time_slot', '09:00 AM - 12:00 PM')
+    address = request.form.get('address', '')
+    payment_method = request.form.get('payment_method', 'manual')
+
+    home_fee = 150.0 if collection_type == 'homeSample' else 0.0
+    total_amount = test_price + home_fee
+
+    centre_name = 'Diagnostic Centre'
+    if db is not None:
+        try:
+            c_doc = db.collection('diagnostic_centres').document(centre_id).get()
+            if c_doc.exists:
+                centre_name = c_doc.to_dict().get('name', 'Diagnostic Centre')
+
+            booking_ref = db.collection('lab_test_bookings').document()
+            booking_data = {
+                'id': booking_ref.id,
+                'patientId': patient_id,
+                'patientName': patient_name,
+                'patientEmail': patient_email,
+                'diagnosticCentreId': centre_id,
+                'diagnosticCentreName': centre_name,
+                'tests': [{
+                    'testId': test_id,
+                    'testName': test_name,
+                    'category': test_category,
+                    'price': test_price
+                }],
+                'status': 'pending',
+                'collectionType': collection_type,
+                'paymentMethod': payment_method,
+                'paymentStatus': 'paid' if payment_method == 'online' else 'pending',
+                'scheduledDate': scheduled_date,
+                'timeSlot': time_slot,
+                'address': address,
+                'totalAmount': total_amount,
+                'homeCollectionFee': home_fee,
+                'createdAt': datetime.now()
+            }
+            booking_ref.set(booking_data)
+            flash(f'Lab Test booking ({test_name}) submitted to {centre_name}!', 'success')
+            return redirect(url_for('patient_lab_tests'))
+        except Exception as e:
+            flash(f'Booking error: {e}', 'danger')
+    else:
+        flash('Demo Mode: Lab test booking submitted!', 'success')
+        return redirect(url_for('patient_lab_tests'))
+
+
+@app.route('/patient/lab-tests')
+@patient_required
+def patient_lab_tests():
+    patient_id = session.get('user_id')
+    user_email = session.get('user_email')
+    bookings = []
+
+    if db is not None:
+        try:
+            docs = list(db.collection('lab_test_bookings').stream())
+            for d in docs:
+                data = d.to_dict()
+                data['id'] = d.id
+                p_id = data.get('patientId', '')
+                p_email = data.get('patientEmail', '')
+                if p_id == patient_id or p_email == user_email or patient_id == 'demo_patient_id':
+                    bookings.append(data)
+            bookings.sort(key=lambda x: str(x.get('createdAt', '')), reverse=True)
+        except Exception as e:
+            print(f"Error fetching patient lab test bookings: {e}")
+
+    return render_template('patient/lab_tests.html', active_page='lab_tests', bookings=bookings)
+
+
+@app.route('/patient/profile', methods=['GET', 'POST'])
+@patient_required
+def patient_profile():
+    patient_id = session.get('user_id')
+    profile = {}
+
+    if db is not None:
+        try:
+            p_doc = db.collection('users').document(patient_id).get()
+            if p_doc.exists:
+                profile = p_doc.to_dict()
+        except Exception as e:
+            print(f"Error fetching patient profile: {e}")
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        phone = request.form.get('phone')
+        dob = request.form.get('dob')
+        gender = request.form.get('gender')
+        blood_group = request.form.get('blood_group')
+        emergency_contact = request.form.get('emergency_contact')
+
+        if db is not None:
+            try:
+                db.collection('users').document(patient_id).update({
+                    'name': name,
+                    'phone': phone,
+                    'dob': dob,
+                    'gender': gender,
+                    'blood_group': blood_group,
+                    'emergency_contact': emergency_contact
+                })
+                session['user_name'] = name
+                flash('Profile updated successfully!', 'success')
+                return redirect(url_for('patient_profile'))
+            except Exception as e:
+                flash(f'Update error: {e}', 'danger')
+        else:
+            session['user_name'] = name
+            flash('Demo Mode: Profile updated!', 'success')
+            return redirect(url_for('patient_profile'))
+
+    return render_template('patient/profile.html', active_page='profile', profile=profile)
 
 
 # =================== Error Handlers ===================

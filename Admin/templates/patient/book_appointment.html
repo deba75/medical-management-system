@@ -1,0 +1,84 @@
+{% extends "patient/base.html" %}
+{% block title %}Book Appointment - Dr. {{ doctor.get('name', '') }}{% endblock %}
+{% block header_title %}Book Appointment{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="card-body text-center">
+                <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width:80px;height:80px;background:#f0fdfa;">
+                    <i class="bi bi-person-circle" style="font-size: 2.5rem; color: #0d9488;"></i>
+                </div>
+                <h6 class="fw-bold">Dr. {{ doctor.get('name', 'N/A') }}</h6>
+                <span class="badge bg-light text-dark border">{{ doctor.get('specialization', 'General') }}</span>
+                <p class="text-muted small mt-2 mb-1"><i class="bi bi-hospital me-1"></i>{{ doctor.get('workplaceHospital', 'N/A') }}</p>
+                <div class="fw-bold mt-2" style="color: #0d9488; font-size: 1.2rem;">৳{{ doctor.get('consultationFee', 500) }}</div>
+                <small class="text-muted">Consultation Fee</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-calendar-plus me-2" style="color: #0d9488;"></i>Appointment Details</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('patient_book_appointment', doctor_id=doctor.get('id', '')) }}">
+                    {% if chambers %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Chamber</label>
+                        <select name="chamber" class="form-select" required>
+                            {% for c in chambers %}
+                            <option value="{{ c.get('name', '') }}">{{ c.get('name', 'Chamber') }} - {{ c.get('address', '') }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Appointment Date *</label>
+                            <input type="date" name="date" class="form-control" required min="{{ min_date }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Preferred Time Slot *</label>
+                            <select name="time_slot" class="form-select" required>
+                                {% for slot in time_slots %}
+                                <option value="{{ slot }}">{{ slot }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Consultation Type</label>
+                        <select name="consultation_type" class="form-select">
+                            <option value="in_person">In-Person Visit</option>
+                            <option value="online">Online Consultation</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Payment Method</label>
+                        <select name="payment_method" class="form-select">
+                            <option value="cash">Cash on Visit</option>
+                            <option value="online">Online Payment</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Symptoms / Reason for Visit</label>
+                        <textarea name="symptoms" class="form-control" rows="3" placeholder="Briefly describe your symptoms or reason for visit..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-teal w-100 py-3 fw-bold">
+                        <i class="bi bi-check-circle me-2"></i>Confirm Booking (৳{{ doctor.get('consultationFee', 500) }})
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
