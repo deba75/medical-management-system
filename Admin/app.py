@@ -2231,6 +2231,8 @@ def diagnostic_update_booking_status(booking_id):
         except Exception as e:
             flash(f'Error updating booking: {e}', 'danger')
 
+    if status == 'completed':
+        return redirect(url_for('diagnostic_bookings'))
     return redirect(url_for('diagnostic_booking_detail', booking_id=booking_id))
 
 @app.route('/diagnostic/booking/<booking_id>/results', methods=['POST'])
@@ -2244,11 +2246,11 @@ def diagnostic_save_test_results(booking_id):
                 'status': 'completed',
                 'updatedAt': datetime.now().strftime('%Y-%m-%d %H:%M')
             })
-            flash('Test results saved and report published!', 'success')
+            flash('Test results saved and report published successfully!', 'success')
         except Exception as e:
             flash(f'Error saving test results: {e}', 'danger')
 
-    return redirect(url_for('diagnostic_booking_detail', booking_id=booking_id))
+    return redirect(url_for('diagnostic_bookings'))
 
 @app.route('/diagnostic/report/print/<booking_id>')
 def diagnostic_report_print(booking_id):
