@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/theme_provider.dart';
+import 'core/providers/auth_provider.dart';
+import 'models/user_model.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/patient/home/patient_home_screen.dart';
 import 'screens/patient/profile/patient_profile_screen.dart';
 import 'screens/doctor/home/doctor_home_screen.dart';
 import 'screens/doctor/verification/doctor_verification_screen.dart';
+import 'screens/diagnostic_centre/diagnostic_centre_dashboard_screen.dart';
+import 'screens/diagnostic_centre/verification/diagnostic_centre_verification_screen.dart';
+import 'screens/admin/admin_verification_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,19 +47,22 @@ class MyApp extends ConsumerWidget {
         '/patient-profile': (context) => const PatientProfileScreen(),
         '/doctor-home': (context) => const DoctorHomeScreen(),
         '/doctor-verification': (context) => const DoctorVerificationScreen(),
+        '/diagnostic-centre-home': (context) => const DiagnosticCentreDashboardScreen(),
+        '/diagnostic-centre-verification': (context) => const DiagnosticCentreVerificationScreen(),
+        '/admin-verification': (context) => const AdminVerificationScreen(),
       },
     );
   }
 }
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
@@ -61,14 +70,34 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthStatus() async {
-    // TODO: Check if user is logged in
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(milliseconds: 800));
+
+    if (!mounted) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final authService = ref.read(authServiceProvider);
+        final userData = await authService.getUserData(user.uid);
+        if (mounted) {
+          if (userData?.role == UserRole.doctor) {
+            Navigator.pushReplacementNamed(context, '/doctor-home');
+          } else if (userData?.role == UserRole.diagnosticCentre) {
+            Navigator.pushReplacementNamed(context, '/diagnostic-centre-home');
+          } else if (userData?.role == UserRole.admin) {
+            Navigator.pushReplacementNamed(context, '/admin-verification');
+          } else {
+            Navigator.pushReplacementNamed(context, '/patient-home');
+          }
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error checking active user session on splash: $e');
+      }
+    }
 
     if (mounted) {
-      // For now, navigate to login
       Navigator.pushReplacementNamed(context, '/login');
-      
-  
     }
   }
 

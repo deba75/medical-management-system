@@ -1,4 +1,4 @@
-package medical_management_app.com
+package com.dabasisdas.mediconnect
 
 import io.flutter.embedding.android.FlutterActivity
 

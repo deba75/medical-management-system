@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Diagnostic Report - #{{ booking.id[:8] }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8fafc; font-family: 'Inter', sans-serif; }
+        .report-box { max-width: 800px; margin: 30px auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .report-header { border-bottom: 2px solid #0d9488; padding-bottom: 15px; margin-bottom: 20px; }
+        @media print {
+            body { background: white; }
+            .report-box { box-shadow: none; padding: 0; margin: 0; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container no-print text-center my-3">
+        <button onclick="window.print()" class="btn btn-primary me-2"><i class="bi bi-printer"></i> Print Lab Report</button>
+        <button onclick="window.close()" class="btn btn-secondary">Close Window</button>
+    </div>
+
+    <div class="report-box">
+        <!-- Header -->
+        <div class="report-header d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="fw-bold style-teal mb-1" style="color: #0d9488;">{{ centre.name or 'MediConnect Diagnostic Centre' }}</h3>
+                <p class="text-muted mb-0">{{ centre.address or 'Diagnostic & Pathology Services' }} | Phone: {{ centre.phone or 'N/A' }}</p>
+            </div>
+            <div class="text-end">
+                <h5 class="fw-bold text-secondary mb-0">LABORATORY REPORT</h5>
+                <small class="text-muted">Report ID: #{{ booking.id[:8] }}</small>
+            </div>
+        </div>
+
+        <!-- Patient Info -->
+        <div class="row bg-light p-3 rounded mb-4">
+            <div class="col-6"><strong>Patient Name:</strong> {{ booking.targetPatientDisplay or booking.patientName }}</div>
+            <div class="col-6 text-end"><strong>Date Reported:</strong> {{ booking.updatedAt or booking.scheduledDate or 'N/A' }}</div>
+        </div>
+
+        <!-- Tests & Results -->
+        <h5 class="fw-bold text-dark mb-3">Diagnostic Test Results</h5>
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Test Name</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if booking.tests %}
+                        {% for t in booking.tests %}
+                        <tr>
+                            <td class="fw-bold">{{ t.testName }}</td>
+                            <td>{{ t.category or 'General Pathology' }}</td>
+                            <td><span class="badge bg-success">Verified</span></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr><td colspan="3">Tests List</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card p-3 border mb-4">
+            <h6 class="fw-bold text-teal" style="color: #0d9488;">Test Parameters & Findings</h6>
+            <pre style="font-family: inherit; font-size: 0.95rem; white-space: pre-wrap;" class="mb-0">{{ booking.testResults or 'Report parameters verified within reference ranges.' }}</pre>
+        </div>
+
+        <div class="mt-5 pt-4 border-top d-flex justify-content-between">
+            <div>
+                <p class="mb-0 text-muted small">Phlebotomist / Collector</p>
+                <p class="fw-bold mb-0">{{ booking.collectorName or 'Staff Member' }}</p>
+            </div>
+            <div class="text-end">
+                <p class="mb-0 text-muted small">Consultant Pathologist</p>
+                <p class="fw-bold mb-0">Dr. M. Rahman (MD, Pathology)</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

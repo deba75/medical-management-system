@@ -52,17 +52,23 @@ service cloud.firestore {
       // Allow read if user is patient or doctor in the prescription
       allow read: if request.auth != null && (
         request.auth.uid == resource.data.patientId ||
-        request.auth.uid == resource.data.doctorId
+        ('doctorId' in resource.data && request.auth.uid == resource.data.doctorId)
       );
       
-      // Only doctors can create prescriptions
+      // Allow create for authenticated users
       allow create: if request.auth != null;
       
-      // Only the doctor who created can update
-      allow update: if request.auth != null && request.auth.uid == resource.data.doctorId;
+      // Allow update if patient or doctor who created it
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.patientId ||
+        ('doctorId' in resource.data && request.auth.uid == resource.data.doctorId)
+      );
       
-      // Only the doctor can delete
-      allow delete: if request.auth != null && request.auth.uid == resource.data.doctorId;
+      // Allow delete if patient who uploaded or doctor who created
+      allow delete: if request.auth != null && (
+        request.auth.uid == resource.data.patientId ||
+        ('doctorId' in resource.data && request.auth.uid == resource.data.doctorId)
+      );
     }
     
     // Medical history collection

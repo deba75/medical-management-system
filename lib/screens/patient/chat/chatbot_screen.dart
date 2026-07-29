@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/chatbot_service.dart';
+import '../../../core/services/pdf_generator_service.dart';
 import '../../../models/doctor_model.dart';
 import '../doctors/search_doctors_screen.dart';
-import '../doctors/book_appointment_screen.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -83,13 +83,15 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     }
   }
 
-  void _navigateToBookAppointment(DoctorModel doctor) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => BookAppointmentScreen(doctor: doctor),
-      ),
-    );
+  void _selectDoctorForInChatBooking(DoctorModel doctor) {
+    _chatbot.setBookingDoctor(doctor.doctorId, doctor.name, doctor.specialization);
+    _chatbot.setBookingHospital(doctor.hospitals.isNotEmpty ? doctor.hospitals.first : 'City General Hospital');
+    _chatbot.setBookingDate(DateTime.now());
+    _chatbot.setBookingTimeSlot('10:00 AM');
+    _chatbot.setAwaitingConfirmation(true);
+
+    _messageController.text = 'Confirm booking with Dr. ${doctor.name} for 10:00 AM today';
+    _sendMessage();
   }
 
   void _navigateToSearchDoctors() {
@@ -134,6 +136,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: AppTheme.primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 2,
         shadowColor: AppTheme.primaryColor.withOpacity(0.2),
         title: Row(
@@ -355,6 +359,93 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     );
   }
 
+  String _formatMessageText(String text) {
+    if (text.isEmpty) return text;
+    String formatted = text;
+    // Replace **Heading:** or **Text** with bullet points
+    formatted = formatted.replaceAllMapped(RegExp(r'\*\*([^*]+)\*\*'), (match) {
+      final title = match.group(1)?.trim() ?? '';
+      if (title.startsWith('•')) return title;
+      return '• $title';
+    });
+    // Remove double bullet markers if present
+    formatted = formatted.replaceAll('• •', '•');
+    return formatted;
+  }
+
+  Widget _buildFormattedMessageText(String rawText, bool isUser) {
+    final textColor = isUser ? Colors.white : Colors.black87;
+    final text = _formatMessageText(rawText);
+    final lines = text.split('\n');
+
+    final spans = <TextSpan>[];
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final trimmed = line.trim();
+
+      bool isHeader = false;
+      if (trimmed.startsWith('•') && (trimmed.endsWith(':') || trimmed.contains(': '))) {
+        isHeader = true;
+      }
+
+      if (isHeader) {
+        if (trimmed.contains(': ') && !trimmed.endsWith(':')) {
+          final colonIndex = line.indexOf(': ');
+          final headerPart = line.substring(0, colonIndex + 2);
+          final restPart = line.substring(colonIndex + 2);
+
+          spans.add(TextSpan(
+            text: headerPart,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              height: 1.4,
+            ),
+          ));
+          spans.add(TextSpan(
+            text: restPart,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 15,
+              fontWeight: FontWeight.normal,
+              height: 1.4,
+            ),
+          ));
+        } else {
+          spans.add(TextSpan(
+            text: line,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              height: 1.4,
+            ),
+          ));
+        }
+      } else {
+        spans.add(TextSpan(
+          text: line,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 15,
+            fontWeight: FontWeight.normal,
+            height: 1.4,
+          ),
+        ));
+      }
+
+      if (i < lines.length - 1) {
+        spans.add(const TextSpan(text: '\n'));
+      }
+    }
+
+    return Text.rich(
+      TextSpan(children: spans),
+    );
+  }
+
   Widget _buildMessageBubble(ChatMessage message) {
     final isUser = message.isUser;
     
@@ -380,25 +471,39 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             const SizedBox(width: 8),
           ],
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isUser ? AppTheme.primaryColor : Colors.grey.shade100,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(20),
-                  topRight: const Radius.circular(20),
-                  bottomLeft: Radius.circular(isUser ? 20 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 20),
+            child: Column(
+              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isUser ? AppTheme.primaryColor : Colors.grey.shade100,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(20),
+                      topRight: const Radius.circular(20),
+                      bottomLeft: Radius.circular(isUser ? 20 : 4),
+                      bottomRight: Radius.circular(isUser ? 4 : 20),
+                    ),
+                  ),
+                  child: _buildFormattedMessageText(message.text, isUser),
                 ),
-              ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: isUser ? Colors.white : Colors.black87,
-                  fontSize: 15,
-                  height: 1.4,
-                ),
-              ),
+                if (message.appointment != null) ...[
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => PdfGeneratorService.showPdfPreview(context, message.appointment!),
+                    icon: const Icon(Icons.picture_as_pdf, size: 16, color: Colors.white),
+                    label: const Text('📄 View / Download Appointment PDF'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           if (isUser) ...[
@@ -586,7 +691,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   Widget _buildDoctorCard(DoctorModel doctor) {
     return GestureDetector(
-      onTap: () => _navigateToBookAppointment(doctor),
+      onTap: () => _selectDoctorForInChatBooking(doctor),
       child: Container(
         width: 140,
         margin: const EdgeInsets.only(right: 12),
@@ -665,7 +770,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => _navigateToBookAppointment(doctor),
+                onPressed: () => _selectDoctorForInChatBooking(doctor),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,

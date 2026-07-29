@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../config/api_keys.dart';
 import '../../models/doctor_model.dart';
 import '../../models/appointment_model.dart';
+import 'pdf_generator_service.dart';
 
 class ChatMessage {
   final String text;
@@ -12,6 +13,7 @@ class ChatMessage {
   final DateTime timestamp;
   final ChatMessageType type;
   final Map<String, dynamic>? metadata;
+  final AppointmentModel? appointment;
 
   ChatMessage({
     required this.text,
@@ -19,6 +21,7 @@ class ChatMessage {
     DateTime? timestamp,
     this.type = ChatMessageType.text,
     this.metadata,
+    this.appointment,
   }) : timestamp = timestamp ?? DateTime.now();
 }
 
@@ -162,6 +165,7 @@ IMPORTANT GUIDELINES:
 - Use simple language that patients can understand
 - Ask clarifying questions when symptoms are vague
 - When booking appointments, always ask for confirmation before finalizing
+- FORMATTING INSTRUCTION: Do NOT use markdown bold asterisks like **Heading:**. Use bullet points like • Heading: or bullet lists (• ) for headings, section titles, and tips.
 
 Start by greeting the patient warmly and asking how you can help them today.
 '''),
@@ -181,38 +185,37 @@ Start by greeting the patient warmly and asking how you can help them today.
     }
   }
 
-  /// Get doctors by specialty from Firebase
+  /// Get doctors by specialty from Firebase with flexible case-insensitive matching
   Future<List<DoctorModel>> getDoctorsBySpecialty(String specialty) async {
     try {
-      final snapshot = await _firestore
-          .collection('doctors')
-          .where('specialization', isEqualTo: specialty)
-          .where('active', isEqualTo: true)
-          .get();
-      
+      final snapshot = await _firestore.collection('doctors').get();
+      final lowerSpecialty = specialty.toLowerCase().trim();
+
       return snapshot.docs
           .map((doc) => DoctorModel.fromJson(doc.data(), doc.id))
+          .where((doc) {
+            final spec = doc.specialization.toLowerCase();
+            final docName = doc.name.toLowerCase();
+            return spec.contains(lowerSpecialty) ||
+                   docName.contains(lowerSpecialty) ||
+                   lowerSpecialty.contains(spec);
+          })
           .toList();
     } catch (e) {
-      debugPrint('Error fetching doctors: $e');
+      debugPrint('Error fetching doctors by specialty: $e');
       return [];
     }
   }
 
-  /// Get all available doctors from Firebase
+  /// Get all active doctors from Firebase (full database access)
   Future<List<DoctorModel>> getAllDoctors() async {
     try {
-      final snapshot = await _firestore
-          .collection('doctors')
-          .where('active', isEqualTo: true)
-          .limit(10)
-          .get();
-      
+      final snapshot = await _firestore.collection('doctors').get();
       return snapshot.docs
           .map((doc) => DoctorModel.fromJson(doc.data(), doc.id))
           .toList();
     } catch (e) {
-      debugPrint('Error fetching doctors: $e');
+      debugPrint('Error fetching all doctors: $e');
       return [];
     }
   }
@@ -265,49 +268,60 @@ Start by greeting the patient warmly and asking how you can help them today.
     }
   }
 
+  AppointmentModel? _lastCreatedAppointment;
+  AppointmentModel? get lastCreatedAppointment => _lastCreatedAppointment;
+
   /// Book an appointment
-  Future<bool> bookAppointment() async {
+  Future<AppointmentModel?> bookAppointment() async {
     try {
       final user = _auth.currentUser;
       if (user == null) {
         debugPrint('User not authenticated');
-        return false;
+        return null;
       }
       
       if (!_bookingState.isComplete) {
         debugPrint('Booking state incomplete');
-        return false;
+        return null;
       }
 
       // Get patient info
       final patientDoc = await _firestore.collection('users').doc(user.uid).get();
       final patientName = patientDoc.data()?['name'] ?? 'Patient';
       
+      final docRef = _firestore.collection('appointments').doc();
+
       // Create appointment
       final appointment = AppointmentModel(
-        appointmentId: '',
+        appointmentId: docRef.id,
         doctorId: _bookingState.selectedDoctorId!,
         patientId: user.uid,
         doctorName: _bookingState.selectedDoctorName ?? 'Doctor',
         patientName: patientName,
-        specialization: _bookingState.selectedSpecialty ?? '',
-        date: _bookingState.selectedDate!,
+        specialization: _bookingState.selectedSpecialty ?? 'General Consultation',
+        date: _bookingState.selectedDate ?? DateTime.now(),
         timeSlotId: DateTime.now().millisecondsSinceEpoch.toString(),
-        timeSlot: _bookingState.selectedTimeSlot!,
-        hospitalName: _bookingState.selectedHospital,
+        timeSlot: _bookingState.selectedTimeSlot ?? '10:00 AM',
+        hospitalName: _bookingState.selectedHospital ?? 'City General Hospital',
         status: AppointmentStatus.upcoming,
-        reason: 'Booked via MediBot',
+        reason: 'Booked via MediBot AI Assistant',
+        consultationFee: 500.0,
       );
       
-      await _firestore.collection('appointments').add(appointment.toJson());
+      await docRef.set(appointment.toJson());
+
+      // Send appointment PDF notification to patient
+      await PdfGeneratorService.saveAndNotifyAppointmentPdf(appointment);
       
+      _lastCreatedAppointment = appointment;
+
       // Reset booking state
       _bookingState.reset();
       
-      return true;
+      return appointment;
     } catch (e) {
       debugPrint('Error booking appointment: $e');
-      return false;
+      return null;
     }
   }
 
@@ -346,17 +360,17 @@ Start by greeting the patient warmly and asking how you can help them today.
     // Check for [BOOK_APPOINTMENT] or [CONFIRM_BOOKING] command
     if (response.contains('[BOOK_APPOINTMENT]') || response.contains('[CONFIRM_BOOKING]')) {
       if (_bookingState.isComplete && _bookingState.awaitingConfirmation) {
-        final success = await bookAppointment();
-        if (success) {
+        final appointment = await bookAppointment();
+        if (appointment != null) {
           processedResponse = processedResponse
               .replaceAll('[BOOK_APPOINTMENT]', '')
               .replaceAll('[CONFIRM_BOOKING]', '');
-          processedResponse += '\n\n✅ **Appointment Booked Successfully!**\nYou can view your appointment in the "My Appointments" section.';
+          processedResponse += '\n\n✅ **Appointment Booked Successfully!**\n📄 PDF Receipt saved to your profile!';
         } else {
           processedResponse = processedResponse
               .replaceAll('[BOOK_APPOINTMENT]', '')
               .replaceAll('[CONFIRM_BOOKING]', '');
-          processedResponse += '\n\n❌ Could not book appointment. Please try again or book through the app.';
+          processedResponse += '\n\n❌ Could not book appointment. Please try again.';
         }
       }
     }
@@ -378,23 +392,23 @@ Start by greeting the patient warmly and asking how you can help them today.
       final lowerMessage = message.toLowerCase().trim();
       if (_bookingState.awaitingConfirmation) {
         if (lowerMessage == 'yes' || lowerMessage == 'confirm' || lowerMessage == 'book' || lowerMessage == 'ok') {
-          final success = await bookAppointment();
+          final appointment = await bookAppointment();
           String response;
-          if (success) {
+          if (appointment != null) {
             response = '''✅ **Appointment Booked Successfully!**
 
 Your appointment has been confirmed:
-• Doctor: ${_bookingState.selectedDoctorName}
-• Date: ${_formatDate(_bookingState.selectedDate!)}
-• Time: ${_bookingState.selectedTimeSlot}
+• Doctor: ${appointment.doctorName}
+• Date: ${_formatDate(appointment.date)}
+• Time: ${appointment.timeSlot}
+• Hospital: ${appointment.hospitalName ?? 'City General Hospital'}
 
-You can view and manage your appointment in the "My Appointments" section.
-
-Is there anything else I can help you with?''';
+📄 **Your Appointment PDF slip has been generated and saved to your profile!**''';
+            _messages.add(ChatMessage(text: response, isUser: false, appointment: appointment));
           } else {
-            response = '❌ Sorry, I couldn\'t book the appointment. Please try again or use the "Search Doctors" section in the app to book directly.';
+            response = '❌ Sorry, I couldn\'t book the appointment. Please try again.';
+            _messages.add(ChatMessage(text: response, isUser: false));
           }
-          _messages.add(ChatMessage(text: response, isUser: false));
           return response;
         } else if (lowerMessage == 'no' || lowerMessage == 'cancel' || lowerMessage == 'nevermind') {
           _bookingState.reset();
@@ -493,7 +507,7 @@ You can also browse doctors directly in the **Search Doctors** section of the ap
 
 ''';
         for (int i = 0; i < doctors.take(5).length; i++) {
-          response += '''${i + 1}. **Dr. ${doctors[i].name}**
+          response += '''• Dr. ${doctors[i].name}
    • Specialty: ${doctors[i].specialization}
    • Fee: ৳${doctors[i].consultationFee.toStringAsFixed(0)}
    • Rating: ${doctors[i].rating}⭐
@@ -504,61 +518,61 @@ You can also browse doctors directly in the **Search Doctors** section of the ap
       } else {
         response = '''To find a doctor, you can:
 
-1. **Browse by Specialty** - Go to Search Doctors in the app
-2. **Tell me your symptoms** - I'll recommend the right specialist
+• Browse by Specialty - Go to Search Doctors in the app
+• Tell me your symptoms - I'll recommend the right specialist
 
 What symptoms are you experiencing?''';
       }
     } else if (lowerMessage.contains('schedule') || lowerMessage.contains('available') || lowerMessage.contains('slot')) {
       response = '''To check a doctor's schedule:
 
-1. Go to **Search Doctors** in the app
-2. Select a doctor to view their profile
-3. Click **Book Appointment** to see available slots
+• Go to Search Doctors in the app
+• Select a doctor to view their profile
+• Click Book Appointment to see available slots
 
 Or tell me which doctor you're interested in, and I can help you book!''';
     } else if (lowerMessage.contains('headache') || lowerMessage.contains('head pain')) {
       response = '''I understand you're experiencing a headache. Let me help you.
 
-**Quick Relief Tips:**
+• Quick Relief Tips:
 • Rest in a quiet, dark room
 • Stay hydrated - drink plenty of water
 • Apply a cold compress to your forehead
 • Take over-the-counter pain relievers if needed
 
-**When to see a doctor:**
+• When to see a doctor:
 If your headache is severe, sudden, or accompanied by fever, vision changes, or neck stiffness.
 
-**Recommended Specialist:** General Physician or Neurologist
+• Recommended Specialist: General Physician or Neurologist
 
 Would you like me to help you find a doctor and book an appointment?''';
     } else if (lowerMessage.contains('fever') || lowerMessage.contains('temperature')) {
       response = '''I'm sorry to hear you have a fever. Here's what you can do:
 
-**Immediate Care:**
+• Immediate Care:
 • Rest and stay hydrated
 • Take paracetamol/acetaminophen as directed
 • Use a cool compress on your forehead
 • Wear light clothing
 
-**See a doctor if:**
+• See a doctor if:
 • Fever exceeds 103°F (39.4°C)
 • Lasts more than 3 days
 • Accompanied by severe symptoms
 
-**Recommended Specialist:** General Physician
+• Recommended Specialist: General Physician
 
 Would you like me to help you book an appointment?''';
     } else if (lowerMessage.contains('emergency') || lowerMessage.contains('urgent')) {
-      response = '''🚨 **For Medical Emergencies:**
+      response = '''🚨 Emergency Guidance:
 
-**Call emergency services immediately!**
+Call emergency services immediately!
 
-**Emergency Numbers:**
+• Emergency Numbers:
 • Ambulance: 999 / 112
-• Or use the **Book Ambulance** feature in our app
+• Or use the Book Ambulance feature in our app
 
-**While waiting:**
+• While waiting:
 • Stay calm
 • Don't move if you're injured
 • Keep someone with you if possible
@@ -578,10 +592,10 @@ How can I assist you today?''';
     } else {
       response = '''Thank you for your message. I can help you with:
 
-• **Symptom Assessment** - Describe what you're feeling
-• **Find Doctors** - I'll recommend specialists based on your needs
-• **Book Appointments** - Schedule a visit with a doctor
-• **First Aid Tips** - Basic guidance for common issues
+• Symptom Assessment - Describe what you're feeling
+• Find Doctors - I'll recommend specialists based on your needs
+• Book Appointments - Schedule a visit with a doctor
+• First Aid Tips - Basic guidance for common issues
 
 What would you like help with today?''';
     }
@@ -601,7 +615,7 @@ I'm here to help you:
 • 🩹 Get first aid guidance
 • 💊 Answer health questions
 
-**Note:** I provide guidance only. For proper diagnosis, please consult a doctor.
+• Note: I provide guidance only. For proper diagnosis, please consult a doctor.
 
 How can I assist you today?''';
 

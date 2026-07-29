@@ -1,0 +1,68 @@
+{% extends "doctor/base.html" %}
+{% block title %}Patients & Records{% endblock %}
+{% block header_title %}Patient Lookup & Medical History{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('doctor_patients') }}" class="row g-3">
+            <div class="col-md-9">
+                <input type="text" name="search" class="form-control" placeholder="Search by patient name, phone number, or email..." value="{{ search_query }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>Search Patient</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3">
+        <h6 class="fw-bold mb-0"><i class="bi bi-people me-2"></i>Patient Directory</h6>
+    </div>
+    <div class="card-body p-0">
+        {% if patients %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Email / Phone</th>
+                        <th>Blood Group / Gender</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in patients %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold">{{ p.name or 'N/A' }}</div>
+                            <small class="text-muted">ID: {{ p.id[:8] }}</small>
+                        </td>
+                        <td>
+                            <div>{{ p.email or 'N/A' }}</div>
+                            <small class="text-muted">{{ p.phone or 'N/A' }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-danger-subtle text-danger">{{ p.bloodGroup or 'N/A' }}</span>
+                            <span class="badge bg-light text-dark border">{{ p.gender or 'N/A' }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('doctor_request_access', patient_id=p.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-shield-lock me-1"></i>Request Records Access
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-person-x fs-1"></i>
+            <p class="mt-2 mb-0">No patients found.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

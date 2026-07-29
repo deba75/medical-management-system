@@ -13,6 +13,10 @@ class HealthMetrics {
   final int systolicBP;
   final int diastolicBP;
   final int heartRate;
+  final int steps;
+  final int stepGoal;
+  final int totalCalories;
+  final int calorieGoal;
   final DateTime timestamp;
   final String status; // normal, warning, critical
 
@@ -22,6 +26,10 @@ class HealthMetrics {
     required this.heartRate,
     required this.timestamp,
     required this.status,
+    this.steps = 0,
+    this.stepGoal = 10000,
+    this.totalCalories = 0,
+    this.calorieGoal = 2000,
   });
 
   factory HealthMetrics.fromJson(Map<String, dynamic> json) {
@@ -31,6 +39,10 @@ class HealthMetrics {
       heartRate: json['heartRate'] ?? 72,
       timestamp: _parseDateTime(json['timestamp']),
       status: json['status'] ?? 'normal',
+      steps: json['steps'] ?? 0,
+      stepGoal: json['stepGoal'] ?? 10000,
+      totalCalories: json['totalCalories'] ?? 0,
+      calorieGoal: json['calorieGoal'] ?? 2000,
     );
   }
 
@@ -39,6 +51,10 @@ class HealthMetrics {
       'systolicBP': systolicBP,
       'diastolicBP': diastolicBP,
       'heartRate': heartRate,
+      'steps': steps,
+      'stepGoal': stepGoal,
+      'totalCalories': totalCalories,
+      'calorieGoal': calorieGoal,
       'timestamp': timestamp.toIso8601String(),
       'status': status,
     };
@@ -63,6 +79,11 @@ class HealthMetrics {
     }
     return 'Normal';
   }
+
+  double get stepProgress =>
+      stepGoal > 0 ? (steps / stepGoal).clamp(0.0, 1.0) : 0.0;
+  double get calorieProgress =>
+      calorieGoal > 0 ? (totalCalories / calorieGoal).clamp(0.0, 1.0) : 0.0;
 
   bool get isNormal => bpStatus == 'Normal' && heartRateStatus == 'Normal';
 }

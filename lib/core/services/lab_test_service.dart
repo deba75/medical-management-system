@@ -68,14 +68,88 @@ class LabTestService {
 
   // Get patient's lab test bookings
   Stream<List<LabTestModel>> getPatientBookings(String patientId) {
-    return _firestore
-        .collection(_bookingsCollection)
-        .where('patientId', isEqualTo: patientId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => LabTestModel.fromJson(doc.data(), doc.id))
-            .toList());
+    Query query = _firestore.collection(_bookingsCollection);
+    if (patientId.isNotEmpty) {
+      query = query.where('patientId', isEqualTo: patientId);
+    }
+
+    return query.snapshots().map((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        final list = snapshot.docs
+            .map((doc) => LabTestModel.fromJson(doc.data() as Map<String, dynamic>, doc.id))
+            .toList();
+        list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return list;
+      } else {
+        // Return realistic demo bookings demonstrating the full 5-stage workflow
+        return [
+          LabTestModel(
+            id: 'DEMO-101',
+            patientId: patientId.isEmpty ? 'guest' : patientId,
+            patientName: 'Patient User',
+            familyMemberId: 'fam_1',
+            familyMemberName: 'Sultana Begum',
+            familyMemberRelationship: 'Mother',
+            diagnosticCentreId: '1',
+            diagnosticCentreName: 'Popular Diagnostic Centre',
+            tests: [
+              TestItem(
+                testId: '1',
+                testName: 'Complete Blood Count (CBC)',
+                category: 'Blood Test',
+                price: 450,
+              ),
+              TestItem(
+                testId: '3',
+                testName: 'Lipid Profile',
+                category: 'Blood Test',
+                price: 1200,
+              ),
+            ],
+            status: LabTestStatus.collectorAssigned,
+            collectionType: SampleCollectionType.homeSample,
+            paymentMethod: LabPaymentMethod.manual,
+            paymentStatus: LabPaymentStatus.pending,
+            scheduledDate: DateTime.now().add(const Duration(days: 1)),
+            timeSlot: '09:00 AM - 12:00 PM',
+            address: 'House 24, Road 5, Dhanmondi, Dhaka',
+            totalAmount: 1650,
+            homeCollectionFee: 150,
+            phlebotomistName: 'Mr. Tareq Hasan (Sr. Phlebotomist)',
+            phlebotomistPhone: '+880 1711-223344',
+            phlebotomistEquipment: 'Sterile Biohazard Transport Box & Digital Thermometer',
+            createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+          ),
+          LabTestModel(
+            id: 'DEMO-102',
+            patientId: patientId.isEmpty ? 'guest' : patientId,
+            patientName: 'Patient User',
+            diagnosticCentreId: '2',
+            diagnosticCentreName: 'Ibn Sina Diagnostic',
+            tests: [
+              TestItem(
+                testId: '12',
+                testName: 'Thyroid Profile (T3, T4, TSH)',
+                category: 'Blood Test',
+                price: 1800,
+              ),
+            ],
+            status: LabTestStatus.completed,
+            collectionType: SampleCollectionType.centerWalkIn,
+            paymentMethod: LabPaymentMethod.online,
+            paymentStatus: LabPaymentStatus.paid,
+            scheduledDate: DateTime.now().subtract(const Duration(days: 2)),
+            timeSlot: '10:00 AM - 01:00 PM',
+            address: 'House 48, Road 9/A, Dhanmondi',
+            totalAmount: 1800,
+            homeCollectionFee: 0,
+            reportUrl: 'https://mediconnect.health/reports/demo_thyroid_report.pdf',
+            reportGeneratedAt: DateTime.now().subtract(const Duration(days: 1)),
+            createdAt: DateTime.now().subtract(const Duration(days: 2)),
+          ),
+        ];
+      }
+    });
   }
 
   // Get booking by ID
@@ -102,12 +176,53 @@ class LabTestService {
     }
   }
 
+  // Stream all lab test bookings for Diagnostic Centre Admin portal
+  Stream<List<LabTestModel>> getAllBookingsStream() {
+    return _firestore.collection(_bookingsCollection).snapshots().map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => LabTestModel.fromJson(doc.data(), doc.id))
+          .toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
+  }
+
+  // Diagnostic Centre approves patient booking request
+  Future<void> approveBooking(String bookingId) async {
+    try {
+      await _firestore.collection(_bookingsCollection).doc(bookingId).update({
+        'status': LabTestStatus.approved.name,
+      });
+    } catch (e) {
+      throw Exception('Failed to approve booking: $e');
+    }
+  }
+
+  // Diagnostic Centre assigns sample collector (Phlebotomist)
+  Future<void> assignPhlebotomist(
+    String bookingId, {
+    required String name,
+    required String phone,
+    required String equipment,
+  }) async {
+    try {
+      await _firestore.collection(_bookingsCollection).doc(bookingId).update({
+        'status': LabTestStatus.collectorAssigned.name,
+        'phlebotomistName': name,
+        'phlebotomistPhone': phone,
+        'phlebotomistEquipment': equipment,
+      });
+    } catch (e) {
+      throw Exception('Failed to assign phlebotomist: $e');
+    }
+  }
+
   // Upload report URL
   Future<void> uploadReport(String bookingId, String reportUrl) async {
     try {
       await _firestore.collection(_bookingsCollection).doc(bookingId).update({
         'reportUrl': reportUrl,
-        'reportGeneratedAt': DateTime.now().toIso8601String(),
+        'reportGeneratedAt': Timestamp.fromDate(DateTime.now()),
         'status': LabTestStatus.completed.name,
       });
     } catch (e) {

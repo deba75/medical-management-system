@@ -1,0 +1,131 @@
+{% extends "doctor/base.html" %}
+{% block title %}Write Prescription{% endblock %}
+{% block header_title %}Create Rx Prescription{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3">
+        <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-person-lines-fill me-2"></i>Patient Summary</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3"><strong>Patient Name:</strong> {{ appointment.patientName }}</div>
+            <div class="col-md-3"><strong>Date:</strong> {{ appointment.date }}</div>
+            <div class="col-md-3"><strong>Time:</strong> {{ appointment.time or appointment.timeSlot }}</div>
+            <div class="col-md-3"><strong>Chief Complaints:</strong> {{ appointment.symptomDescription or 'General Symptoms' }}</div>
+        </div>
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('doctor_save_prescription', appointment_id=appointment.id) }}">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-primary text-white py-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-file-earmark-medical me-2"></i>Prescription Details</h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Diagnosis / Assessment</label>
+                    <input type="text" name="diagnosis" class="form-control" placeholder="e.g. Acute Viral Fever, Hypertension" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Symptoms / Clinical Findings</label>
+                    <input type="text" name="symptoms" class="form-control" placeholder="e.g. High temperature (102°F), Body ache, Cough" value="{{ appointment.symptomDescription }}">
+                </div>
+            </div>
+
+            <!-- Medicines Table -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-capsule me-2"></i>Prescribed Medicines</h6>
+                <div>
+                    <span class="small text-muted me-2">Quick Add Favorites:</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="addPresetMedicine('Tab Napa Extra 500mg', '500mg', '1-0-1', '5 days', 'After meal')">+ Napa Extra</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="addPresetMedicine('Cap Seclo 20mg', '20mg', '1-0-1', '7 days', 'Before meal')">+ Seclo 20mg</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="addPresetMedicine('Tab Ciprocin 500mg', '500mg', '1-0-1', '7 days', 'After meal')">+ Ciprocin</button>
+                </div>
+            </div>
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered align-middle" id="medicinesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Medicine Name</th>
+                            <th>Dosage (e.g. 500mg)</th>
+                            <th>Frequency (e.g. 1-0-1)</th>
+                            <th>Duration (e.g. 7 days)</th>
+                            <th>Instruction</th>
+                            <th style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="medicineRows">
+                        <tr>
+                            <td><input type="text" name="med_name[]" class="form-control form-control-sm" placeholder="Tab Napa Extra" required></td>
+                            <td><input type="text" name="med_dosage[]" class="form-control form-control-sm" placeholder="500 mg"></td>
+                            <td><input type="text" name="med_frequency[]" class="form-control form-control-sm" placeholder="1-0-1 (After food)"></td>
+                            <td><input type="text" name="med_duration[]" class="form-control form-control-sm" placeholder="5 days"></td>
+                            <td><input type="text" name="med_instruction[]" class="form-control form-control-sm" placeholder="After meal"></td>
+                            <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary mb-4" onclick="addMedicineRow()">
+                <i class="bi bi-plus-circle me-1"></i>Add Another Medicine
+            </button>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Advice & Lifestyle Guidance</label>
+                    <textarea name="advice" class="form-control" rows="3" placeholder="Drink plenty of water, take adequate rest."></textarea>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Recommended Lab Tests</label>
+                    <textarea name="testsRecommended" class="form-control" rows="3" placeholder="CBC, Urine R/E"></textarea>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Follow-Up Date</label>
+                    <input type="date" name="followUpDate" class="form-control">
+                </div>
+            </div>
+        </div>
+        <div class="card-footer bg-white py-3 text-end">
+            <a href="{{ url_for('doctor_appointments') }}" class="btn btn-light me-2">Cancel</a>
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Save & Complete Consultation</button>
+        </div>
+    </div>
+</form>
+
+<script>
+function addMedicineRow() {
+    const tbody = document.getElementById('medicineRows');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="text" name="med_name[]" class="form-control form-control-sm" placeholder="Medicine name" required></td>
+        <td><input type="text" name="med_dosage[]" class="form-control form-control-sm" placeholder="e.g. 500mg"></td>
+        <td><input type="text" name="med_frequency[]" class="form-control form-control-sm" placeholder="e.g. 1-0-1"></td>
+        <td><input type="text" name="med_duration[]" class="form-control form-control-sm" placeholder="e.g. 7 days"></td>
+        <td><input type="text" name="med_instruction[]" class="form-control form-control-sm" placeholder="e.g. After meal"></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)"><i class="bi bi-trash"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+}
+function addPresetMedicine(name, dosage, frequency, duration, instruction) {
+    const tbody = document.getElementById('medicineRows');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="text" name="med_name[]" class="form-control form-control-sm" value="${name}" required></td>
+        <td><input type="text" name="med_dosage[]" class="form-control form-control-sm" value="${dosage}"></td>
+        <td><input type="text" name="med_frequency[]" class="form-control form-control-sm" value="${frequency}"></td>
+        <td><input type="text" name="med_duration[]" class="form-control form-control-sm" value="${duration}"></td>
+        <td><input type="text" name="med_instruction[]" class="form-control form-control-sm" value="${instruction}"></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRow(this)"><i class="bi bi-trash"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+}
+function removeRow(btn) {
+    const tbody = document.getElementById('medicineRows');
+    if (tbody.children.length > 1) {
+        btn.closest('tr').remove();
+    }
+}
+</script>
+{% endblock %}

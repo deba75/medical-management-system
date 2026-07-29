@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Prescription - {{ rx.id }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8fafc; font-family: 'Inter', sans-serif; }
+        .prescription-box { max-width: 800px; margin: 30px auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .rx-header { border-bottom: 2px solid #2563eb; padding-bottom: 15px; margin-bottom: 20px; }
+        .rx-symbol { font-size: 2.2rem; font-weight: bold; color: #2563eb; font-family: serif; }
+        @media print {
+            body { background: white; }
+            .prescription-box { box-shadow: none; padding: 0; margin: 0; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container no-print text-center my-3">
+        <button onclick="window.print()" class="btn btn-primary me-2"><i class="bi bi-printer"></i> Print Prescription</button>
+        <button onclick="window.close()" class="btn btn-secondary">Close Window</button>
+    </div>
+
+    <div class="prescription-box">
+        <!-- Header -->
+        <div class="rx-header d-flex justify-content-between align-items-center">
+            <div>
+                <h3 class="fw-bold text-primary mb-1">Dr. {{ rx.doctorName or doctor.name or 'Doctor' }}</h3>
+                <p class="text-muted mb-0">{{ doctor.specialization or 'Medical Specialist' }} | BMDC: {{ doctor.bmdcNumber or 'Reg-N/A' }}</p>
+            </div>
+            <div class="text-end">
+                <h4 class="fw-bold text-secondary mb-0">MediConnect Rx</h4>
+                <small class="text-muted">Date: {{ rx.date or 'N/A' }}</small>
+            </div>
+        </div>
+
+        <!-- Patient Info -->
+        <div class="row bg-light p-3 rounded mb-4">
+            <div class="col-6"><strong>Patient Name:</strong> {{ rx.patientName }}</div>
+            <div class="col-6 text-end"><strong>Rx ID:</strong> {{ rx.id[:8] }}</div>
+        </div>
+
+        <div class="row">
+            <!-- Left sidebar: Diagnosis & Symptoms -->
+            <div class="col-4 border-end">
+                <h6 class="fw-bold text-dark mb-2">Clinical Findings</h6>
+                <p class="small text-muted mb-3"><strong>Diagnosis:</strong> {{ rx.diagnosis or 'N/A' }}</p>
+                <p class="small text-muted mb-3"><strong>Symptoms:</strong> {{ rx.symptoms or 'N/A' }}</p>
+
+                {% if rx.testsRecommended %}
+                <h6 class="fw-bold text-dark mt-4 mb-2">Investigations Recommended</h6>
+                <p class="small text-muted mb-0">{{ rx.testsRecommended }}</p>
+                {% endif %}
+
+                {% if rx.followUpDate %}
+                <h6 class="fw-bold text-dark mt-4 mb-2">Next Visit / Follow-up</h6>
+                <p class="small text-muted mb-0">{{ rx.followUpDate }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Right area: Rx Medicines -->
+            <div class="col-8">
+                <div class="rx-symbol mb-3">℞</div>
+                <div class="table-responsive">
+                    <table class="table table-borderless">
+                        <thead>
+                            <tr class="border-bottom">
+                                <th>Medicine</th>
+                                <th>Dosage & Frequency</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if rx.medicines %}
+                                {% for med in rx.medicines %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold">{{ med.name }}</div>
+                                        <small class="text-muted">{{ med.instruction or '' }}</small>
+                                    </td>
+                                    <td>{{ med.dosage or '' }} - {{ med.frequency or '' }}</td>
+                                    <td>{{ med.duration or '' }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                            <tr><td colspan="3" class="text-muted">No medicines prescribed.</td></tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if rx.advice %}
+                <div class="mt-4 pt-3 border-top">
+                    <h6 class="fw-bold">Advice / Special Instructions:</h6>
+                    <p class="small text-muted mb-0">{{ rx.advice }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mt-5 pt-4 border-top text-end">
+            <p class="mb-0 text-muted">Authorized Signature</p>
+            <h6 class="fw-bold text-dark">Dr. {{ rx.doctorName or doctor.name }}</h6>
+        </div>
+    </div>
+</body>
+</html>

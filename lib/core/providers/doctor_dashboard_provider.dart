@@ -24,31 +24,6 @@ final doctorProfileProvider = StreamProvider<DoctorModel?>((ref) {
   });
 });
 
-// Doctor's Today Appointments Provider
-final doctorTodayAppointmentsProvider =
-    StreamProvider<List<AppointmentModel>>((ref) {
-  final user = ref.watch(authStateProvider).value;
-
-  if (user == null) {
-    return Stream.value([]);
-  }
-
-  final now = DateTime.now();
-  final startOfDay = DateTime(now.year, now.month, now.day);
-  final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
-
-  return FirebaseFirestore.instance
-      .collection('appointments')
-      .where('doctorId', isEqualTo: user.uid)
-      .where('appointmentDate', isGreaterThanOrEqualTo: startOfDay)
-      .where('appointmentDate', isLessThanOrEqualTo: endOfDay)
-      .orderBy('appointmentDate')
-      .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => AppointmentModel.fromJson(doc.data(), doc.id))
-          .toList());
-});
-
 // Doctor's All Appointments Provider
 final doctorAllAppointmentsProvider =
     StreamProvider<List<AppointmentModel>>((ref) {
@@ -61,31 +36,42 @@ final doctorAllAppointmentsProvider =
   return FirebaseFirestore.instance
       .collection('appointments')
       .where('doctorId', isEqualTo: user.uid)
-      .orderBy('appointmentDate', descending: true)
       .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => AppointmentModel.fromJson(doc.data(), doc.id))
-          .toList());
+      .map((snapshot) {
+    final list = snapshot.docs
+        .map((doc) => AppointmentModel.fromJson(doc.data(), doc.id))
+        .toList();
+    list.sort((a, b) => b.date.compareTo(a.date));
+    return list;
+  });
+});
+
+// Doctor's Today Appointments Provider
+final doctorTodayAppointmentsProvider = Provider<AsyncValue<List<AppointmentModel>>>((ref) {
+  final allAsync = ref.watch(doctorAllAppointmentsProvider);
+  final now = DateTime.now();
+
+  return allAsync.whenData((all) {
+    return all.where((app) {
+      return app.date.year == now.year &&
+          app.date.month == now.month &&
+          app.date.day == now.day;
+    }).toList();
+  });
+});
+
+// Doctor's Completed Appointments Provider
+final doctorCompletedAppointmentsProvider = Provider<List<AppointmentModel>>((ref) {
+  final allAsync = ref.watch(doctorAllAppointmentsProvider);
+  final all = allAsync.value ?? [];
+  return all.where((app) => app.status == AppointmentStatus.completed).toList();
 });
 
 // Doctor's Pending Appointments Provider
-final doctorPendingAppointmentsProvider =
-    StreamProvider<List<AppointmentModel>>((ref) {
-  final user = ref.watch(authStateProvider).value;
-
-  if (user == null) {
-    return Stream.value([]);
-  }
-
-  return FirebaseFirestore.instance
-      .collection('appointments')
-      .where('doctorId', isEqualTo: user.uid)
-      .where('status', isEqualTo: 'pending')
-      .orderBy('appointmentDate')
-      .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => AppointmentModel.fromJson(doc.data(), doc.id))
-          .toList());
+final doctorPendingAppointmentsProvider = Provider<List<AppointmentModel>>((ref) {
+  final allAsync = ref.watch(doctorAllAppointmentsProvider);
+  final all = allAsync.value ?? [];
+  return all.where((app) => app.status == AppointmentStatus.upcoming).toList();
 });
 
 // Doctor's Earnings Provider
@@ -121,7 +107,6 @@ final doctorEarningsProvider = StreamProvider<DoctorEarnings>((ref) {
       .collection('appointments')
       .where('doctorId', isEqualTo: user.uid)
       .where('status', isEqualTo: 'completed')
-      .where('paymentStatus', isEqualTo: 'paid')
       .snapshots()
       .map((snapshot) {
     double todayEarnings = 0;
@@ -132,10 +117,10 @@ final doctorEarningsProvider = StreamProvider<DoctorEarnings>((ref) {
 
     for (final doc in snapshot.docs) {
       final data = doc.data();
-      final fee = (data['fee'] ?? 0).toDouble();
-      final appointmentDate = data['appointmentDate'] is Timestamp
-          ? (data['appointmentDate'] as Timestamp).toDate()
-          : DateTime.tryParse(data['appointmentDate']?.toString() ?? '');
+      final fee = (data['consultationFee'] ?? data['fee'] ?? 0).toDouble();
+      final appointmentDate = data['date'] is Timestamp
+          ? (data['date'] as Timestamp).toDate()
+          : DateTime.tryParse(data['date']?.toString() ?? '');
 
       if (appointmentDate != null) {
         totalEarnings += fee;
@@ -182,12 +167,14 @@ final doctorChambersCountProvider = StreamProvider<int>((ref) {
 // Doctor Dashboard Stats
 class DoctorDashboardStats {
   final int todayAppointments;
+  final int completedAppointments;
   final int pendingAppointments;
   final double todayEarnings;
   final int chambersCount;
 
   const DoctorDashboardStats({
     this.todayAppointments = 0,
+    this.completedAppointments = 0,
     this.pendingAppointments = 0,
     this.todayEarnings = 0.0,
     this.chambersCount = 0,
@@ -196,13 +183,15 @@ class DoctorDashboardStats {
 
 final doctorDashboardStatsProvider = Provider<DoctorDashboardStats>((ref) {
   final todayAppointments = ref.watch(doctorTodayAppointmentsProvider);
+  final completedAppointments = ref.watch(doctorCompletedAppointmentsProvider);
   final pendingAppointments = ref.watch(doctorPendingAppointmentsProvider);
   final earnings = ref.watch(doctorEarningsProvider);
   final chambers = ref.watch(doctorChambersCountProvider);
 
   return DoctorDashboardStats(
     todayAppointments: todayAppointments.value?.length ?? 0,
-    pendingAppointments: pendingAppointments.value?.length ?? 0,
+    completedAppointments: completedAppointments.length,
+    pendingAppointments: pendingAppointments.length,
     todayEarnings: earnings.value?.todayEarnings ?? 0.0,
     chambersCount: chambers.value ?? 0,
   );

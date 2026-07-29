@@ -1,0 +1,112 @@
+{% extends "diagnostic/base.html" %}
+{% block title %}Manage Booking #{{ booking.id[:8] }}{% endblock %}
+{% block header_title %}Lab Test Booking Details & Status{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-teal" style="color: #0d9488;"><i class="bi bi-person-circle me-2"></i>Patient & Booking Info</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6"><strong>Patient Display Name:</strong> {{ booking.targetPatientDisplay or booking.patientName }}</div>
+                    <div class="col-md-6"><strong>Account Name:</strong> {{ booking.patientName }}</div>
+                    <div class="col-md-6"><strong>Phone Number:</strong> {{ booking.patientPhone or 'N/A' }}</div>
+                    <div class="col-md-6"><strong>Scheduled Date:</strong> {{ booking.scheduledDate or 'N/A' }}</div>
+                    <div class="col-md-6"><strong>Collection Type:</strong>
+                        {% if booking.collectionType == 'homeSample' %}
+                        <span class="badge bg-purple-subtle text-purple border"><i class="bi bi-house me-1"></i>Home Sample Collection</span>
+                        {% else %}
+                        <span class="badge bg-light text-dark border"><i class="bi bi-building me-1"></i>Centre Visit</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6"><strong>Total Price:</strong> <span class="fw-bold text-success">৳{{ booking.totalAmount or 0 }}</span></div>
+                    <div class="col-md-12"><strong>Collection Address:</strong> {{ booking.address or 'Centre Visit' }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-card-checklist me-2"></i>Requested Tests</h6>
+            </div>
+            <div class="card-body p-0">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Test Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if booking.tests %}
+                            {% for t in booking.tests %}
+                            <tr>
+                                <td class="fw-bold">{{ t.testName }}</td>
+                                <td><span class="badge bg-light text-dark">{{ t.category or 'General' }}</span></td>
+                                <td class="fw-bold">৳{{ t.price }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                        <tr><td colspan="3" class="text-muted">No test items details available.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-gear-fill me-2"></i>Update Request Status</h6>
+            </div>
+            <div class="card-body">
+                <p>Current Status: <span class="badge bg-dark">{{ booking.status }}</span></p>
+
+                <form method="POST" action="{{ url_for('diagnostic_update_booking_status', booking_id=booking.id) }}" class="mb-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Status Step</label>
+                        <select name="status" class="form-select">
+                            <option value="approved" {% if booking.status == 'approved' %}selected{% endif %}>Approve Request</option>
+                            <option value="collectorAssigned" {% if booking.status == 'collectorAssigned' %}selected{% endif %}>Assign Collector / Phlebotomist</option>
+                            <option value="sampleCollected" {% if booking.status == 'sampleCollected' %}selected{% endif %}>Sample Collected / In Transit</option>
+                            <option value="processing" {% if booking.status == 'processing' %}selected{% endif %}>Processing in Lab</option>
+                            <option value="completed" {% if booking.status == 'completed' %}selected{% endif %}>Complete & Publish Report</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Sample Collector Name</label>
+                        <input type="text" name="collectorName" class="form-control" value="{{ booking.collectorName or '' }}" placeholder="e.g. Rahul Hasan">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Sample Collector Phone</label>
+                        <input type="text" name="collectorPhone" class="form-control" value="{{ booking.collectorPhone or '' }}" placeholder="+880 1700-000000">
+                    </div>
+
+                    <button type="submit" class="btn btn-teal w-100" style="background: #0d9488; color: white;">
+                        <i class="bi bi-check2-circle me-1"></i>Update Status
+                    </button>
+                </form>
+
+                <hr>
+
+                <!-- Enter Test Results -->
+                <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-file-text me-2"></i>Lab Test Report Notes / Values</h6>
+                <form method="POST" action="{{ url_for('diagnostic_save_test_results', booking_id=booking.id) }}">
+                    <div class="mb-3">
+                        <textarea name="testResults" class="form-control" rows="4" placeholder="Enter test result values, parameters, and findings here... e.g. HbA1c: 6.2%, Fasting Glucose: 95 mg/dL">{{ booking.testResults or '' }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-cloud-upload me-1"></i>Save Results & Complete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -73,7 +73,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
     if (!_formKey.currentState!.validate()) return;
     
     if (_selectedDateOfBirth == null) {
-      _showErrorSnackBar('Please select your date of birth');
+      _showErrorSnackBar(_selectedRole == UserRole.diagnosticCentre
+          ? 'Please select established date'
+          : 'Please select your date of birth');
       return;
     }
 
@@ -97,6 +99,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
 
         if (_selectedRole == UserRole.doctor) {
           Navigator.pushReplacementNamed(context, '/doctor-verification');
+        } else if (_selectedRole == UserRole.diagnosticCentre) {
+          Navigator.pushReplacementNamed(context, '/diagnostic-centre-verification');
         } else {
           Navigator.pushReplacementNamed(context, '/patient-home');
         }
@@ -170,8 +174,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Container(
-        height: size.height,
+        constraints: BoxConstraints(minHeight: size.height),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -184,117 +189,124 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                // Header Section
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                      child: Row(
-                        children: [
-                          // Back Button
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                color: Colors.white,
-                                size: 20,
+          bottom: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        // Header Section
+                        FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: SlideTransition(
+                            position: _slideAnimation,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                              child: Row(
+                                children: [
+                                  // Back Button
+                                  GestureDetector(
+                                    onTap: () => Navigator.pop(context),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.arrow_back_ios_new_rounded,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  // Logo Section
+                                  TweenAnimationBuilder<double>(
+                                    tween: Tween(begin: 0.8, end: 1.0),
+                                    duration: const Duration(milliseconds: 600),
+                                    curve: Curves.elasticOut,
+                                    builder: (context, scale, child) {
+                                      return Transform.scale(
+                                        scale: scale,
+                                        child: child,
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: const Icon(
+                                        Icons.medical_services_rounded,
+                                        size: 32,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  const SizedBox(width: 44), // Balance for back button
+                                ],
                               ),
                             ),
                           ),
-                          const Spacer(),
-                          // Logo Section
-                          TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0.8, end: 1.0),
-                            duration: const Duration(milliseconds: 600),
-                            curve: Curves.elasticOut,
-                            builder: (context, scale, child) {
-                              return Transform.scale(
-                                scale: scale,
-                                child: child,
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.medical_services_rounded,
-                                size: 32,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          const SizedBox(width: 44), // Balance for back button
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Title Section
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 28),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Create Account',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Join us and start your health journey',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Form Section
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(28),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(40),
-                          topRight: Radius.circular(40),
                         ),
-                      ),
-                      child: Form(
+
+                        // Title Section
+                        FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: SlideTransition(
+                            position: _slideAnimation,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 28),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'Create Account',
+                                    style: TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Join us and start your health journey',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Form Section (Expanded to fill bottom of screen)
+                        Expanded(
+                          child: FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: SlideTransition(
+                              position: _slideAnimation,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(28, 28, 28, 36),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).scaffoldBackgroundColor,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(40),
+                                    topRight: Radius.circular(40),
+                                  ),
+                                ),
+                                child: Form(
                         key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -307,17 +319,17 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.grey.shade700,
+                                color: Theme.of(context).textTheme.bodyLarge?.color,
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             Row(
                               children: [
                                 Expanded(
                                   child: _AnimatedRoleCard(
                                     icon: Icons.person_rounded,
                                     label: 'Patient',
-                                    subtitle: 'Book appointments',
+                                    subtitle: 'Appointments',
                                     isSelected: _selectedRole == UserRole.patient,
                                     color: const Color(0xFF10B981),
                                     onTap: () {
@@ -325,7 +337,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
                                     },
                                   ),
                                 ),
-                                const SizedBox(width: 16),
+                                const SizedBox(width: 8),
                                 Expanded(
                                   child: _AnimatedRoleCard(
                                     icon: Icons.medical_services_rounded,
@@ -335,6 +347,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
                                     color: AppTheme.primaryColor,
                                     onTap: () {
                                       setState(() => _selectedRole = UserRole.doctor);
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _AnimatedRoleCard(
+                                    icon: Icons.biotech_rounded,
+                                    label: 'Diagnostic',
+                                    subtitle: 'Lab tests',
+                                    isSelected: _selectedRole == UserRole.diagnosticCentre,
+                                    color: const Color(0xFF8B5CF6),
+                                    onTap: () {
+                                      setState(() => _selectedRole = UserRole.diagnosticCentre);
                                     },
                                   ),
                                 ),
@@ -369,17 +394,53 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
                               ),
                             ],
 
+                            // Diagnostic Centre Notice
+                            if (_selectedRole == UserRole.diagnosticCentre) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.purple.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.purple.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.verified_outlined, color: Colors.purple.shade700, size: 20),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'Diagnostic Centre accounts require DGHS Code and Pathologist BMDC verification before access.',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.purple.shade900,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
                             const SizedBox(height: 24),
 
-                            // Full Name Field
+                            // Full Name / Centre Name Field
                             _buildTextField(
                               controller: _nameController,
-                              label: 'Full Name',
-                              hint: 'Enter your full name',
-                              icon: Icons.person_outline,
+                              label: _selectedRole == UserRole.diagnosticCentre
+                                  ? 'Diagnostic Centre Name'
+                                  : 'Full Name',
+                              hint: _selectedRole == UserRole.diagnosticCentre
+                                  ? 'Enter diagnostic centre name'
+                                  : 'Enter your full name',
+                              icon: _selectedRole == UserRole.diagnosticCentre
+                                  ? Icons.business_outlined
+                                  : Icons.person_outline,
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Please enter your name';
+                                  return _selectedRole == UserRole.diagnosticCentre
+                                      ? 'Please enter diagnostic centre name'
+                                      : 'Please enter your name';
                                 }
                                 return null;
                               },
@@ -577,12 +638,17 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
+  },
+),
+),
+),
+);
   }
 
   Widget _buildTextField({
@@ -603,7 +669,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
+            color: Theme.of(context).textTheme.bodySmall?.color,
           ),
         ),
         const SizedBox(height: 8),
@@ -612,21 +678,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
           keyboardType: keyboardType,
           obscureText: obscureText,
           validator: validator,
-          style: const TextStyle(fontSize: 16),
+          style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400),
-            prefixIcon: Icon(icon, color: AppTheme.primaryColor),
+            hintStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),
+            prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: Colors.grey.shade50,
+            fillColor: Theme.of(context).colorScheme.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: Colors.grey.shade200),
+              borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
@@ -648,15 +714,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
   }
 
   Widget _buildDateOfBirthField() {
+    final isDiagnostic = _selectedRole == UserRole.diagnosticCentre;
+    final labelText = isDiagnostic ? 'Established Date' : 'Date of Birth';
+    final placeholderText = isDiagnostic ? 'Select established date' : 'Select your date of birth';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Date of Birth',
+          labelText,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
+            color: Theme.of(context).textTheme.bodySmall?.color,
           ),
         ),
         const SizedBox(height: 8),
@@ -665,9 +735,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
             child: Row(
               children: [
@@ -677,7 +747,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
                   child: Text(
                     _selectedDateOfBirth != null
                         ? '${_selectedDateOfBirth!.day}/${_selectedDateOfBirth!.month}/${_selectedDateOfBirth!.year}'
-                        : 'Select your date of birth',
+                        : placeholderText,
                     style: TextStyle(
                       fontSize: 16,
                       color: _selectedDateOfBirth != null
@@ -694,7 +764,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${_calculateAge(_selectedDateOfBirth!)} years',
+                      isDiagnostic
+                          ? '${DateTime.now().year - _selectedDateOfBirth!.year} yrs'
+                          : '${_calculateAge(_selectedDateOfBirth!)} years',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -712,12 +784,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
 
   Future<void> _selectDateOfBirth(BuildContext context) async {
     final DateTime now = DateTime.now();
+    final isDiagnostic = _selectedRole == UserRole.diagnosticCentre;
+    final DateTime initialDate = _selectedDateOfBirth ??
+        (isDiagnostic
+            ? DateTime(now.year - 5, now.month, now.day)
+            : DateTime(now.year - 25, now.month, now.day));
+    final helpText = isDiagnostic ? 'Select established date' : 'Select your date of birth';
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDateOfBirth ?? DateTime(now.year - 25, now.month, now.day),
-      firstDate: DateTime(1920),
+      initialDate: initialDate,
+      firstDate: DateTime(1900),
       lastDate: now,
-      helpText: 'Select your date of birth',
+      helpText: helpText,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -858,80 +937,87 @@ class _AnimatedRoleCardState extends State<_AnimatedRoleCard>
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
           decoration: BoxDecoration(
             color: widget.isSelected
-                ? widget.color.withOpacity(0.1)
-                : Colors.grey.shade50,
-            borderRadius: BorderRadius.circular(20),
+                ? widget.color.withValues(alpha: 0.12)
+                : Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: widget.isSelected ? widget.color : Colors.grey.shade200,
+              color: widget.isSelected ? widget.color : Theme.of(context).colorScheme.outline,
               width: widget.isSelected ? 2 : 1,
             ),
             boxShadow: widget.isSelected
                 ? [
                     BoxShadow(
-                      color: widget.color.withOpacity(0.2),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: widget.color.withOpacity(0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
                     ),
                   ]
                 : [],
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: widget.isSelected
                       ? widget.color.withOpacity(0.15)
                       : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   widget.icon,
-                  size: 32,
+                  size: 24,
                   color: widget.isSelected ? widget.color : Colors.grey.shade400,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
                 widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 13,
                   fontWeight: FontWeight.bold,
                   color: widget.isSelected ? widget.color : Colors.grey.shade700,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 widget.subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 10,
                   color: widget.isSelected
                       ? widget.color.withOpacity(0.8)
                       : Colors.grey.shade500,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               // Selection Indicator
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                width: 24,
-                height: 24,
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: widget.isSelected ? widget.color : Colors.transparent,
                   border: Border.all(
                     color: widget.isSelected ? widget.color : Colors.grey.shade300,
-                    width: 2,
+                    width: 1.5,
                   ),
                 ),
                 child: widget.isSelected
                     ? const Icon(
                         Icons.check,
-                        size: 16,
+                        size: 13,
                         color: Colors.white,
                       )
                     : null,

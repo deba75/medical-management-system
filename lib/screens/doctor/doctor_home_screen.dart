@@ -6,12 +6,16 @@ import '../../core/providers/auth_provider.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/appointment_model.dart';
+import 'package:printing/printing.dart';
+import '../../core/services/pdf_generator_service.dart';
+import 'appointments/write_prescription_dialog.dart';
 import 'chambers/manage_chambers_screen.dart';
 import 'availability/manage_availability_screen.dart';
 import 'search/patient_search_screen.dart';
 import 'settings/settings_screen.dart';
 import 'appointments/doctor_appointments_screen.dart';
 import 'patient_records/request_access_screen.dart';
+import '../patient/appointments/appointment_detail_screen.dart';
 
 class DoctorHomeScreen extends ConsumerStatefulWidget {
   const DoctorHomeScreen({super.key});
@@ -22,7 +26,7 @@ class DoctorHomeScreen extends ConsumerStatefulWidget {
 
 class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
   int _selectedIndex = 0;
-  
+
   final List<Widget> _screens = [
     const _HomeTab(),
     const ManageAvailabilityScreen(),
@@ -36,7 +40,8 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
       body: _screens[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+        onDestinationSelected: (index) =>
+            setState(() => _selectedIndex = index),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -75,7 +80,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
   void _showNotifications(BuildContext context) {
     final pendingAppointments = ref.read(doctorPendingAppointmentsProvider);
     final todayAppointments = ref.read(doctorTodayAppointmentsProvider);
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -89,7 +94,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
         expand: false,
         builder: (context, scrollController) => _NotificationsSheet(
           scrollController: scrollController,
-          pendingAppointments: pendingAppointments.value ?? [],
+          pendingAppointments: pendingAppointments,
           todayAppointments: todayAppointments.value ?? [],
         ),
       ),
@@ -151,32 +156,44 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                                 children: [
                                   Text(
                                     '${_getGreeting()}, Doctor 👋',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Colors.white.withOpacity(0.9),
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Colors.white.withOpacity(0.9),
+                                        ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     'Dr. $doctorName',
-                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                   ),
                                   if (specialization.isNotEmpty) ...[
                                     const SizedBox(height: 2),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: Colors.white.withOpacity(0.2),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
                                         specialization,
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                       ),
                                     ),
                                   ],
@@ -205,7 +222,10 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                         const SizedBox(height: 16),
                         // Date display
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(12),
@@ -213,14 +233,21 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.calendar_today, color: Colors.white, size: 16),
+                              const Icon(
+                                Icons.calendar_today,
+                                color: Colors.white,
+                                size: 16,
+                              ),
                               const SizedBox(width: 8),
                               Text(
-                                DateFormat('EEEE, MMMM dd, yyyy').format(DateTime.now()),
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                                DateFormat(
+                                  'EEEE, MMMM dd, yyyy',
+                                ).format(DateTime.now()),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                               ),
                             ],
                           ),
@@ -233,14 +260,13 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
             ),
             backgroundColor: AppTheme.primaryColor,
           ),
-          
+
           // Body Content
           SliverToBoxAdapter(
             child: RefreshIndicator(
               onRefresh: () async {
                 ref.invalidate(doctorProfileProvider);
-                ref.invalidate(doctorTodayAppointmentsProvider);
-                ref.invalidate(doctorPendingAppointmentsProvider);
+                ref.invalidate(doctorAllAppointmentsProvider);
                 ref.invalidate(doctorEarningsProvider);
                 ref.invalidate(doctorChambersCountProvider);
               },
@@ -252,15 +278,15 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                     // Stats Cards
                     _buildStatsSection(context, dashboardStats),
                     const SizedBox(height: 24),
-                    
+
                     // Quick Actions
                     _buildQuickActions(context),
                     const SizedBox(height: 24),
-                    
+
                     // Today's Schedule
                     _buildTodaySchedule(context, todayAppointments),
                     const SizedBox(height: 24),
-                    
+
                     // Performance Overview
                     _buildPerformanceSection(context, dashboardStats),
                     const SizedBox(height: 16),
@@ -273,7 +299,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
       ),
     );
   }
-  
+
   Widget _buildHeaderIconButton(
     BuildContext context,
     IconData icon,
@@ -303,10 +329,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 1.5),
               ),
-              constraints: const BoxConstraints(
-                minWidth: 18,
-                minHeight: 18,
-              ),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
               child: Text(
                 badgeCount > 9 ? '9+' : '$badgeCount',
                 style: const TextStyle(
@@ -321,16 +344,16 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
       ],
     );
   }
-  
+
   Widget _buildStatsSection(BuildContext context, DoctorDashboardStats stats) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Today\'s Overview',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         Row(
@@ -355,7 +378,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                 iconColor: Colors.green,
                 backgroundColor: Colors.green.withOpacity(0.1),
                 borderColor: Colors.green.withOpacity(0.3),
-                value: (stats.todayAppointments - stats.pendingAppointments).toString(),
+                value: stats.completedAppointments.toString(),
                 label: 'Completed',
                 onTap: () {},
               ),
@@ -377,16 +400,16 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
       ],
     );
   }
-  
+
   Widget _buildQuickActions(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Quick Actions',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         GridView.count(
@@ -400,25 +423,41 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
               label: 'Manage\nAvailability',
               icon: Icons.event_available,
               color: AppTheme.primaryColor,
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageAvailabilityScreen())),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ManageAvailabilityScreen(),
+                ),
+              ),
             ),
             _QuickActionCard(
               label: 'View\nAppointments',
               icon: Icons.list_alt,
               color: Colors.blue,
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorAppointmentsScreen())),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DoctorAppointmentsScreen(),
+                ),
+              ),
             ),
             _QuickActionCard(
               label: 'Manage\nChambers',
               icon: Icons.business,
               color: Colors.orange,
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageChambersScreen())),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ManageChambersScreen()),
+              ),
             ),
             _QuickActionCard(
               label: 'Request\nPatient Access',
               icon: Icons.person_search,
               color: Colors.teal,
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RequestAccessScreen())),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RequestAccessScreen()),
+              ),
             ),
           ],
         ),
@@ -427,7 +466,9 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
   }
 
   Widget _buildTodaySchedule(
-      BuildContext context, AsyncValue<List<AppointmentModel>> appointmentsAsync) {
+    BuildContext context,
+    AsyncValue<List<AppointmentModel>> appointmentsAsync,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -436,15 +477,17 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
           children: [
             Text(
               'Today\'s Schedule',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             TextButton.icon(
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const DoctorAppointmentsScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const DoctorAppointmentsScreen(),
+                  ),
                 );
               },
               icon: const Icon(Icons.arrow_forward, size: 16),
@@ -466,9 +509,16 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.error_outline, size: 48, color: AppTheme.errorColor),
+                    Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: AppTheme.errorColor,
+                    ),
                     const SizedBox(height: 12),
-                    Text('Error loading appointments', style: Theme.of(context).textTheme.bodyMedium),
+                    Text(
+                      'Error loading appointments',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ],
                 ),
               ),
@@ -497,16 +547,14 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                         const SizedBox(height: 16),
                         Text(
                           'No appointments today',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Enjoy your free day!',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppTheme.textSecondaryColor),
                         ),
                       ],
                     ),
@@ -522,7 +570,15 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                   child: _AppointmentCard(
                     appointment: appointment,
                     onTap: () {
-                      // Navigate to appointment details
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AppointmentDetailScreen(
+                            appointment: appointment,
+                            isPatientView: false,
+                          ),
+                        ),
+                      );
                     },
                   ),
                 );
@@ -533,16 +589,19 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
       ],
     );
   }
-  
-  Widget _buildPerformanceSection(BuildContext context, DoctorDashboardStats stats) {
+
+  Widget _buildPerformanceSection(
+    BuildContext context,
+    DoctorDashboardStats stats,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Performance Overview',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         Row(
@@ -654,11 +713,12 @@ class _QuickActionCard extends StatelessWidget {
         width: 100,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -678,9 +738,9 @@ class _QuickActionCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
               maxLines: 2,
             ),
@@ -730,9 +790,14 @@ class _PerformanceCard extends StatelessWidget {
                 const Spacer(),
                 if (trend.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: trendUp ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                      color: trendUp
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.red.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -760,9 +825,9 @@ class _PerformanceCard extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
@@ -783,20 +848,17 @@ class _AppointmentCard extends StatelessWidget {
   final AppointmentModel appointment;
   final VoidCallback onTap;
 
-  const _AppointmentCard({
-    required this.appointment,
-    required this.onTap,
-  });
+  const _AppointmentCard({required this.appointment, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final bool isCompleted = appointment.status == AppointmentStatus.completed;
     final bool isUpcoming = appointment.status == AppointmentStatus.upcoming;
-    
+
     Color statusColor = Colors.orange;
     if (isCompleted) statusColor = Colors.green;
     if (isUpcoming) statusColor = AppTheme.primaryColor;
-    
+
     return Card(
       child: InkWell(
         onTap: onTap,
@@ -813,11 +875,7 @@ class _AppointmentCard extends StatelessWidget {
                   color: statusColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  Icons.person,
-                  color: statusColor,
-                  size: 28,
-                ),
+                child: Icon(Icons.person, color: statusColor, size: 28),
               ),
               const SizedBox(width: 16),
               // Patient Info
@@ -842,9 +900,8 @@ class _AppointmentCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           appointment.timeSlot,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppTheme.textSecondaryColor),
                         ),
                       ],
                     ),
@@ -867,7 +924,10 @@ class _AppointmentCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -881,10 +941,67 @@ class _AppointmentCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Icon(
-                    Icons.chevron_right,
-                    color: AppTheme.textSecondaryColor,
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.picture_as_pdf,
+                          color: AppTheme.primaryColor,
+                          size: 20,
+                        ),
+                        tooltip: 'Verify Patient Appointment PDF',
+                        constraints: const BoxConstraints(),
+                        padding: const EdgeInsets.all(4),
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => Scaffold(
+                              appBar: AppBar(
+                                title: Text(
+                                  'Appointment Slip #${appointment.appointmentId.substring(0, appointment.appointmentId.length > 8 ? 8 : appointment.appointmentId.length)}',
+                                ),
+                              ),
+                              body: PdfPreview(
+                                build: (format) =>
+                                    PdfGeneratorService.generateAppointmentPdf(
+                                      appointment,
+                                    ),
+                                canChangeOrientation: false,
+                                canChangePageFormat: false,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => WritePrescriptionDialog(
+                              appointment: appointment,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.medication, size: 14),
+                        label: const Text(
+                          'Prescribe',
+                          style: TextStyle(fontSize: 11),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -911,7 +1028,7 @@ class _NotificationsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final allNotifications = [...pendingAppointments];
-    
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -991,16 +1108,14 @@ class _NotificationsSheet extends StatelessWidget {
                         const SizedBox(height: 16),
                         Text(
                           'No notifications',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: AppTheme.textSecondaryColor),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'You\'re all caught up!',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppTheme.textSecondaryColor),
                         ),
                       ],
                     ),
@@ -1009,7 +1124,8 @@ class _NotificationsSheet extends StatelessWidget {
                     controller: scrollController,
                     padding: const EdgeInsets.all(16),
                     itemCount: allNotifications.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final appointment = allNotifications[index];
                       return _NotificationTile(appointment: appointment);
@@ -1044,11 +1160,7 @@ class _NotificationTile extends StatelessWidget {
               color: Colors.orange.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
-              Icons.schedule,
-              color: Colors.orange,
-              size: 24,
-            ),
+            child: const Icon(Icons.schedule, color: Colors.orange, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1057,9 +1169,9 @@ class _NotificationTile extends StatelessWidget {
               children: [
                 Text(
                   'Pending Appointment',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1116,7 +1228,7 @@ class _DoctorProfileSheet extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           // Profile Header
           doctorProfile.when(
             data: (doctor) => Column(
@@ -1142,7 +1254,10 @@ class _DoctorProfileSheet extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -1175,7 +1290,7 @@ class _DoctorProfileSheet extends ConsumerWidget {
             error: (_, __) => const Icon(Icons.error),
           ),
           const SizedBox(height: 24),
-          
+
           // Menu Options
           _ProfileMenuTile(
             icon: Icons.dark_mode,
@@ -1189,7 +1304,7 @@ class _DoctorProfileSheet extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 8),
-          
+
           _ProfileMenuTile(
             icon: Icons.person,
             title: 'Edit Profile',
@@ -1201,7 +1316,7 @@ class _DoctorProfileSheet extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 8),
-          
+
           _ProfileMenuTile(
             icon: Icons.settings,
             title: 'Settings',
@@ -1214,7 +1329,7 @@ class _DoctorProfileSheet extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 8),
-          
+
           _ProfileMenuTile(
             icon: Icons.help_outline,
             title: 'Help & Support',
@@ -1226,7 +1341,7 @@ class _DoctorProfileSheet extends ConsumerWidget {
             },
           ),
           const SizedBox(height: 16),
-          
+
           // Logout Button
           SizedBox(
             width: double.infinity,
@@ -1252,11 +1367,13 @@ class _DoctorProfileSheet extends ConsumerWidget {
                     ],
                   ),
                 );
-                
+
                 if (shouldLogout == true && context.mounted) {
                   await ref.read(authControllerProvider.notifier).signOut();
                   if (context.mounted) {
-                    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil('/', (route) => false);
                   }
                 }
               },
@@ -1300,15 +1417,12 @@ class _ProfileMenuTile extends StatelessWidget {
         ),
         child: Icon(icon, color: AppTheme.primaryColor, size: 20),
       ),
-      title: Text(
-        title,
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      trailing: trailing ?? const Icon(Icons.chevron_right, color: AppTheme.textSecondaryColor),
+      title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+      trailing:
+          trailing ??
+          const Icon(Icons.chevron_right, color: AppTheme.textSecondaryColor),
       onTap: onTap,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       tileColor: Theme.of(context).colorScheme.surface,
     );
   }

@@ -1,0 +1,97 @@
+{% extends "doctor/base.html" %}
+{% block title %}Patient Referrals{% endblock %}
+{% block header_title %}Specialist & Hospital Patient Referral Management{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-send-plus me-2"></i>Create New Patient Referral</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('doctor_create_referral') }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Patient Name / Account</label>
+                        <input type="text" name="patientName" class="form-control" placeholder="Patient Full Name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Referred Specialty / Hospital</label>
+                        <input type="text" name="targetSpecialty" class="form-control" placeholder="e.g. Cardiology Department, Square Hospital" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Target Doctor Name (Optional)</label>
+                        <input type="text" name="targetDoctorName" class="form-control" placeholder="e.g. Dr. A. K. Azad">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Urgency Level</label>
+                        <select name="urgency" class="form-select">
+                            <option value="routine">Routine Referral</option>
+                            <option value="urgent">Urgent Priority</option>
+                            <option value="emergency">Emergency Immediate</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Clinical Reason / Referral Notes</label>
+                        <textarea name="notes" class="form-control" rows="3" placeholder="Summary of symptoms, diagnosis, and why referral is needed..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-send me-1"></i>Issue Patient Referral</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-arrow-up-right-circle me-2"></i>Issued Patient Referrals</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if referrals %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date & Patient</th>
+                                <th>Referred To</th>
+                                <th>Urgency</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ref in referrals %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">{{ ref.patientName }}</div>
+                                    <small class="text-muted">{{ ref.date or ref.createdAt }}</small>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">{{ ref.targetSpecialty }}</div>
+                                    <small class="text-muted">{{ ref.targetDoctorName or 'Specialist' }}</small>
+                                </td>
+                                <td>
+                                    {% if ref.urgency == 'emergency' %}
+                                    <span class="badge bg-danger">Emergency</span>
+                                    {% elif ref.urgency == 'urgent' %}
+                                    <span class="badge bg-warning text-dark">Urgent</span>
+                                    {% else %}
+                                    <span class="badge bg-info-subtle text-info">Routine</span>
+                                    {% endif %}
+                                </td>
+                                <td><small class="text-truncate d-inline-block" style="max-width: 180px;">{{ ref.notes }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-send-x fs-1"></i>
+                    <p class="mt-2 mb-0">No referrals issued yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

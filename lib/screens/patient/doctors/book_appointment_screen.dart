@@ -3,10 +3,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
+import '../../../core/widgets/family_member_selector.dart';
+import '../../../core/providers/family_member_provider.dart';
 import '../../../core/services/payment_service.dart';
+import '../../../core/services/pdf_generator_service.dart';
 import '../../../models/doctor_model.dart';
 import '../../../models/appointment_model.dart';
 import '../../../models/time_slot_model.dart';
@@ -16,16 +20,16 @@ import '../../../models/hospital_model.dart';
 import '../../../core/utils/web_payment_stub.dart'
     if (dart.library.html) '../../../core/utils/web_payment_helper.dart';
 
-class BookAppointmentScreen extends StatefulWidget {
+class BookAppointmentScreen extends ConsumerStatefulWidget {
   final DoctorModel doctor;
 
   const BookAppointmentScreen({super.key, required this.doctor});
 
   @override
-  State<BookAppointmentScreen> createState() => _BookAppointmentScreenState();
+  ConsumerState<BookAppointmentScreen> createState() => _BookAppointmentScreenState();
 }
 
-class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
+class _BookAppointmentScreenState extends ConsumerState<BookAppointmentScreen> {
   DateTime _selectedDate = DateTime.now();
   TimeSlotModel? _selectedSlot;
   String? _selectedHospitalId;
@@ -459,7 +463,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           .collection('users')
           .doc(user.uid)
           .get();
-      final patientName = patientDoc.data()?['name'] ?? 'Patient';
+      final accountUserOwnerName = patientDoc.data()?['name'] ?? 'Patient';
+
+      // Check if booking is for a selected family member
+      final selectedFamilyMember = ref.read(selectedFamilyMemberProvider);
+      final effectivePatientName = selectedFamilyMember != null 
+          ? '${selectedFamilyMember.name} (${selectedFamilyMember.relationship})'
+          : accountUserOwnerName;
 
       // Get hospital name
       final selectedHospital = _doctorHospitals.firstWhere(
@@ -475,12 +485,16 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       
       debugPrint('Using effective doctorId: $effectiveDoctorId');
       
+      final docRef = FirebaseFirestore.instance.collection('appointments').doc();
+
       final appointment = AppointmentModel(
-        appointmentId: '',
+        appointmentId: docRef.id,
         doctorId: effectiveDoctorId,
         patientId: user.uid,
         doctorName: widget.doctor.name,
-        patientName: patientName,
+        patientName: effectivePatientName,
+        familyMemberId: selectedFamilyMember?.id,
+        familyMemberName: selectedFamilyMember?.name,
         specialization: widget.doctor.specialization,
         date: _selectedDate,
         timeSlotId: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -498,21 +512,24 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       );
 
       // Save to Firebase
-      await FirebaseFirestore.instance
-          .collection('appointments')
-          .add(appointment.toJson());
+      await docRef.set(appointment.toJson());
+
+      // Generate PDF slip and notify patient
+      await PdfGeneratorService.saveAndNotifyAppointmentPdf(appointment);
+
+      // Reset selected family member state
+      ref.read(selectedFamilyMemberProvider.notifier).state = null;
 
       debugPrint('=== APPOINTMENT SAVED ===');
+      debugPrint('Saved appointmentId: ${appointment.appointmentId}');
       debugPrint('Saved doctorId: ${appointment.doctorId}');
-      debugPrint('Saved patientId: ${appointment.patientId}');
-      debugPrint('Saved date: ${appointment.date}');
       debugPrint('========================');
 
       if (mounted) {
         setState(() => _isBooking = false);
         
-        // Show success dialog
-        _showBookingSuccessDialog(paymentMethod, paymentStatus);
+        // Show success dialog with PDF preview
+        _showBookingSuccessDialog(appointment, paymentMethod, paymentStatus);
       }
     } catch (e) {
       debugPrint('Error booking appointment: $e');
@@ -528,7 +545,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     }
   }
 
-  void _showBookingSuccessDialog(PaymentMethod method, PaymentStatus status) {
+  void _showBookingSuccessDialog(AppointmentModel appointment, PaymentMethod method, PaymentStatus status) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -590,21 +607,33 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           ],
         ),
         actions: [
+          ElevatedButton.icon(
+            onPressed: () => PdfGeneratorService.showPdfPreview(context, appointment),
+            icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 16),
+            label: const Text('View / Download PDF Slip'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
+            child: OutlinedButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+              style: OutlinedButton.styleFrom(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text('Done', style: TextStyle(color: Colors.white)),
+              child: const Text('Done'),
             ),
           ),
         ],
@@ -629,9 +658,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceColor,
+                      color: Theme.of(context).cardColor,
                       border: Border(
-                        bottom: BorderSide(color: AppTheme.borderColor),
+                        bottom: BorderSide(color: Theme.of(context).colorScheme.outline),
                       ),
                     ),
                     child: Row(
@@ -676,6 +705,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  const Divider(height: 1),
+
+                  // Select Patient / Family Member
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: FamilyMemberSelector(),
                   ),
                   const Divider(height: 1),
 
@@ -908,9 +944,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
+              color: Theme.of(context).cardColor,
               border: Border(
-                top: BorderSide(color: AppTheme.borderColor),
+                top: BorderSide(color: Theme.of(context).colorScheme.outline),
               ),
               boxShadow: [
                 BoxShadow(

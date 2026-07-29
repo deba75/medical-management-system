@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}Diagnostic Centres Management - MediConnect Admin{% endblock %}
+{% block title %}Diagnostic Centres Verification - MediConnect Admin{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <!-- Header -->
     <div class="main-header">
         <div class="header-title">
-            <h1>Diagnostic Centres Management</h1>
-            <p>Manage diagnostic centres and their test prices</p>
+            <h1>Diagnostic Centres Verification</h1>
+            <p>Verify diagnostic centres via DGHS Code & Chief Pathologist BMDC registration</p>
         </div>
         <div class="d-flex align-items-center gap-3">
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCentreModal">
-                <i class="bi bi-plus-lg me-2"></i>Add New Centre
+                <i class="bi bi-plus-lg me-2"></i>Register New Centre
             </button>
         </div>
     </div>
@@ -31,7 +31,7 @@
 
         <!-- Statistics Cards -->
         <div class="row mb-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="stat-card primary">
                     <div class="stat-card-icon">
                         <i class="bi bi-building"></i>
@@ -40,22 +40,31 @@
                     <div class="stat-card-label">Total Centres</div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="stat-card success">
                     <div class="stat-card-icon">
-                        <i class="bi bi-check-circle"></i>
+                        <i class="bi bi-patch-check"></i>
                     </div>
-                    <div class="stat-card-value">{{ stats.active }}</div>
-                    <div class="stat-card-label">Active</div>
+                    <div class="stat-card-value">{{ stats.approved }}</div>
+                    <div class="stat-card-label">Verified & Active</div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="stat-card warning">
                     <div class="stat-card-icon">
-                        <i class="bi bi-pause-circle"></i>
+                        <i class="bi bi-hourglass-split"></i>
                     </div>
-                    <div class="stat-card-value">{{ stats.inactive }}</div>
-                    <div class="stat-card-label">Inactive</div>
+                    <div class="stat-card-value">{{ stats.pending }}</div>
+                    <div class="stat-card-label">Pending Verification</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card danger">
+                    <div class="stat-card-icon">
+                        <i class="bi bi-x-circle"></i>
+                    </div>
+                    <div class="stat-card-value">{{ stats.rejected }}</div>
+                    <div class="stat-card-label">Rejected</div>
                 </div>
             </div>
         </div>
@@ -66,13 +75,13 @@
                 <form method="GET" action="{{ url_for('diagnostic_centres') }}">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <input type="text" class="form-control" name="search" placeholder="Search by name, address, or phone..." value="{{ request.args.get('search', '') }}">
+                            <input type="text" class="form-control" name="search" placeholder="Search by centre name, DGHS code, or BMDC number..." value="{{ request.args.get('search', '') }}">
                         </div>
                         <div class="col-md-4">
                             <select class="form-select" name="status">
                                 <option value="">All Status</option>
-                                <option value="active" {{ 'selected' if request.args.get('status') == 'active' else '' }}>Active</option>
-                                <option value="inactive" {{ 'selected' if request.args.get('status') == 'inactive' else '' }}>Inactive</option>
+                                <option value="active" {{ 'selected' if request.args.get('status') == 'active' else '' }}>Active / Approved</option>
+                                <option value="inactive" {{ 'selected' if request.args.get('status') == 'inactive' else '' }}>Inactive / Pending</option>
                             </select>
                         </div>
                         <div class="col-md-2">
@@ -89,14 +98,14 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
                                 <th>Centre Name</th>
-                                <th>Contact Number</th>
-                                <th>Location</th>
-                                <th>Available Tests</th>
-                                <th>Status</th>
+                                <th>DGHS Code</th>
+                                <th>Pathologist BMDC</th>
+                                <th>Contact & Location</th>
+                                <th>Verification Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -106,58 +115,84 @@
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                                            <i class="bi bi-building text-primary"></i>
+                                            <i class="bi bi-hospital text-primary"></i>
                                         </div>
-                                        <strong>{{ centre.name }}</strong>
+                                        <div>
+                                            <strong>{{ centre.name }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ centre.email or '' }}</small>
+                                        </div>
                                     </div>
                                 </td>
                                 <td>
-                                    <a href="tel:{{ centre.contactNumber }}" class="text-decoration-none">
-                                        <i class="bi bi-telephone me-1"></i>{{ centre.contactNumber }}
-                                    </a>
+                                    {% if centre.dghsCode %}
+                                    <span class="badge bg-primary fs-6"><i class="bi bi-shield-check me-1"></i>{{ centre.dghsCode }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Not Provided</span>
+                                    {% endif %}
                                 </td>
                                 <td>
-                                    <small>{{ centre.address }}</small>
+                                    {% if centre.pathologistBmdcNumber %}
+                                    <div><strong>{{ centre.pathologistName or 'Pathologist' }}</strong></div>
+                                    <span class="badge bg-dark"><i class="bi bi-person-badge me-1"></i>BMDC: {{ centre.pathologistBmdcNumber }}</span>
+                                    {% else %}
+                                    <span class="text-muted small">Not Submitted</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ centre.address or 'N/A' }}</small>
                                     <br>
-                                    <span class="badge bg-secondary">{{ centre.city }}</span>
+                                    <span class="badge bg-secondary">{{ centre.city or 'N/A' }}</span>
+                                    {% if centre.contactNumber %}
+                                    <br><small class="text-muted"><i class="bi bi-telephone me-1"></i>{{ centre.contactNumber }}</small>
+                                    {% endif %}
                                 </td>
                                 <td>
-                                    <span class="badge bg-info">{{ centre.tests|length if centre.tests else 0 }} tests</span>
-                                </td>
-                                <td>
-                                    {% if centre.status == 'active' %}
-                                    <span class="badge bg-success">
-                                        <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Active
+                                    {% if centre.verificationStatus == 'approved' or centre.status == 'active' %}
+                                    <span class="badge bg-success px-3 py-2">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Verified & Active
+                                    </span>
+                                    {% elif centre.verificationStatus == 'rejected' %}
+                                    <span class="badge bg-danger px-3 py-2">
+                                        <i class="bi bi-x-circle-fill me-1"></i>Rejected
                                     </span>
                                     {% else %}
-                                    <span class="badge bg-secondary">
-                                        <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Inactive
+                                    <span class="badge bg-warning text-dark px-3 py-2">
+                                        <i class="bi bi-clock-history me-1"></i>Pending Review
                                     </span>
                                     {% endif %}
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
+                                        <!-- View Details Modal Button -->
                                         <button class="btn btn-sm btn-outline-info" 
                                                 data-bs-toggle="modal" 
-                                                data-bs-target="#viewTestsModal{{ centre.id }}"
-                                                title="View Tests">
-                                            <i class="bi bi-eye"></i>
+                                                data-bs-target="#viewCentreModal{{ centre.id }}"
+                                                title="View Verification Details">
+                                            <i class="bi bi-eye-fill"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-outline-primary" 
+                                        
+                                        <!-- Approve / Verify Button -->
+                                        {% if centre.verificationStatus != 'approved' and centre.status != 'active' %}
+                                        <form method="POST" action="{{ url_for('verify_diagnostic_centre', centre_id=centre.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-success ms-1" title="Approve & Verify">
+                                                <i class="bi bi-check-lg"></i> Verify
+                                            </button>
+                                        </form>
+                                        {% endif %}
+
+                                        <!-- Reject Button -->
+                                        {% if centre.verificationStatus != 'rejected' %}
+                                        <button class="btn btn-sm btn-outline-warning ms-1" 
                                                 data-bs-toggle="modal" 
-                                                data-bs-target="#editCentreModal"
-                                                data-id="{{ centre.id }}"
-                                                data-name="{{ centre.name }}"
-                                                data-address="{{ centre.address }}"
-                                                data-city="{{ centre.city }}"
-                                                data-contact="{{ centre.contactNumber }}"
-                                                data-status="{{ centre.status }}"
-                                                data-tests="{{ centre.tests|tojson|e if centre.tests else '[]' }}"
-                                                onclick="editCentre(this)"
-                                                title="Edit">
-                                            <i class="bi bi-pencil"></i>
+                                                data-bs-target="#rejectModal{{ centre.id }}"
+                                                title="Reject Application">
+                                            <i class="bi bi-x-lg"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-outline-danger" 
+                                        {% endif %}
+
+                                        <!-- Delete Button -->
+                                        <button class="btn btn-sm btn-outline-danger ms-1" 
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#deleteModal{{ centre.id }}"
                                                 title="Delete">
@@ -167,50 +202,80 @@
                                 </td>
                             </tr>
 
-                            <!-- View Tests Modal -->
-                            <div class="modal fade" id="viewTestsModal{{ centre.id }}" tabindex="-1">
+                            <!-- View Centre Modal -->
+                            <div class="modal fade" id="viewCentreModal{{ centre.id }}" tabindex="-1">
                                 <div class="modal-dialog modal-lg">
                                     <div class="modal-content">
-                                        <div class="modal-header">
+                                        <div class="modal-header bg-primary text-white">
                                             <h5 class="modal-title">
-                                                <i class="bi bi-list-check me-2 text-primary"></i>{{ centre.name }} - Available Tests
+                                                <i class="bi bi-shield-check me-2"></i>{{ centre.name }} - Verification Details
                                             </h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                         </div>
                                         <div class="modal-body">
-                                            {% if centre.tests %}
-                                            <div class="table-responsive">
-                                                <table class="table table-striped">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>#</th>
-                                                            <th>Test Name</th>
-                                                            <th>Category</th>
-                                                            <th>Price (৳)</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {% for test in centre.tests %}
-                                                        <tr>
-                                                            <td>{{ loop.index }}</td>
-                                                            <td><strong>{{ test.testName }}</strong></td>
-                                                            <td><span class="badge bg-secondary">{{ test.category }}</span></td>
-                                                            <td><strong class="text-success">৳{{ test.price }}</strong></td>
-                                                        </tr>
-                                                        {% endfor %}
-                                                    </tbody>
-                                                </table>
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <div class="p-3 border rounded bg-light">
+                                                        <h6 class="text-primary fw-bold mb-2"><i class="bi bi-building me-2"></i>Centre Info</h6>
+                                                        <div><strong>Name:</strong> {{ centre.name }}</div>
+                                                        <div><strong>Email:</strong> {{ centre.email or 'N/A' }}</div>
+                                                        <div><strong>Phone:</strong> {{ centre.contactNumber or 'N/A' }}</div>
+                                                        <div><strong>Address:</strong> {{ centre.address or 'N/A' }}, {{ centre.city or 'N/A' }}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="p-3 border rounded bg-light">
+                                                        <h6 class="text-purple fw-bold mb-2"><i class="bi bi-patch-check me-2"></i>DGHS & Pathologist Verification</h6>
+                                                        <div><strong>DGHS Code:</strong> <span class="badge bg-primary">{{ centre.dghsCode or 'Not Provided' }}</span></div>
+                                                        <div><strong>Chief Pathologist:</strong> {{ centre.pathologistName or 'N/A' }}</div>
+                                                        <div><strong>Pathologist BMDC:</strong> <span class="badge bg-dark">{{ centre.pathologistBmdcNumber or 'N/A' }}</span></div>
+                                                        <div><strong>Verification Status:</strong> {{ centre.verificationStatus or 'pending' }}</div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            {% else %}
-                                            <div class="text-center py-4">
-                                                <i class="bi bi-clipboard-x" style="font-size: 3rem; opacity: 0.3;"></i>
-                                                <p class="text-muted mt-2">No tests added for this centre</p>
+
+                                            {% if centre.licenseImageUrl %}
+                                            <div class="mt-4">
+                                                <h6 class="fw-bold"><i class="bi bi-file-earmark-image me-2"></i>DGHS License Certificate Document</h6>
+                                                <div class="text-center p-2 border rounded">
+                                                    <img src="{{ centre.licenseImageUrl }}" class="img-fluid rounded max-vh-50" alt="DGHS License Certificate">
+                                                </div>
                                             </div>
                                             {% endif %}
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                            {% if centre.verificationStatus != 'approved' %}
+                                            <form method="POST" action="{{ url_for('verify_diagnostic_centre', centre_id=centre.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Approve & Verify</button>
+                                            </form>
+                                            {% endif %}
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reject Modal -->
+                            <div class="modal fade" id="rejectModal{{ centre.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form method="POST" action="{{ url_for('reject_diagnostic_centre', centre_id=centre.id) }}">
+                                            <div class="modal-header bg-warning text-dark">
+                                                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Reject Verification</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Are you sure you want to reject verification for <strong>{{ centre.name }}</strong>?</p>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Rejection Reason / Note *</label>
+                                                    <textarea class="form-control" name="rejection_reason" rows="3" required placeholder="e.g. Invalid DGHS registration code or unmatched BMDC number"></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-warning text-dark">Confirm Rejection</button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -219,9 +284,9 @@
                             <div class="modal fade" id="deleteModal{{ centre.id }}" tabindex="-1">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
-                                        <div class="modal-header">
+                                        <div class="modal-header bg-danger text-white">
                                             <h5 class="modal-title">Confirm Delete</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                         </div>
                                         <div class="modal-body">
                                             <p>Are you sure you want to delete this diagnostic centre?</p>
@@ -247,10 +312,7 @@
                     {% if not centres %}
                     <div class="text-center py-5">
                         <i class="bi bi-building" style="font-size: 4rem; opacity: 0.3;"></i>
-                        <p class="text-muted mt-3">No diagnostic centres found</p>
-                        <button class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#addCentreModal">
-                            <i class="bi bi-plus-lg me-2"></i>Add First Centre
-                        </button>
+                        <p class="text-muted mt-3">No diagnostic centres pending verification</p>
                     </div>
                     {% endif %}
                 </div>
@@ -261,573 +323,57 @@
 
 <!-- Add Centre Modal -->
 <div class="modal fade" id="addCentreModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('add_diagnostic_centre') }}" id="addCentreForm">
-                <div class="modal-header">
+                <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">
-                        <i class="bi bi-plus-circle me-2 text-primary"></i>Add New Diagnostic Centre
+                        <i class="bi bi-plus-circle me-2"></i>Register New Diagnostic Centre
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- Basic Information -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <i class="bi bi-info-circle me-2"></i>Basic Information
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Diagnostic Centre Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" required placeholder="e.g. Popular Diagnostic Centre">
                         </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="name" class="form-label">Centre Name *</label>
-                                    <input type="text" class="form-control" id="name" name="name" required placeholder="Enter diagnostic centre name">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="contactNumber" class="form-label">Contact Number *</label>
-                                    <input type="tel" class="form-control" id="contactNumber" name="contactNumber" required placeholder="+880XXXXXXXXXX">
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-8 mb-3">
-                                    <label for="address" class="form-label">Address *</label>
-                                    <input type="text" class="form-control" id="address" name="address" required placeholder="Enter full address">
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="city" class="form-label">City *</label>
-                                    <input type="text" class="form-control" id="city" name="city" required placeholder="e.g., Dhaka">
-                                </div>
-                            </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="contactNumber" class="form-label">Contact Phone Number *</label>
+                            <input type="tel" class="form-control" id="contactNumber" name="contactNumber" required placeholder="e.g. 01712345678">
                         </div>
                     </div>
-
-                    <!-- Available Tests with Prices -->
-                    <div class="card">
-                        <div class="card-header bg-success text-white">
-                            <i class="bi bi-list-check me-2"></i>Available Tests & Prices
-                            <small class="ms-2">(Check the tests available at this centre and enter prices)</small>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="dghsCode" class="form-label">DGHS Registration Code *</label>
+                            <input type="text" class="form-control" id="dghsCode" name="dghsCode" required placeholder="e.g. DGHS-99481">
                         </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <!-- Blood Tests -->
-                                <div class="col-md-6">
-                                    <h6 class="text-primary mb-3"><i class="bi bi-droplet me-2"></i>Blood Tests</h6>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_cbc" name="test_cbc" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_cbc">Complete Blood Count (CBC)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_cbc" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_blood_sugar" name="test_blood_sugar" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_blood_sugar">Blood Sugar (Fasting)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_blood_sugar" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_lipid" name="test_lipid" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_lipid">Lipid Profile</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_lipid" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_liver" name="test_liver" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_liver">Liver Function Test (LFT)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_liver" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_kidney" name="test_kidney" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_kidney">Kidney Function Test (KFT)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_kidney" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_thyroid" name="test_thyroid" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_thyroid">Thyroid Profile (T3, T4, TSH)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_thyroid" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_hba1c" name="test_hba1c" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_hba1c">HbA1c (Diabetes)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_hba1c" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_vitamin_d" name="test_vitamin_d" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_vitamin_d">Vitamin D</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_vitamin_d" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_vitamin_b12" name="test_vitamin_b12" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_vitamin_b12">Vitamin B12</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_vitamin_b12" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_uric_acid" name="test_uric_acid" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_uric_acid">Uric Acid</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_uric_acid" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                </div>
-
-                                <!-- Imaging & Other Tests -->
-                                <div class="col-md-6">
-                                    <h6 class="text-primary mb-3"><i class="bi bi-camera me-2"></i>Imaging & Other Tests</h6>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_xray_chest" name="test_xray_chest" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_xray_chest">X-Ray (Chest)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_xray_chest" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_ultrasound" name="test_ultrasound" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_ultrasound">Ultrasound (Whole Abdomen)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_ultrasound" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_ecg" name="test_ecg" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_ecg">ECG</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_ecg" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_echo" name="test_echo" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_echo">Echo Cardiogram</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_echo" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_mri_brain" name="test_mri_brain" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_mri_brain">MRI (Brain)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_mri_brain" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_ct_scan" name="test_ct_scan" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_ct_scan">CT Scan</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_ct_scan" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_endoscopy" name="test_endoscopy" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_endoscopy">Endoscopy</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_endoscopy" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_colonoscopy" name="test_colonoscopy" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_colonoscopy">Colonoscopy</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_colonoscopy" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_urine" name="test_urine" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_urine">Urine R/E</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_urine" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="test_stool" name="test_stool" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="test_stool">Stool R/E</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" name="price_stool" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="pathologistBmdcNumber" class="form-label">Pathologist BMDC Reg. Number *</label>
+                            <input type="text" class="form-control" id="pathologistBmdcNumber" name="pathologistBmdcNumber" required placeholder="e.g. BMDC-A-49201">
                         </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="pathologistName" class="form-label">Chief Pathologist Name *</label>
+                            <input type="text" class="form-control" id="pathologistName" name="pathologistName" required placeholder="e.g. Dr. Ashraful Islam">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="city" class="form-label">City *</label>
+                            <input type="text" class="form-control" id="city" name="city" required placeholder="e.g. Dhaka">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Full Address *</label>
+                        <input type="text" class="form-control" id="address" name="address" required placeholder="e.g. Road-12, Panthpath, Dhaka">
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-plus-lg me-1"></i>Add Centre
-                    </button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Register & Approve</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-
-<!-- Edit Centre Modal -->
-<div class="modal fade" id="editCentreModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <form method="POST" action="{{ url_for('update_diagnostic_centre') }}" id="editCentreForm">
-                <input type="hidden" id="editCentreId" name="centre_id">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="bi bi-pencil-square me-2 text-primary"></i>Edit Diagnostic Centre
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- Basic Information -->
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <i class="bi bi-info-circle me-2"></i>Basic Information
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="editName" class="form-label">Centre Name *</label>
-                                    <input type="text" class="form-control" id="editName" name="name" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="editContactNumber" class="form-label">Contact Number *</label>
-                                    <input type="tel" class="form-control" id="editContactNumber" name="contactNumber" required>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-8 mb-3">
-                                    <label for="editAddress" class="form-label">Address *</label>
-                                    <input type="text" class="form-control" id="editAddress" name="address" required>
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="editCity" class="form-label">City *</label>
-                                    <input type="text" class="form-control" id="editCity" name="city" required>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Available Tests with Prices -->
-                    <div class="card">
-                        <div class="card-header bg-success text-white">
-                            <i class="bi bi-list-check me-2"></i>Available Tests & Prices
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <!-- Blood Tests -->
-                                <div class="col-md-6">
-                                    <h6 class="text-primary mb-3"><i class="bi bi-droplet me-2"></i>Blood Tests</h6>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_cbc" name="test_cbc" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_cbc">Complete Blood Count (CBC)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_cbc" name="price_cbc" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_blood_sugar" name="test_blood_sugar" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_blood_sugar">Blood Sugar (Fasting)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_blood_sugar" name="price_blood_sugar" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_lipid" name="test_lipid" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_lipid">Lipid Profile</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_lipid" name="price_lipid" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_liver" name="test_liver" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_liver">Liver Function Test (LFT)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_liver" name="price_liver" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_kidney" name="test_kidney" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_kidney">Kidney Function Test (KFT)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_kidney" name="price_kidney" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_thyroid" name="test_thyroid" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_thyroid">Thyroid Profile (T3, T4, TSH)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_thyroid" name="price_thyroid" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_hba1c" name="test_hba1c" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_hba1c">HbA1c (Diabetes)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_hba1c" name="price_hba1c" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_vitamin_d" name="test_vitamin_d" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_vitamin_d">Vitamin D</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_vitamin_d" name="price_vitamin_d" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_vitamin_b12" name="test_vitamin_b12" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_vitamin_b12">Vitamin B12</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_vitamin_b12" name="price_vitamin_b12" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_uric_acid" name="test_uric_acid" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_uric_acid">Uric Acid</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_uric_acid" name="price_uric_acid" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                </div>
-
-                                <!-- Imaging & Other Tests -->
-                                <div class="col-md-6">
-                                    <h6 class="text-primary mb-3"><i class="bi bi-camera me-2"></i>Imaging & Other Tests</h6>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_xray_chest" name="test_xray_chest" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_xray_chest">X-Ray (Chest)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_xray_chest" name="price_xray_chest" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_ultrasound" name="test_ultrasound" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_ultrasound">Ultrasound (Whole Abdomen)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_ultrasound" name="price_ultrasound" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_ecg" name="test_ecg" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_ecg">ECG</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_ecg" name="price_ecg" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_echo" name="test_echo" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_echo">Echo Cardiogram</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_echo" name="price_echo" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_mri_brain" name="test_mri_brain" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_mri_brain">MRI (Brain)</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_mri_brain" name="price_mri_brain" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_ct_scan" name="test_ct_scan" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_ct_scan">CT Scan</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_ct_scan" name="price_ct_scan" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_endoscopy" name="test_endoscopy" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_endoscopy">Endoscopy</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_endoscopy" name="price_endoscopy" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_colonoscopy" name="test_colonoscopy" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_colonoscopy">Colonoscopy</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_colonoscopy" name="price_colonoscopy" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_urine" name="test_urine" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_urine">Urine R/E</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_urine" name="price_urine" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                    <div class="test-item mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input test-checkbox" type="checkbox" id="edit_test_stool" name="test_stool" onchange="togglePriceField(this)">
-                                            <label class="form-check-label" for="edit_test_stool">Stool R/E</label>
-                                        </div>
-                                        <input type="number" class="form-control form-control-sm mt-1 price-field" id="edit_price_stool" name="price_stool" placeholder="Price (৳)" style="display:none;" min="1">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-lg me-1"></i>Update Centre
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block scripts %}
-<script>
-// Test name mapping
-const testNameMapping = {
-    'cbc': 'Complete Blood Count (CBC)',
-    'blood_sugar': 'Blood Sugar (Fasting)',
-    'lipid': 'Lipid Profile',
-    'liver': 'Liver Function Test (LFT)',
-    'kidney': 'Kidney Function Test (KFT)',
-    'thyroid': 'Thyroid Profile (T3, T4, TSH)',
-    'hba1c': 'HbA1c (Diabetes)',
-    'vitamin_d': 'Vitamin D',
-    'vitamin_b12': 'Vitamin B12',
-    'uric_acid': 'Uric Acid',
-    'xray_chest': 'X-Ray (Chest)',
-    'ultrasound': 'Ultrasound (Whole Abdomen)',
-    'ecg': 'ECG',
-    'echo': 'Echo Cardiogram',
-    'mri_brain': 'MRI (Brain)',
-    'ct_scan': 'CT Scan',
-    'endoscopy': 'Endoscopy',
-    'colonoscopy': 'Colonoscopy',
-    'urine': 'Urine R/E',
-    'stool': 'Stool R/E'
-};
-
-const testCategoryMapping = {
-    'cbc': 'Blood Test',
-    'blood_sugar': 'Blood Test',
-    'lipid': 'Blood Test',
-    'liver': 'Blood Test',
-    'kidney': 'Blood Test',
-    'thyroid': 'Blood Test',
-    'hba1c': 'Blood Test',
-    'vitamin_d': 'Blood Test',
-    'vitamin_b12': 'Blood Test',
-    'uric_acid': 'Blood Test',
-    'xray_chest': 'Radiology',
-    'ultrasound': 'Ultrasound',
-    'ecg': 'Cardiology',
-    'echo': 'Cardiology',
-    'mri_brain': 'Radiology',
-    'ct_scan': 'Radiology',
-    'endoscopy': 'Gastroenterology',
-    'colonoscopy': 'Gastroenterology',
-    'urine': 'Pathology',
-    'stool': 'Pathology'
-};
-
-function togglePriceField(checkbox) {
-    const priceField = checkbox.closest('.test-item').querySelector('.price-field');
-    if (checkbox.checked) {
-        priceField.style.display = 'block';
-        priceField.required = true;
-    } else {
-        priceField.style.display = 'none';
-        priceField.required = false;
-        priceField.value = '';
-    }
-}
-
-function editCentre(button) {
-    // Set basic info
-    document.getElementById('editCentreId').value = button.dataset.id;
-    document.getElementById('editName').value = button.dataset.name;
-    document.getElementById('editAddress').value = button.dataset.address;
-    document.getElementById('editCity').value = button.dataset.city;
-    document.getElementById('editContactNumber').value = button.dataset.contact;
-    
-    // Reset all checkboxes and price fields
-    document.querySelectorAll('#editCentreForm .test-checkbox').forEach(cb => {
-        cb.checked = false;
-        const priceField = cb.closest('.test-item').querySelector('.price-field');
-        priceField.style.display = 'none';
-        priceField.value = '';
-        priceField.required = false;
-    });
-    
-    // Parse and set tests
-    try {
-        const tests = JSON.parse(button.dataset.tests || '[]');
-        tests.forEach(test => {
-            // Find the test key from testName
-            for (const [key, name] of Object.entries(testNameMapping)) {
-                if (name === test.testName) {
-                    const checkbox = document.getElementById('edit_test_' + key);
-                    const priceField = document.getElementById('edit_price_' + key);
-                    if (checkbox && priceField) {
-                        checkbox.checked = true;
-                        priceField.style.display = 'block';
-                        priceField.value = test.price;
-                        priceField.required = true;
-                    }
-                    break;
-                }
-            }
-        });
-    } catch (e) {
-        console.error('Error parsing tests:', e);
-    }
-}
-
-// Form validation
-document.getElementById('addCentreForm').addEventListener('submit', function(e) {
-    const checkedTests = document.querySelectorAll('#addCentreForm .test-checkbox:checked');
-    let valid = true;
-    
-    checkedTests.forEach(checkbox => {
-        const priceField = checkbox.closest('.test-item').querySelector('.price-field');
-        if (!priceField.value || priceField.value <= 0) {
-            valid = false;
-            priceField.classList.add('is-invalid');
-        } else {
-            priceField.classList.remove('is-invalid');
-        }
-    });
-    
-    if (!valid) {
-        e.preventDefault();
-        alert('Please enter valid prices for all selected tests.');
-    }
-});
-
-document.getElementById('editCentreForm').addEventListener('submit', function(e) {
-    const checkedTests = document.querySelectorAll('#editCentreForm .test-checkbox:checked');
-    let valid = true;
-    
-    checkedTests.forEach(checkbox => {
-        const priceField = checkbox.closest('.test-item').querySelector('.price-field');
-        if (!priceField.value || priceField.value <= 0) {
-            valid = false;
-            priceField.classList.add('is-invalid');
-        } else {
-            priceField.classList.remove('is-invalid');
-        }
-    });
-    
-    if (!valid) {
-        e.preventDefault();
-        alert('Please enter valid prices for all selected tests.');
-    }
-});
-</script>
 {% endblock %}

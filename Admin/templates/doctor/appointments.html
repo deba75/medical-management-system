@@ -1,0 +1,98 @@
+{% extends "doctor/base.html" %}
+{% block title %}Appointments{% endblock %}
+{% block header_title %}Appointment Management{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('doctor_appointments') }}" class="row g-3">
+            <div class="col-md-4">
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="" {% if not current_status %}selected{% endif %}>All Statuses</option>
+                    <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending Approval</option>
+                    <option value="approved" {% if current_status == 'approved' %}selected{% endif %}>Approved / Upcoming</option>
+                    <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        {% if appointments %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Patient Name</th>
+                        <th>Type / Chamber</th>
+                        <th>Reason / Symptoms</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for appt in appointments %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold">{{ appt.date or 'N/A' }}</div>
+                            <small class="text-muted">{{ appt.time or appt.timeSlot or 'N/A' }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-bold">{{ appt.patientName }}</div>
+                            <small class="text-muted">ID: {{ appt.patientId[:8] if appt.patientId else 'N/A' }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ appt.type or appt.appointmentType or 'In-Person' }}</span>
+                        </td>
+                        <td>
+                            <span class="text-truncate d-inline-block" style="max-width: 220px;">
+                                {{ appt.symptomDescription or appt.reason or 'Consultation' }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if appt.status == 'approved' or appt.status == 'upcoming' %}
+                            <span class="badge bg-success-subtle text-success">Approved</span>
+                            {% elif appt.status == 'pending' %}
+                            <span class="badge bg-warning-subtle text-warning">Pending</span>
+                            {% elif appt.status == 'completed' %}
+                            <span class="badge bg-info-subtle text-info">Completed</span>
+                            {% elif appt.status == 'cancelled' %}
+                            <span class="badge bg-danger-subtle text-danger">Cancelled</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ appt.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% if appt.status == 'pending' %}
+                                <a href="{{ url_for('doctor_update_appointment', appointment_id=appt.id, action='approve') }}" class="btn btn-success">Approve</a>
+                                <a href="{{ url_for('doctor_update_appointment', appointment_id=appt.id, action='cancel') }}" class="btn btn-outline-danger">Cancel</a>
+                                {% endif %}
+                                <a href="{{ url_for('doctor_write_prescription', appointment_id=appt.id) }}" class="btn btn-primary">
+                                    <i class="bi bi-file-earmark-medical me-1"></i>Prescribe
+                                </a>
+                                {% if appt.prescriptionId %}
+                                <a href="{{ url_for('doctor_view_prescription', prescription_id=appt.prescriptionId) }}" class="btn btn-outline-secondary" target="_blank">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox fs-1"></i>
+            <p class="mt-2 mb-0">No appointments found matching criteria.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "doctor/base.html" %}
+{% block title %}Favorite Medicines{% endblock %}
+{% block header_title %}Favorite / Quick Prescribing Medicines Template Manager{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-star-fill me-2 text-warning"></i>Add Quick Favorite Medicine</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('doctor_add_favorite_medicine') }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Medicine Brand Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Tab Napa Extra 500mg" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Generic / Group Name</label>
+                        <input type="text" name="generic" class="form-control" placeholder="e.g. Paracetamol + Caffeine">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Dosage</label>
+                            <input type="text" name="dosage" class="form-control" placeholder="500 mg">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Frequency</label>
+                            <input type="text" name="frequency" class="form-control" placeholder="1-0-1">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Default Duration & Instruction</label>
+                        <input type="text" name="instruction" class="form-control" placeholder="5 days - After meal">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-circle me-1"></i>Save Favorite Medicine Template</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-capsule me-2"></i>My Saved Favorite Templates</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if favorites %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Medicine</th>
+                                <th>Default Dose / Frequency</th>
+                                <th>Instruction</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fav in favorites %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">{{ fav.name }}</div>
+                                    <small class="text-muted">{{ fav.generic or 'Generic' }}</small>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ fav.dosage or 'N/A' }} | {{ fav.frequency or '1-0-1' }}</span></td>
+                                <td><small>{{ fav.instruction or 'After meal' }}</small></td>
+                                <td>
+                                    <a href="{{ url_for('doctor_delete_favorite_medicine', index=loop.index0) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete favorite medicine template?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-capsule fs-1"></i>
+                    <p class="mt-2 mb-0">No favorite medicines saved yet. Add your most prescribed medicines above for 1-click prescribing!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

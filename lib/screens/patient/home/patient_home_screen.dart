@@ -8,6 +8,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/appointment_provider.dart';
+import '../../../core/services/pdf_generator_service.dart';
 import '../../../core/widgets/health_monitor_widget.dart';
 import '../../../models/hospital_model.dart';
 import '../../../models/appointment_model.dart';
@@ -15,7 +16,6 @@ import '../doctors/search_doctors_screen.dart';
 import '../appointments/my_appointments_screen.dart';
 import '../history/medical_history_screen.dart';
 import '../prescriptions/prescriptions_screen.dart';
-import '../ambulance/book_ambulance_screen.dart';
 import '../diagnostic/diagnostic_centres_screen.dart';
 import '../chat/chatbot_screen.dart';
 import '../medicine_reminder/medicine_reminder_screen.dart';
@@ -23,8 +23,8 @@ import '../lab_test/lab_test_booking_screen.dart';
 import '../articles/health_articles_screen.dart';
 import '../symptom_checker/symptom_checker_screen.dart';
 import '../blood_donors/blood_donors_screen.dart';
+import '../profile/family_members_screen.dart';
 import '../../doctor/settings/settings_screen.dart';
-import 'access_requests_screen.dart';
 
 class PatientHomeScreen extends ConsumerStatefulWidget {
   const PatientHomeScreen({super.key});
@@ -196,18 +196,6 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
               const SizedBox(width: 4),
               _buildHeaderIconButton(
                 context,
-                Icons.shield_outlined, // Changed Icon
-                0, // Replace with actual request count if available
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AccessRequestsScreen()),
-                  );
-                },
-              ),
-              const SizedBox(width: 4),
-              _buildHeaderIconButton(
-                context,
                 Icons.person_outline,
                 0,
                 () => _showProfileMenu(context),
@@ -304,11 +292,12 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                         vertical: 14,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceColor,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 2),
                           ),
@@ -333,13 +322,13 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                             child: Text(
                               'Search doctors, specializations...',
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppTheme.textSecondaryColor,
+                                    color: Theme.of(context).textTheme.bodySmall?.color,
                                   ),
                             ),
                           ),
                           Icon(
                             Icons.tune,
-                            color: AppTheme.textSecondaryColor,
+                            color: Theme.of(context).textTheme.bodySmall?.color,
                             size: 20,
                           ),
                         ],
@@ -355,80 +344,7 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                 ),
                 const SizedBox(height: 24),
 
-            // Emergency Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppTheme.errorColor,
-                      AppTheme.errorColor.withOpacity(0.8),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.local_hospital,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Emergency?',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Book an ambulance now',
-                            style:
-                                Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Colors.white.withOpacity(0.9),
-                                    ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const BookAmbulanceScreen(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(
-                        Icons.arrow_forward_ios,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+
 
             // Diagnostic Centre Button
             Padding(
@@ -597,6 +513,19 @@ class _HomeTabState extends ConsumerState<_HomeTab> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const BloodDonorsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _QuickActionCard(
+                  icon: Icons.family_restroom,
+                  title: 'Family Members',
+                  color: Colors.blueAccent,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const FamilyMembersScreen(),
                       ),
                     );
                   },
@@ -890,9 +819,9 @@ class _SpecializationCard extends StatelessWidget {
         width: 140,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderColor),
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -900,7 +829,7 @@ class _SpecializationCard extends StatelessWidget {
             Icon(
               _getIconForSpecialization(specialization),
               size: 36,
-              color: AppTheme.primaryColor,
+              color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(height: 8),
             Text(
@@ -940,9 +869,9 @@ class _HospitalCard extends StatelessWidget {
       child: Container(
         width: 280,
         decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderColor),
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -951,7 +880,7 @@ class _HospitalCard extends StatelessWidget {
             Container(
               height: 100,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
                   topRight: Radius.circular(16),
@@ -1686,7 +1615,7 @@ class _NotificationsSheet extends StatelessWidget {
             stream: FirebaseFirestore.instance
                 .collection('notifications')
                 .where('userId', isEqualTo: currentUserId)
-                .where('type', whereIn: ['blood_request', 'blood_request_refused'])
+                .where('type', whereIn: ['blood_request', 'blood_request_refused', 'appointment_pdf'])
                 .snapshots(),
             builder: (context, snapshot) {
               // Handle errors
@@ -1703,7 +1632,11 @@ class _NotificationsSheet extends StatelessWidget {
                   return bTime.compareTo(aTime); // Descending order
                 });
               
-              // Separate blood requests and refusals
+              // Separate blood requests, refusals, and appointment pdf notifications
+              final pdfNotifications = allNotifications
+                  .where((doc) => (doc.data() as Map<String, dynamic>)['type'] == 'appointment_pdf')
+                  .take(5)
+                  .toList();
               final bloodRequests = allNotifications
                   .where((doc) => (doc.data() as Map<String, dynamic>)['type'] == 'blood_request')
                   .take(5)
@@ -1713,7 +1646,7 @@ class _NotificationsSheet extends StatelessWidget {
                   .take(5)
                   .toList();
               
-              if (bloodRequests.isEmpty && refusals.isEmpty && appointments.isEmpty) {
+              if (pdfNotifications.isEmpty && bloodRequests.isEmpty && refusals.isEmpty && appointments.isEmpty) {
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
@@ -1742,6 +1675,32 @@ class _NotificationsSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Appointment PDF Receipts Section
+                      if (pdfNotifications.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.picture_as_pdf, color: Colors.blue, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Appointment PDF Slips',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue[800],
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ...pdfNotifications.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          return _AppointmentPdfCard(
+                            data: data,
+                            docId: doc.id,
+                          );
+                        }),
+                        const SizedBox(height: 16),
+                      ],
+
                       // Refusal Notifications Section
                       if (refusals.isNotEmpty) ...[
                         Row(
@@ -2253,6 +2212,136 @@ class _BloodRefusalCard extends StatelessWidget {
     } else {
       return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     }
+  }
+}
+
+// Appointment PDF Notification Card Widget - shown in notification drawer
+class _AppointmentPdfCard extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final String docId;
+
+  const _AppointmentPdfCard({
+    required this.data,
+    required this.docId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final title = data['title'] as String? ?? '📄 Appointment PDF Slip Ready';
+    final message = data['message'] as String? ?? 'Your appointment PDF slip is ready.';
+    final isRead = data['read'] as bool? ?? false;
+    final doctorName = data['doctorName'] as String? ?? 'Doctor';
+    final specialization = data['specialization'] as String? ?? 'General';
+    final timeSlot = data['timeSlot'] as String? ?? '10:00 AM';
+    final hospitalName = data['hospitalName'] as String? ?? 'City General Hospital';
+    final patientName = data['patientName'] as String? ?? 'Patient';
+
+    DateTime date = DateTime.now();
+    if (data['date'] != null) {
+      date = DateTime.tryParse(data['date'].toString()) ?? DateTime.now();
+    }
+
+    final appointment = AppointmentModel(
+      appointmentId: data['appointmentId'] as String? ?? docId,
+      doctorId: '',
+      patientId: data['userId'] as String? ?? '',
+      doctorName: doctorName,
+      patientName: patientName,
+      specialization: specialization,
+      date: date,
+      timeSlotId: '',
+      timeSlot: timeSlot,
+      hospitalName: hospitalName,
+      status: AppointmentStatus.upcoming,
+      consultationFee: (data['consultationFee'] as num?)?.toDouble() ?? 500.0,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isRead ? Colors.grey[50] : Colors.blue[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isRead ? Colors.grey[200]! : Colors.blue[200]!,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.picture_as_pdf,
+                  color: Colors.blue[700],
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[900],
+                          ),
+                    ),
+                    Text(
+                      'Dr. $doctorName • $timeSlot',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isRead)
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Colors.blue[600],
+                    shape: BoxShape.circle,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                FirebaseFirestore.instance
+                    .collection('notifications')
+                    .doc(docId)
+                    .update({'read': true});
+                PdfGeneratorService.showPdfPreview(context, appointment);
+              },
+              icon: const Icon(Icons.picture_as_pdf, size: 16, color: Colors.white),
+              label: const Text('View / Download PDF Slip', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[700],
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/status_chip.dart';
 import '../../../core/providers/appointment_provider.dart';
+import '../../../core/services/pdf_generator_service.dart';
 import '../../../models/appointment_model.dart';
 import 'appointment_detail_screen.dart';
 import '../doctors/search_doctors_screen.dart';
@@ -240,6 +241,31 @@ class _AppointmentCard extends StatelessWidget {
                   _buildPaymentBadge(context),
                 ],
               ),
+              if (appointment.familyMemberName != null && appointment.familyMemberName!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.person_outline, size: 14, color: AppTheme.primaryColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Patient: ${appointment.familyMemberName}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               const Divider(),
               const SizedBox(height: 12),
@@ -326,6 +352,21 @@ class _AppointmentCard extends StatelessWidget {
                   ),
                 ),
               ],
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => PdfGeneratorService.showPdfPreview(context, appointment),
+                  icon: const Icon(Icons.picture_as_pdf, size: 16, color: Colors.red),
+                  label: const Text('Download PDF Slip', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

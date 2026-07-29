@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    .heatmap-card {
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        border: none;
+    }
+    #diseaseMap {
+        height: 520px;
+        border-radius: 16px;
+        z-index: 1;
+    }
+    .risk-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 20px;
+    }
+    .risk-critical { background: #fee2e2; color: #dc2626; }
+    .risk-high { background: #ffedd5; color: #ea580c; }
+    .risk-moderate { background: #fef9c3; color: #ca8a04; }
+    .risk-low { background: #dcfce7; color: #16a34a; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-area">
+    <!-- Header -->
+    <div class="section-header">
+        <div>
+            <h1 class="h3 fw-bold mb-1">
+                <i class="bi bi-geo-alt-fill text-danger me-2"></i>Disease Heatmap & Outbreak Analytics
+            </h1>
+            <p class="text-muted mb-0">Real-time epidemiological monitoring & geographical risk clustering</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="fetchHeatmapData()">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh Data
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card danger">
+                <div class="stat-card-icon">
+                    <i class="bi bi-activity"></i>
+                </div>
+                <div class="stat-card-value" id="statTotalCases">{{ heatmap_summary.total_cases }}</div>
+                <div class="stat-card-label">Total Outbreak Cases</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card warning">
+                <div class="stat-card-icon">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+                <div class="stat-card-value" id="statHighRiskZones">{{ heatmap_summary.high_risk_zones }}</div>
+                <div class="stat-card-label">High-Risk Districts</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card primary">
+                <div class="stat-card-icon">
+                    <i class="bi bi-building"></i>
+                </div>
+                <div class="stat-card-value" id="statPrimaryOutbreak">{{ heatmap_summary.primary_outbreak }}</div>
+                <div class="stat-card-label">Top Outbreak Region</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card success">
+                <div class="stat-card-icon">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <div class="stat-card-value" id="statActiveDisease">{{ heatmap_summary.top_disease }}</div>
+                <div class="stat-card-label">Most Prevalent Vector</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map & Controls Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card heatmap-card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3 px-2">
+                    <h5 class="fw-bold mb-0">Geographical Disease Density</h5>
+                    <div class="d-flex gap-2">
+                        <select id="diseaseFilter" class="form-select form-select-sm" style="width: 180px;" onchange="fetchHeatmapData()">
+                            <option value="all">All Diseases</option>
+                            <option value="Dengue Fever">Dengue Fever</option>
+                            <option value="Seasonal Flu">Seasonal Flu</option>
+                            <option value="COVID-19">COVID-19</option>
+                            <option value="Typhoid">Typhoid</option>
+                            <option value="Cholera">Cholera</option>
+                            <option value="Viral Fever">Viral Fever</option>
+                        </select>
+                        <select id="timeframeFilter" class="form-select form-select-sm" style="width: 140px;" onchange="fetchHeatmapData()">
+                            <option value="30">Last 30 Days</option>
+                            <option value="7">Last 7 Days</option>
+                            <option value="90">Last 90 Days</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="diseaseMap"></div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card heatmap-card p-3 h-100">
+                <h5 class="fw-bold mb-3 px-2">Disease Breakdown</h5>
+                <div class="list-group list-group-flush mb-3" id="diseaseList">
+                    {% for item in disease_breakdown %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-2 py-3 border-bottom">
+                        <div>
+                            <div class="fw-semibold text-dark">{{ item.name }}</div>
+                            <small class="text-muted">{{ item.cluster_count }} districts affected</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-danger rounded-pill">{{ item.cases }} cases</span>
+                            <div class="small text-muted mt-1">{{ item.trend }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="p-3 bg-light rounded-3 mt-auto">
+                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-info-circle me-1"></i> Alert Legend</h6>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge risk-critical">Critical (>100 cases)</span>
+                        <span class="small text-muted">Immediate Intervention</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge risk-high">High (50 - 100 cases)</span>
+                        <span class="small text-muted">Active Monitoring</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge risk-moderate">Moderate (<50 cases)</span>
+                        <span class="small text-muted">Normal Surveillance</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Regional Outbreak Table -->
+    <div class="card heatmap-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">Regional Cluster Breakdown</h5>
+            <input type="text" id="tableSearch" class="form-select form-select-sm" placeholder="Search District..." style="width: 220px;" onkeyup="filterTable()">
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="districtTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>District / Region</th>
+                        <th>Primary Disease</th>
+                        <th>Reported Cases</th>
+                        <th>Risk Tier</th>
+                        <th>Growth Trend</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="clusterTableBody">
+                    {% for cluster in regional_clusters %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-dark">{{ cluster.region }}</div>
+                            <small class="text-muted">Lat: {{ cluster.lat }}, Lng: {{ cluster.lng }}</small>
+                        </td>
+                        <td><span class="fw-semibold">{{ cluster.disease }}</span></td>
+                        <td><span class="fw-bold text-danger">{{ cluster.cases }}</span></td>
+                        <td>
+                            {% if cluster.cases >= 100 %}
+                            <span class="risk-badge risk-critical">CRITICAL</span>
+                            {% elif cluster.cases >= 50 %}
+                            <span class="risk-badge risk-high">HIGH RISK</span>
+                            {% else %}
+                            <span class="risk-badge risk-moderate">MODERATE</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="text-{{ 'danger' if '+' in cluster.trend else 'success' }} fw-semibold">
+                                {{ cluster.trend }}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="focusMap({{ cluster.lat }}, {{ cluster.lng }}, '{{ cluster.region }}')">
+                                View Map
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    let map;
+    let markersGroup;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+        fetchHeatmapData();
+    });
+
+    function initMap() {
+        // Center on Bangladesh
+        map = L.map('diseaseMap').setView([23.8103, 90.4125], 7);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap contributors | MediConnect Defense Intelligence'
+        }).addTo(map);
+
+        markersGroup = L.layerGroup().addTo(map);
+    }
+
+    function fetchHeatmapData() {
+        const disease = document.getElementById('diseaseFilter').value;
+        const timeframe = document.getElementById('timeframeFilter').value;
+
+        fetch(`/api/disease-heatmap-data?disease=${encodeURIComponent(disease)}&timeframe=${timeframe}`)
+            .then(res => res.json())
+            .then(data => {
+                renderMapMarkers(data.clusters);
+                updateStats(data.summary);
+                updateClustersTable(data.clusters);
+            })
+            .catch(err => console.error('Error loading heatmap data:', err));
+    }
+
+    function renderMapMarkers(clusters) {
+        markersGroup.clearLayers();
+
+        clusters.forEach(cluster => {
+            let color = '#ca8a04'; // Moderate yellow
+            let radius = 15;
+
+            if (cluster.cases >= 100) {
+                color = '#dc2626'; // Critical red
+                radius = 28;
+            } else if (cluster.cases >= 50) {
+                color = '#ea580c'; // High orange
+                radius = 20;
+            }
+
+            const circle = L.circleMarker([cluster.lat, cluster.lng], {
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.5,
+                radius: radius
+            });
+
+            const popupContent = `
+                <div style="font-family: inherit; padding: 4px;">
+                    <h6 style="margin: 0; font-weight: bold; color: ${color};">${cluster.region} Zone</h6>
+                    <hr style="margin: 6px 0;">
+                    <b>Disease:</b> ${cluster.disease}<br>
+                    <b>Active Cases:</b> ${cluster.cases}<br>
+                    <b>Trend:</b> ${cluster.trend}
+                </div>
+            `;
+
+            circle.bindPopup(popupContent);
+            markersGroup.addLayer(circle);
+        });
+    }
+
+    function updateStats(summary) {
+        if (!summary) return;
+        document.getElementById('statTotalCases').innerText = summary.total_cases || 0;
+        document.getElementById('statHighRiskZones').innerText = summary.high_risk_zones || 0;
+        document.getElementById('statPrimaryOutbreak').innerText = summary.primary_outbreak || 'N/A';
+        document.getElementById('statActiveDisease').innerText = summary.top_disease || 'N/A';
+    }
+
+    function updateClustersTable(clusters) {
+        const tbody = document.getElementById('clusterTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        clusters.forEach(c => {
+            let riskBadge = c.cases >= 100 
+                ? '<span class="risk-badge risk-critical">CRITICAL</span>'
+                : (c.cases >= 50 ? '<span class="risk-badge risk-high">HIGH RISK</span>' : '<span class="risk-badge risk-moderate">MODERATE</span>');
+            
+            let trendColor = c.trend.includes('+') ? 'danger' : 'success';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>
+                        <div class="fw-bold text-dark">${c.region}</div>
+                        <small class="text-muted">Lat: ${c.lat}, Lng: ${c.lng}</small>
+                    </td>
+                    <td><span class="fw-semibold">${c.disease}</span></td>
+                    <td><span class="fw-bold text-danger">${c.cases}</span></td>
+                    <td>${riskBadge}</td>
+                    <td><span class="text-${trendColor} fw-semibold">${c.trend}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="focusMap(${c.lat}, ${c.lng}, '${c.region}')">
+                            View Map
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function focusMap(lat, lng, region) {
+        map.setView([lat, lng], 11);
+        window.scrollTo({ top: 300, behavior: 'smooth' });
+    }
+
+    function filterTable() {
+        const query = document.getElementById('tableSearch').value.toLowerCase();
+        const rows = document.querySelectorAll('#clusterTableBody tr');
+
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+</script>
+{% endblock %}

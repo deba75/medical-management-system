@@ -1,0 +1,85 @@
+================================================================================
+          MEDICONNECT WEB PORTAL - RENDER.COM DEPLOYMENT GUIDE (TXT)
+================================================================================
+
+This document provides simple step-by-step instructions to deploy your Flask
+Web Application (Admin, Doctor, and Diagnostic Centre Web Portals) live to 
+Render.com for free.
+
+--------------------------------------------------------------------------------
+STEP 1: PRE-DEPLOYMENT CHECKLIST
+--------------------------------------------------------------------------------
+Ensure the following files are present inside your "Admin/" folder:
+1. app.py                 (Main Flask Web Application)
+2. requirements.txt       (Contains dependencies: Flask, gunicorn, firebase-admin)
+3. Procfile               (Contains: web: gunicorn app:app)
+4. render.yaml            (Render configuration file)
+
+--------------------------------------------------------------------------------
+STEP 2: PUSH YOUR CODE TO GITHUB / GITLAB
+--------------------------------------------------------------------------------
+Run the following commands in your terminal to commit and push your code:
+
+   git add .
+   git commit -m "Add deployment files for Render"
+   git push origin main
+
+Note: Do NOT upload your "serviceAccountKey.json" to a public repository. 
+We will configure it securely as an Environment Variable in Step 4.
+
+--------------------------------------------------------------------------------
+STEP 3: CREATE A WEB SERVICE ON RENDER.COM
+--------------------------------------------------------------------------------
+1. Open your web browser and go to: https://dashboard.render.com/
+2. Log in or create a free Render account.
+3. Click the "New +" button at the top right corner.
+4. Select "Web Service".
+5. Connect your GitHub or GitLab account and choose your repository.
+
+--------------------------------------------------------------------------------
+STEP 4: CONFIGURE SERVICE SETTINGS ON RENDER
+--------------------------------------------------------------------------------
+Fill in the deployment details on Render as follows:
+
+   - Name:               mediconnect-web-portal
+   - Region:             Singapore (or Oregon)
+   - Branch:             main
+   - Root Directory:     Admin
+   - Runtime:            Python 3
+   - Build Command:      pip install -r requirements.txt
+   - Start Command:      gunicorn app:app
+   - Instance Type:      Free
+
+--------------------------------------------------------------------------------
+STEP 5: ADD FIREBASE DATABASE SECRET KEY
+--------------------------------------------------------------------------------
+To connect your live web app to your Firebase Firestore database:
+
+1. Scroll down to the "Environment Variables" section on Render.
+2. Click "Add Environment Variable":
+      Key:   FIREBASE_SERVICE_ACCOUNT_JSON
+      Value: [Open your local "serviceAccountKey.json" file, copy all text, 
+              and paste it here]
+
+3. (Optional) Add a Secret Key variable:
+      Key:   SECRET_KEY
+      Value: [Type any random secret text string]
+
+--------------------------------------------------------------------------------
+STEP 6: DEPLOY & ACCESS LIVE WEBSITE
+--------------------------------------------------------------------------------
+1. Click the "Create Web Service" button.
+2. Render will automatically install packages and launch Gunicorn.
+3. In 1 to 2 minutes, Render will display your live website URL, for example:
+   https://mediconnect-web-portal.onrender.com
+
+--------------------------------------------------------------------------------
+STEP 7: TEST YOUR LIVE WEB PORTALS
+--------------------------------------------------------------------------------
+You can now access your live web portals from anywhere on the internet:
+
+   - Main Gateway & Login:  https://[your-render-url]/login
+   - Doctor Sign Up:        https://[your-render-url]/register/doctor
+   - Diagnostic Sign Up:    https://[your-render-url]/register/diagnostic
+
+================================================================================

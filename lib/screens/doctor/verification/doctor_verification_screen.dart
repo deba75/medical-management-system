@@ -30,14 +30,12 @@ class _DoctorVerificationScreenState
   final _specializationController = TextEditingController();
   final _qualificationsController = TextEditingController();
   final _experienceController = TextEditingController();
-  final _phoneController = TextEditingController();
 
   bool _isSubmitting = false;
   bool _isSpecialist = false;
   
   // BMDC Certificate Image
   File? _certificateImage;
-  String? _certificateImageUrl;
   bool _isUploadingImage = false;
 
   @override
@@ -48,7 +46,6 @@ class _DoctorVerificationScreenState
     _specializationController.dispose();
     _qualificationsController.dispose();
     _experienceController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
@@ -198,6 +195,10 @@ class _DoctorVerificationScreenState
       final userName =
           ref.read(authServiceProvider).currentUser?.displayName ?? '';
 
+      // Get phone number from registered user profile
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final userPhone = userDoc.data()?['phone'] ?? ref.read(authServiceProvider).currentUser?.phoneNumber ?? '';
+
       // Upload certificate image if selected
       String? certificateUrl;
       bool certificateUploadFailed = false;
@@ -216,7 +217,7 @@ class _DoctorVerificationScreenState
         'userId': userId,
         'email': userEmail,
         'name': userName,
-        'phone': _phoneController.text.trim(),
+        'phone': userPhone,
         'bmdcNumber': _bmdcNumberController.text.trim(),
         'specialization': _specializationController.text.trim(),
         'qualifications': _qualificationsController.text.trim(),
@@ -377,28 +378,6 @@ class _DoctorVerificationScreenState
                       ),
                     ),
                     const SizedBox(height: 24),
-
-                    // Personal Information Section
-                    _buildSectionHeader('Personal Information'),
-                    const SizedBox(height: 12),
-
-                    CustomTextField(
-                      controller: _phoneController,
-                      label: 'Phone Number *',
-                      hint: 'Enter your phone number',
-                      prefixIcon: Icons.phone,
-                      keyboardType: TextInputType.phone,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Phone number is required';
-                        }
-                        if (value.length < 10) {
-                          return 'Enter a valid phone number';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
 
                     // Professional Information Section
                     _buildSectionHeader('Professional Information'),

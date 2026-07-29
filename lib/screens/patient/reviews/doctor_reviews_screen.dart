@@ -229,11 +229,95 @@ class _DoctorReviewsScreenState extends ConsumerState<DoctorReviewsScreen> {
     );
   }
 
+  Future<bool> _canUserReviewDoctor() async {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (currentUserId.isEmpty) return false;
+
+    try {
+      // 1. Check if patient has received a prescription from this doctor
+      final prescriptionQuery = await FirebaseFirestore.instance
+          .collection('prescriptions')
+          .where('userId', isEqualTo: currentUserId)
+          .where('doctorId', isEqualTo: widget.doctorId)
+          .limit(1)
+          .get();
+
+      if (prescriptionQuery.docs.isNotEmpty) return true;
+
+      // 2. Check if patient has a completed appointment with this doctor
+      final appointmentQuery = await FirebaseFirestore.instance
+          .collection('appointments')
+          .where('patientId', isEqualTo: currentUserId)
+          .where('doctorId', isEqualTo: widget.doctorId)
+          .where('status', isEqualTo: 'completed')
+          .limit(1)
+          .get();
+
+      if (appointmentQuery.docs.isNotEmpty) return true;
+
+      // 3. Fallback check by doctor name in prescriptions
+      final altPrescriptionQuery = await FirebaseFirestore.instance
+          .collection('prescriptions')
+          .where('userId', isEqualTo: currentUserId)
+          .where('doctorName', isEqualTo: widget.doctorName)
+          .limit(1)
+          .get();
+
+      if (altPrescriptionQuery.docs.isNotEmpty) return true;
+    } catch (e) {
+      debugPrint('Error verifying review permission: $e');
+    }
+
+    return false;
+  }
+
+  void _handleWriteReviewPressed() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final canReview = await _canUserReviewDoctor();
+    if (mounted) Navigator.pop(context); // Close loading dialog
+
+    if (!canReview) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.lock_outline, color: Colors.amber),
+                SizedBox(width: 8),
+                Text('Consultation Required'),
+              ],
+            ),
+            content: Text(
+              'You can only rate or review Dr. ${widget.doctorName} after you have completed a consultation and received a prescription from them.',
+              style: const TextStyle(fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    _showWriteReviewDialog();
+  }
+
   Widget _buildWriteReviewButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ElevatedButton.icon(
-        onPressed: () => _showWriteReviewDialog(),
+        onPressed: _handleWriteReviewPressed,
         icon: const Icon(Icons.rate_review),
         label: const Text('Write a Review'),
         style: ElevatedButton.styleFrom(
@@ -553,8 +637,16 @@ class _DoctorReviewsScreenState extends ConsumerState<DoctorReviewsScreen> {
                     children: ReviewTags.allTags.map((tag) {
                       final isSelected = selectedTags.contains(tag);
                       return FilterChip(
-                        label: Text(tag),
+                        label: Text(
+                          tag,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
                         selected: isSelected,
+                        selectedColor: AppTheme.primaryColor,
+                        checkmarkColor: Colors.white,
                         onSelected: (selected) {
                           setModalState(() {
                             if (selected) {

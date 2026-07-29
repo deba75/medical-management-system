@@ -83,6 +83,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         
         if (userData?.role == UserRole.doctor) {
           await _handleDoctorLogin(userId);
+        } else if (userData?.role == UserRole.diagnosticCentre) {
+          await _handleDiagnosticCentreLogin(userId);
+        } else if (userData?.role == UserRole.admin) {
+          Navigator.pushReplacementNamed(context, '/admin-verification');
         } else {
           Navigator.pushReplacementNamed(context, '/patient-home');
         }
@@ -302,6 +306,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     }
   }
 
+  Future<void> _handleDiagnosticCentreLogin(String userId) async {
+    try {
+      final centreDoc = await FirebaseFirestore.instance
+          .collection('diagnostic_centres')
+          .doc(userId)
+          .get();
+
+      if (!mounted) return;
+
+      if (!centreDoc.exists) {
+        Navigator.pushReplacementNamed(context, '/diagnostic-centre-verification');
+        return;
+      }
+
+      final verificationStatus = centreDoc.data()?['verificationStatus'] ?? 'pending';
+
+      switch (verificationStatus) {
+        case 'approved':
+          Navigator.pushReplacementNamed(context, '/diagnostic-centre-home');
+          break;
+        case 'pending':
+          _showPendingVerificationDialog();
+          break;
+        case 'rejected':
+          _showRejectedDialog(centreDoc.data()?['rejectionReason']);
+          break;
+        default:
+          Navigator.pushReplacementNamed(context, '/diagnostic-centre-verification');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorSnackBar('Error checking diagnostic centre verification status');
+      }
+    }
+  }
+
   void _showPendingVerificationDialog() {
     showDialog(
       context: context,
@@ -391,8 +431,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final size = MediaQuery.of(context).size;
     
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Container(
-        height: size.height,
+        constraints: BoxConstraints(minHeight: size.height),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -405,89 +446,96 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                // Top Section with Logo
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: Column(
-                        children: [
-                          // Animated Logo
-                          TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0.8, end: 1.0),
-                            duration: const Duration(milliseconds: 600),
-                            curve: Curves.elasticOut,
-                            builder: (context, scale, child) {
-                              return Transform.scale(
-                                scale: scale,
-                                child: child,
-                              );
-                            },
+          bottom: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        // Top Section with Logo
+                        FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: SlideTransition(
+                            position: _slideAnimation,
                             child: Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(30),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 30,
-                                    offset: const Offset(0, 10),
+                              padding: const EdgeInsets.symmetric(vertical: 36),
+                              child: Column(
+                                children: [
+                                  // Animated Logo
+                                  TweenAnimationBuilder<double>(
+                                    tween: Tween(begin: 0.8, end: 1.0),
+                                    duration: const Duration(milliseconds: 600),
+                                    curve: Curves.elasticOut,
+                                    builder: (context, scale, child) {
+                                      return Transform.scale(
+                                        scale: scale,
+                                        child: child,
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(30),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.1),
+                                            blurRadius: 30,
+                                            offset: const Offset(0, 10),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.medical_services_rounded,
+                                        size: 60,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  const Text(
+                                    'MediConnect',
+                                    style: TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Healthcare at your fingertips',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white.withOpacity(0.9),
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: const Icon(
-                                Icons.medical_services_rounded,
-                                size: 60,
-                                color: Colors.white,
-                              ),
                             ),
                           ),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'MediConnect',
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Healthcare at your fingertips',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // Bottom Section with Form
-                FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(28),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(40),
-                          topRight: Radius.circular(40),
                         ),
-                      ),
-                      child: Form(
+
+                        // Bottom Section with Form (Expanded to fill to screen bottom)
+                        Expanded(
+                          child: FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: SlideTransition(
+                              position: _slideAnimation,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(28, 28, 28, 36),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).scaffoldBackgroundColor,
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(40),
+                                    topRight: Radius.circular(40),
+                                  ),
+                                ),
+                                child: Form(
                         key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -499,7 +547,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade800,
+                                color: Theme.of(context).textTheme.displaySmall?.color,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -507,7 +555,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               'Sign in to continue',
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.grey.shade600,
+                                color: Theme.of(context).textTheme.bodySmall?.color,
                               ),
                             ),
                             const SizedBox(height: 32),
@@ -583,56 +631,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             _buildLoginButton(),
                             const SizedBox(height: 24),
                             
-                            // Divider
-                            Row(
-                              children: [
-                                Expanded(child: Divider(color: Colors.grey.shade300)),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  child: Text(
-                                    'OR',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade500,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(child: Divider(color: Colors.grey.shade300)),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            
-                            // Social Login Buttons
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _buildSocialButton(
-                                  icon: Icons.g_mobiledata_rounded,
-                                  color: Colors.red,
-                                  onTap: () {
-                                    // TODO: Google Sign In
-                                  },
-                                ),
-                                const SizedBox(width: 20),
-                                _buildSocialButton(
-                                  icon: Icons.facebook_rounded,
-                                  color: Colors.blue.shade700,
-                                  onTap: () {
-                                    // TODO: Facebook Sign In
-                                  },
-                                ),
-                                const SizedBox(width: 20),
-                                _buildSocialButton(
-                                  icon: Icons.apple_rounded,
-                                  color: Colors.black,
-                                  onTap: () {
-                                    // TODO: Apple Sign In
-                                  },
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 32),
-                            
                             // Sign Up Link
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -685,12 +683,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
+  },
+),
+),
+),
+);
   }
 
   Widget _buildTextField({
@@ -711,7 +714,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
+            color: Theme.of(context).textTheme.bodySmall?.color,
           ),
         ),
         const SizedBox(height: 8),
@@ -720,21 +723,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           keyboardType: keyboardType,
           obscureText: obscureText,
           validator: validator,
-          style: const TextStyle(fontSize: 16),
+          style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400),
-            prefixIcon: Icon(icon, color: AppTheme.primaryColor),
+            hintStyle: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6)),
+            prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: Colors.grey.shade50,
+            fillColor: Theme.of(context).colorScheme.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: Colors.grey.shade200),
+              borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
@@ -794,34 +797,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   Icon(Icons.arrow_forward_rounded),
                 ],
               ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton({
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(icon, color: color, size: 32),
       ),
     );
   }

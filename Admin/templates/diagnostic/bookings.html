@@ -1,0 +1,105 @@
+{% extends "diagnostic/base.html" %}
+{% block title %}Lab Bookings Pipeline{% endblock %}
+{% block header_title %}Lab Test Bookings Queue{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('diagnostic_bookings') }}" class="row g-3">
+            <div class="col-md-4">
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    <option value="" {% if not current_status %}selected{% endif %}>All Requests Pipeline</option>
+                    <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending Approval</option>
+                    <option value="approved" {% if current_status == 'approved' %}selected{% endif %}>Approved / Ready</option>
+                    <option value="collectorAssigned" {% if current_status == 'collectorAssigned' %}selected{% endif %}>Collector Assigned</option>
+                    <option value="sampleCollected" {% if current_status == 'sampleCollected' %}selected{% endif %}>Sample Collected / In Transit</option>
+                    <option value="processing" {% if current_status == 'processing' %}selected{% endif %}>Processing in Lab</option>
+                    <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>Completed & Ready</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        {% if bookings %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Booking ID / Date</th>
+                        <th>Patient Name</th>
+                        <th>Collection Method</th>
+                        <th>Tests List</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in bookings %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold">#{{ b.id[:8] }}</div>
+                            <small class="text-muted">{{ b.scheduledDate or b.createdAt or 'N/A' }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-bold">{{ b.targetPatientDisplay or b.patientName }}</div>
+                            <small class="text-muted">{{ b.patientPhone or 'N/A' }}</small>
+                        </td>
+                        <td>
+                            {% if b.collectionType == 'homeSample' %}
+                            <span class="badge bg-info-subtle text-info"><i class="bi bi-house me-1"></i>Home Sample</span>
+                            <div><small class="text-muted">{{ b.address or '' }}</small></div>
+                            {% else %}
+                            <span class="badge bg-light text-dark border"><i class="bi bi-building me-1"></i>Centre Visit</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small class="d-inline-block text-truncate" style="max-width: 200px;">
+                                {% if b.tests %}
+                                    {% for t in b.tests %}{{ t.testName }}{% if not loop.last %}, {% endif %}{% endfor %}
+                                {% else %}
+                                    {{ b.testNames or 'Lab Test' }}
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td>
+                            {% if b.status == 'pending' %}
+                            <span class="badge bg-warning-subtle text-warning">Pending</span>
+                            {% elif b.status == 'approved' %}
+                            <span class="badge bg-primary-subtle text-primary">Approved</span>
+                            {% elif b.status == 'collectorAssigned' or b.status == 'sampleCollected' %}
+                            <span class="badge bg-info-subtle text-info">In Transit</span>
+                            {% elif b.status == 'processing' %}
+                            <span class="badge bg-secondary-subtle text-secondary">Processing</span>
+                            {% elif b.status == 'completed' %}
+                            <span class="badge bg-success-subtle text-success">Completed</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ b.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('diagnostic_booking_detail', booking_id=b.id) }}" class="btn btn-sm btn-outline-teal" style="color: #0d9488; border-color: #0d9488;">
+                                Manage Booking
+                            </a>
+                            {% if b.status == 'completed' %}
+                            <a href="{{ url_for('diagnostic_report_print', booking_id=b.id) }}" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                <i class="bi bi-printer"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox fs-1"></i>
+            <p class="mt-2 mb-0">No bookings found for the selected status.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

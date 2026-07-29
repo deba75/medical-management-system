@@ -9,41 +9,53 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color backgroundColor;
-    Color textColor;
+    Color color;
     String text;
 
     switch (status) {
       case AppointmentStatus.upcoming:
-        backgroundColor = AppTheme.upcomingColor.withOpacity(0.1);
-        textColor = AppTheme.upcomingColor;
+        color = AppTheme.upcomingColor;
         text = 'Upcoming';
         break;
       case AppointmentStatus.completed:
-        backgroundColor = AppTheme.completedColor.withOpacity(0.1);
-        textColor = AppTheme.completedColor;
+        color = AppTheme.completedColor;
         text = 'Completed';
         break;
       case AppointmentStatus.cancelled:
-        backgroundColor = AppTheme.cancelledColor.withOpacity(0.1);
-        textColor = AppTheme.cancelledColor;
+        color = AppTheme.cancelledColor;
         text = 'Cancelled';
         break;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.2), width: 1),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.1,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -56,55 +68,64 @@ class RequestStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color backgroundColor;
-    Color textColor;
+    Color color;
     String text;
 
     switch (status.toLowerCase()) {
       case 'pending':
-        backgroundColor = AppTheme.pendingColor.withOpacity(0.1);
-        textColor = AppTheme.pendingColor;
+        color = AppTheme.pendingColor;
         text = 'Pending';
         break;
       case 'accepted':
-        backgroundColor = AppTheme.upcomingColor.withOpacity(0.1);
-        textColor = AppTheme.upcomingColor;
+        color = AppTheme.upcomingColor;
         text = 'Accepted';
         break;
       case 'onroute':
-        backgroundColor = AppTheme.primaryColor.withOpacity(0.1);
-        textColor = AppTheme.primaryColor;
+        color = AppTheme.primaryColor;
         text = 'On Route';
         break;
       case 'completed':
-        backgroundColor = AppTheme.completedColor.withOpacity(0.1);
-        textColor = AppTheme.completedColor;
+        color = AppTheme.completedColor;
         text = 'Completed';
         break;
       case 'cancelled':
-        backgroundColor = AppTheme.cancelledColor.withOpacity(0.1);
-        textColor = AppTheme.cancelledColor;
+        color = AppTheme.cancelledColor;
         text = 'Cancelled';
         break;
       default:
-        backgroundColor = Colors.grey.withOpacity(0.1);
-        textColor = Colors.grey;
+        color = Colors.grey;
         text = status;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.2), width: 1),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.1,
+            ),
+          ),
+        ],
       ),
     );
   }

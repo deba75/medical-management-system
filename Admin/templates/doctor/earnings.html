@@ -1,0 +1,65 @@
+{% extends "doctor/base.html" %}
+{% block title %}Earnings & Financials{% endblock %}
+{% block header_title %}Doctor Earnings Breakdown{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-4 text-center">
+            <h6 class="text-muted mb-2">Total Accumulated Revenue</h6>
+            <h2 class="fw-bold text-success mb-0">৳{{ total_revenue }}</h2>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-4 text-center">
+            <h6 class="text-muted mb-2">Completed Consultations</h6>
+            <h2 class="fw-bold text-primary mb-0">{{ total_completed }}</h2>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-4 text-center">
+            <h6 class="text-muted mb-2">Average Fee Per Visit</h6>
+            <h2 class="fw-bold text-info mb-0">৳{{ avg_fee }}</h2>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3">
+        <h6 class="fw-bold mb-0"><i class="bi bi-receipt me-2"></i>Completed Consultations Ledger</h6>
+    </div>
+    <div class="card-body p-0">
+        {% if completed_list %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Patient</th>
+                        <th>Type</th>
+                        <th>Fee Earned</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for appt in completed_list %}
+                    <tr>
+                        <td>{{ appt.date }}</td>
+                        <td>{{ appt.patientName }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ appt.type or 'In-Person' }}</span></td>
+                        <td class="fw-bold text-success">৳{{ appt.fee or doctor_data.get('consultationFee', 500) }}</td>
+                        <td><span class="badge bg-success-subtle text-success">Paid & Completed</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-wallet-2 fs-1"></i>
+            <p class="mt-2 mb-0">No completed transactions recorded yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

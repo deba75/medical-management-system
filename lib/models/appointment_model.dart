@@ -15,6 +15,8 @@ class AppointmentModel {
   final AppointmentStatus status;
   final String? reason;
   final String? notes;
+  final String? familyMemberId;
+  final String? familyMemberName;
   // Payment fields
   final PaymentStatus paymentStatus;
   final PaymentMethod paymentMethod;
@@ -37,6 +39,8 @@ class AppointmentModel {
     required this.status,
     this.reason,
     this.notes,
+    this.familyMemberId,
+    this.familyMemberName,
     this.paymentStatus = PaymentStatus.pending,
     this.paymentMethod = PaymentMethod.payInPerson,
     this.consultationFee,
@@ -74,6 +78,8 @@ class AppointmentModel {
       ),
       reason: json['reason'],
       notes: json['notes'],
+      familyMemberId: json['familyMemberId'],
+      familyMemberName: json['familyMemberName'],
       paymentStatus: PaymentStatus.values.firstWhere(
         (e) => e.toString() == 'PaymentStatus.${json['paymentStatus']}',
         orElse: () => PaymentStatus.pending,
@@ -105,6 +111,8 @@ class AppointmentModel {
       'status': status.name,
       'reason': reason,
       'notes': notes,
+      'familyMemberId': familyMemberId,
+      'familyMemberName': familyMemberName,
       'paymentStatus': paymentStatus.name,
       'paymentMethod': paymentMethod.name,
       'consultationFee': consultationFee,
@@ -129,6 +137,8 @@ class AppointmentModel {
     AppointmentStatus? status,
     String? reason,
     String? notes,
+    String? familyMemberId,
+    String? familyMemberName,
     PaymentStatus? paymentStatus,
     PaymentMethod? paymentMethod,
     double? consultationFee,
@@ -150,6 +160,8 @@ class AppointmentModel {
       status: status ?? this.status,
       reason: reason ?? this.reason,
       notes: notes ?? this.notes,
+      familyMemberId: familyMemberId ?? this.familyMemberId,
+      familyMemberName: familyMemberName ?? this.familyMemberName,
       paymentStatus: paymentStatus ?? this.paymentStatus,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       consultationFee: consultationFee ?? this.consultationFee,

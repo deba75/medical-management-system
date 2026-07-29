@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/theme/app_theme.dart';
 import 'change_password_screen.dart';
+import 'manage_favorite_medicines_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -63,6 +64,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: _soundEnabled,
                 onChanged: (value) {
                   setState(() => _soundEnabled = value);
+                },
+              ),
+            ],
+          ),
+          _buildSection(
+            title: 'Prescription Preferences',
+            children: [
+              _buildNavigationTile(
+                icon: Icons.medication,
+                title: 'Common / Favorite Medicines',
+                subtitle: 'Manage quick-tick medicines for instant prescription',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ManageFavoriteMedicinesDialog(),
+                    ),
+                  );
                 },
               ),
             ],

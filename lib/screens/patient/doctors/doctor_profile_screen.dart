@@ -35,9 +35,9 @@ class DoctorProfileScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceColor,
+                      color: Theme.of(context).cardColor,
                       border: Border(
-                        bottom: BorderSide(color: AppTheme.borderColor),
+                        bottom: BorderSide(color: Theme.of(context).colorScheme.outline),
                       ),
                     ),
                     child: Row(
@@ -270,9 +270,9 @@ class DoctorProfileScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
+              color: Theme.of(context).cardColor,
               border: Border(
-                top: BorderSide(color: AppTheme.borderColor),
+                top: BorderSide(color: Theme.of(context).colorScheme.outline),
               ),
             ),
             child: SafeArea(

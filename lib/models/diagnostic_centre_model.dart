@@ -65,6 +65,13 @@ class DiagnosticCentreModel {
   final List<DiagnosticTest> tests;
   final bool isHomeCollectionAvailable;
   final String? description;
+  final String? dghsCode;
+  final String? pathologistName;
+  final String? pathologistBmdcNumber;
+  final String verificationStatus;
+  final String? verificationNote;
+  final String? rejectionReason;
+  final String? licenseImageUrl;
   final DiagnosticCentreStatus status;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -90,6 +97,13 @@ class DiagnosticCentreModel {
     this.tests = const [],
     this.isHomeCollectionAvailable = false,
     this.description,
+    this.dghsCode,
+    this.pathologistName,
+    this.pathologistBmdcNumber,
+    this.verificationStatus = 'approved',
+    this.verificationNote,
+    this.rejectionReason,
+    this.licenseImageUrl,
     this.status = DiagnosticCentreStatus.active,
     this.createdAt,
     this.updatedAt,
@@ -136,15 +150,22 @@ class DiagnosticCentreModel {
       tests: testsList,
       isHomeCollectionAvailable: json['isHomeCollectionAvailable'] ?? false,
       description: json['description'],
+      dghsCode: json['dghsCode'],
+      pathologistName: json['pathologistName'],
+      pathologistBmdcNumber: json['pathologistBmdcNumber'],
+      verificationStatus: json['verificationStatus'] ?? 'approved',
+      verificationNote: json['verificationNote'],
+      rejectionReason: json['rejectionReason'],
+      licenseImageUrl: json['licenseImageUrl'],
       status: DiagnosticCentreStatus.values.firstWhere(
         (e) => e.toString() == 'DiagnosticCentreStatus.${json['status']}',
         orElse: () => DiagnosticCentreStatus.active,
       ),
       createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
+          ? (json['createdAt'] is String ? DateTime.parse(json['createdAt']) : null)
           : null,
       updatedAt: json['updatedAt'] != null 
-          ? DateTime.parse(json['updatedAt']) 
+          ? (json['updatedAt'] is String ? DateTime.parse(json['updatedAt']) : null)
           : null,
     );
   }
@@ -170,6 +191,13 @@ class DiagnosticCentreModel {
       'tests': tests.map((t) => t.toJson()).toList(),
       'isHomeCollectionAvailable': isHomeCollectionAvailable,
       'description': description,
+      'dghsCode': dghsCode,
+      'pathologistName': pathologistName,
+      'pathologistBmdcNumber': pathologistBmdcNumber,
+      'verificationStatus': verificationStatus,
+      'verificationNote': verificationNote,
+      'rejectionReason': rejectionReason,
+      'licenseImageUrl': licenseImageUrl,
       'status': status.name,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),

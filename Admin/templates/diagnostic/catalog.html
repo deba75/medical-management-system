@@ -1,0 +1,96 @@
+{% extends "diagnostic/base.html" %}
+{% block title %}Test Catalog & Prices{% endblock %}
+{% block header_title %}Diagnostic Test Catalog & Price Management{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-teal" style="color: #0d9488;"><i class="bi bi-plus-circle me-2"></i>Add New Test to Catalog</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('diagnostic_add_test') }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Test Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Complete Blood Count (CBC)" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Category</label>
+                        <select name="category" class="form-select" required>
+                            <option value="Pathology">Pathology / Blood</option>
+                            <option value="Biochemistry">Biochemistry / Metabolic</option>
+                            <option value="Radiology">Radiology / Imaging (X-Ray, USG)</option>
+                            <option value="Cardiology">Cardiology (ECG, Echo)</option>
+                            <option value="Hormones">Hormones & Endocrinology</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Price (৳)</label>
+                        <input type="number" name="price" class="form-control" placeholder="500" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Preparation Instructions</label>
+                        <input type="text" name="preparation" class="form-control" placeholder="e.g. 8-12 hours overnight fasting">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Turnaround Time</label>
+                        <input type="text" name="turnaroundTime" class="form-control" placeholder="e.g. Same Day / 24 Hours">
+                    </div>
+                    <button type="submit" class="btn btn-teal w-100" style="background: #0d9488; color: white;">
+                        <i class="bi bi-plus-lg me-1"></i>Add Test to Catalog
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-tags me-2"></i>Available Test Catalog</h6>
+            </div>
+            <div class="card-body p-0">
+                {% if tests %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Test Name</th>
+                                <th>Category</th>
+                                <th>Turnaround</th>
+                                <th>Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in tests %}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold">{{ t.name }}</div>
+                                    <small class="text-muted">{{ t.preparation or 'No special prep needed' }}</small>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ t.category }}</span></td>
+                                <td><small>{{ t.turnaroundTime or '24 Hours' }}</small></td>
+                                <td class="fw-bold text-success">৳{{ t.price }}</td>
+                                <td>
+                                    <a href="{{ url_for('diagnostic_delete_test', test_id=t.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove test from catalog?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-tags-fill fs-1"></i>
+                    <p class="mt-2 mb-0">No tests in catalog yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

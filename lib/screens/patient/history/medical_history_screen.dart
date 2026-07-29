@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/empty_state_widget.dart';
+import '../../../core/widgets/family_member_selector.dart';
+import '../../../core/providers/family_member_provider.dart';
 
 class MedicalHistoryScreen extends ConsumerStatefulWidget {
   const MedicalHistoryScreen({super.key});
@@ -218,7 +220,11 @@ class _MedicalHistoryScreenState extends ConsumerState<MedicalHistoryScreen>
                   'Add details about your past medical visits',
                   style: TextStyle(color: Colors.grey[600]),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+
+                // Family Member Selector
+                const FamilyMemberSelector(showAddButton: false),
+                const SizedBox(height: 16),
 
                 // Date Picker
                 ListTile(
@@ -342,8 +348,12 @@ class _MedicalHistoryScreenState extends ConsumerState<MedicalHistoryScreen>
                             ? medicinesController.text.split(',').map((e) => e.trim()).toList()
                             : <String>[];
 
+                        final selectedFamilyMember = ref.read(selectedFamilyMemberProvider);
+
                         await FirebaseFirestore.instance.collection('medicalHistory').add({
                           'patientId': _currentUserId,
+                          'familyMemberId': selectedFamilyMember?.id,
+                          'familyMemberName': selectedFamilyMember?.name,
                           'doctorName': doctorNameController.text,
                           'hospital': hospitalController.text,
                           'diagnosis': diagnosisController.text,
@@ -353,6 +363,8 @@ class _MedicalHistoryScreenState extends ConsumerState<MedicalHistoryScreen>
                           'createdAt': FieldValue.serverTimestamp(),
                           'isManual': true,
                         });
+
+                        ref.read(selectedFamilyMemberProvider.notifier).state = null;
 
                         if (context.mounted) {
                           Navigator.pop(context);
@@ -893,6 +905,23 @@ class _ManualHistoryCard extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                     ),
+                    if (data['familyMemberName'] != null && (data['familyMemberName'] as String).isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.person_outline, size: 14, color: AppTheme.primaryColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Patient: ${data['familyMemberName']}',
+                            style: const TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (data['hospital'] != null && (data['hospital'] as String).isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(

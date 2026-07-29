@@ -81,4 +81,5 @@ enum UserRole {
   patient,
   doctor,
   admin,
+  diagnosticCentre,
 }

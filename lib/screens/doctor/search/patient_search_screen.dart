@@ -250,10 +250,11 @@ class _SearchTypeChip extends StatelessWidget {
       selected: isSelected,
       onSelected: (_) => onSelected(),
       backgroundColor: Colors.white,
-      selectedColor: AppTheme.primaryColor.withOpacity(0.2),
-      checkmarkColor: AppTheme.primaryColor,
+      selectedColor: AppTheme.primaryColor,
+      checkmarkColor: Colors.white,
       labelStyle: TextStyle(
-        color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondaryColor,
+        color: isSelected ? Colors.white : AppTheme.textSecondaryColor,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       ),
     );
   }

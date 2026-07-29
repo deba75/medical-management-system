@@ -136,12 +136,19 @@ class _SymptomCheckerScreenState extends ConsumerState<SymptomCheckerScreen> {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: FilterChip(
-                  label: Text(bodyPart),
+                  label: Text(
+                    bodyPart,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black87,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
                   selected: isSelected,
                   onSelected: (selected) {
                     setState(() => _selectedBodyPart = bodyPart);
                   },
-                  selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
+                  selectedColor: AppTheme.primaryColor,
+                  checkmarkColor: Colors.white,
                 ),
               );
             },
@@ -302,10 +309,24 @@ class _SymptomCheckerScreenState extends ConsumerState<SymptomCheckerScreen> {
                         children: [
                           Text(_getSeverityEmoji(s)),
                           const SizedBox(width: 4),
-                          Text(s.name.toUpperCase()),
+                          Text(
+                            s.name.toUpperCase(),
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.black87,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
                         ],
                       ),
                       selected: isSelected,
+                      selectedColor: s == SymptomSeverity.critical
+                          ? Colors.red
+                          : s == SymptomSeverity.severe
+                              ? Colors.deepOrange
+                              : s == SymptomSeverity.moderate
+                                  ? Colors.amber.shade900
+                                  : AppTheme.primaryColor,
+                      checkmarkColor: Colors.white,
                       onSelected: (selected) {
                         setModalState(() => severity = s);
                       },
@@ -424,11 +445,20 @@ class _SymptomCheckerScreenState extends ConsumerState<SymptomCheckerScreen> {
           const SizedBox(height: 8),
           Row(
             children: ['Male', 'Female', 'Other'].map((g) {
+              final isSelected = _gender == g;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: ChoiceChip(
-                  label: Text(g),
-                  selected: _gender == g,
+                  label: Text(
+                    g,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black87,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  selected: isSelected,
+                  selectedColor: AppTheme.primaryColor,
+                  checkmarkColor: Colors.white,
                   onSelected: (selected) => setState(() => _gender = g),
                 ),
               );
@@ -453,8 +483,16 @@ class _SymptomCheckerScreenState extends ConsumerState<SymptomCheckerScreen> {
             ].map((condition) {
               final isSelected = _preExistingConditions.contains(condition);
               return FilterChip(
-                label: Text(condition),
+                label: Text(
+                  condition,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
                 selected: isSelected,
+                selectedColor: AppTheme.primaryColor,
+                checkmarkColor: Colors.white,
                 onSelected: (selected) {
                   setState(() {
                     if (selected) {

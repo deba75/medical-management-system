@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/empty_state_widget.dart';
-import '../../../models/diagnostic_centre_model.dart';
+import '../../../../models/diagnostic_centre_model.dart';
+import '../../diagnostic_centre/diagnostic_centre_dashboard_screen.dart';
 import 'diagnostic_centre_detail_screen.dart';
 
 class DiagnosticCentresScreen extends ConsumerStatefulWidget {
@@ -143,7 +144,28 @@ class _DiagnosticCentresScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Diagnostic Centres'),
+        title: const Text(
+          'Diagnostic Centres',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
+            tooltip: 'Diagnostic Admin Portal',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DiagnosticCentreDashboardScreen(),
+                ),
+              );
+            },
+          ),
+        ],
         elevation: 0,
       ),
       body: Column(

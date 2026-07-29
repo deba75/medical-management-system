@@ -1,0 +1,75 @@
+{% extends "doctor/base.html" %}
+{% block title %}Doctor Profile{% endblock %}
+{% block header_title %}Doctor Credentials & Profile Settings{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-person-gear me-2"></i>Professional Details</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('doctor_profile') }}">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Full Doctor Name</label>
+                            <input type="text" name="name" class="form-control" value="{{ doctor_data.get('name', '') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Email Address</label>
+                            <input type="email" class="form-control bg-light" value="{{ doctor_data.get('email', '') }}" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Specialization</label>
+                            <input type="text" name="specialization" class="form-control" value="{{ doctor_data.get('specialization', '') }}" placeholder="e.g. Cardiologist, Neurologist" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Qualifications / Degrees</label>
+                            <input type="text" name="qualifications" class="form-control" value="{{ doctor_data.get('qualifications', '') }}" placeholder="e.g. MBBS, FCPS (Medicine)">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">BMDC Registration Number</label>
+                            <input type="text" name="bmdcNumber" class="form-control" value="{{ doctor_data.get('bmdcNumber', '') }}" placeholder="A-12345">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Experience (Years)</label>
+                            <input type="number" name="experience" class="form-control" value="{{ doctor_data.get('experience', 5) }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Standard Consultation Fee (৳)</label>
+                            <input type="number" name="consultationFee" class="form-control" value="{{ doctor_data.get('consultationFee', 500) }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Phone Number</label>
+                            <input type="text" name="phone" class="form-control" value="{{ doctor_data.get('phone', '') }}">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Professional Bio / About</label>
+                        <textarea name="bio" class="form-control" rows="3" placeholder="Brief summary of experience, expertise, and patient care philosophy.">{{ doctor_data.get('bio', '') }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>Update Profile Settings</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center p-4">
+            <div class="mb-3">
+                <i class="bi bi-person-badge-fill text-primary" style="font-size: 4rem;"></i>
+            </div>
+            <h5 class="fw-bold mb-1">Dr. {{ doctor_data.get('name', 'Doctor') }}</h5>
+            <p class="text-muted small mb-2">{{ doctor_data.get('specialization', 'Specialist') }}</p>
+            <span class="badge bg-success-subtle text-success p-2 mb-3">Status: {{ doctor_data.get('verificationStatus', 'Approved') | capitalize }}</span>
+            <hr>
+            <div class="text-start small">
+                <p class="mb-2"><strong>Email:</strong> {{ doctor_data.get('email', 'N/A') }}</p>
+                <p class="mb-2"><strong>BMDC:</strong> {{ doctor_data.get('bmdcNumber', 'N/A') }}</p>
+                <p class="mb-0"><strong>Standard Fee:</strong> ৳{{ doctor_data.get('consultationFee', 500) }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
