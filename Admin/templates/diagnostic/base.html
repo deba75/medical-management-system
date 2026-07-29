@@ -100,6 +100,9 @@
             <a href="{{ url_for('diagnostic_collectors') }}" class="nav-link {% if active_page == 'collectors' %}active{% endif %}">
                 <i class="bi bi-person-vcard"></i> Sample Collectors
             </a>
+            <a href="{{ url_for('diagnostic_patients') }}" class="nav-link {% if active_page == 'patients' %}active{% endif %}">
+                <i class="bi bi-people"></i> Assigned Patients
+            </a>
             <a href="{{ url_for('diagnostic_profile') }}" class="nav-link {% if active_page == 'profile' %}active{% endif %}">
                 <i class="bi bi-building-gear"></i> Centre Settings
             </a>

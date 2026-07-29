@@ -1975,12 +1975,43 @@ def doctor_profile():
     return render_template('doctor/profile.html', active_page='profile', doctor_data=doctor_data)
 
 
+def is_booking_for_diagnostic(booking_data, centre_id, user_email, user_name):
+    """Check if a lab test booking belongs to the specified diagnostic centre"""
+    if not booking_data or not isinstance(booking_data, dict):
+        return False
+        
+    c_id = str(booking_data.get('diagnosticCentreId') or booking_data.get('diagnosticId') or booking_data.get('centreId') or '').strip()
+    c_email = str(booking_data.get('diagnosticEmail') or booking_data.get('centreEmail') or '').lower().strip()
+    c_name = str(booking_data.get('diagnosticCentreName') or booking_data.get('centreName') or '').lower().strip()
+    
+    target_id = str(centre_id or '').strip()
+    target_email = str(user_email or '').lower().strip()
+    target_name = str(user_name or '').lower().strip()
+    
+    # 1. Match by Exact Centre ID
+    if target_id and c_id and c_id == target_id:
+        return True
+        
+    # 2. Match by Centre Email
+    if target_email and (c_email == target_email or c_id == target_email):
+        return True
+        
+    # 3. Match by Centre Name
+    if target_name and c_name and len(target_name) >= 3:
+        if target_name in c_name or c_name in target_name:
+            return True
+            
+    return False
+
 # =================== Diagnostic Centre Web Portal Routes ===================
 
 @app.route('/diagnostic/dashboard')
 @diagnostic_required
 def diagnostic_dashboard():
     centre_id = session.get('user_id')
+    user_email = session.get('user_email')
+    user_name = session.get('user_name', '')
+    
     recent_bookings = []
     total_count = 0
     pending_count = 0
@@ -1989,19 +2020,21 @@ def diagnostic_dashboard():
 
     if db is not None:
         try:
-            docs = db.collection('lab_test_bookings').stream()
+            docs = list(db.collection('lab_test_bookings').stream())
             for d in docs:
                 data = d.to_dict()
                 data['id'] = d.id
-                recent_bookings.append(data)
-                total_count += 1
-                status = data.get('status')
-                if status == 'pending':
-                    pending_count += 1
-                elif status in ['collectorAssigned', 'sampleCollected']:
-                    transit_count += 1
-                elif status == 'completed':
-                    completed_count += 1
+                
+                if is_booking_for_diagnostic(data, centre_id, user_email, user_name):
+                    recent_bookings.append(data)
+                    total_count += 1
+                    status = data.get('status')
+                    if status == 'pending':
+                        pending_count += 1
+                    elif status in ['collectorAssigned', 'sampleCollected', 'processing']:
+                        transit_count += 1
+                    elif status == 'completed':
+                        completed_count += 1
         except Exception as e:
             print(f"Error fetching lab test bookings: {e}")
 
@@ -2016,27 +2049,34 @@ def diagnostic_dashboard():
 @app.route('/diagnostic/bookings')
 @diagnostic_required
 def diagnostic_bookings():
-    status_filter = request.args.get('status', '')
+    status_filter = request.args.get('status', '').strip().lower()
+    centre_id = session.get('user_id')
+    user_email = session.get('user_email')
+    user_name = session.get('user_name', '')
+    
     bookings = []
     stats = {'total': 0, 'pending': 0, 'approved': 0, 'processing': 0, 'completed': 0}
 
     if db is not None:
         try:
-            docs = db.collection('lab_test_bookings').stream()
+            docs = list(db.collection('lab_test_bookings').stream())
             for d in docs:
                 data = d.to_dict()
                 data['id'] = d.id
-                bookings.append(data)
                 
-                status = data.get('status', 'pending')
-                stats['total'] += 1
-                if status in stats:
-                    stats[status] += 1
-                elif status in ['collectorAssigned', 'sampleCollected', 'processing']:
-                    stats['processing'] += 1
+                if is_booking_for_diagnostic(data, centre_id, user_email, user_name):
+                    status = (data.get('status') or 'pending').lower()
+                    stats['total'] += 1
+                    if status in stats:
+                        stats[status] += 1
+                    elif status in ['collectorassigned', 'samplecollected', 'processing']:
+                        stats['processing'] += 1
 
-            if status_filter:
-                bookings = [b for b in bookings if b.get('status') == status_filter]
+                    if status_filter:
+                        if status == status_filter:
+                            bookings.append(data)
+                    else:
+                        bookings.append(data)
         except Exception as e:
             print(f"Error fetching lab test bookings: {e}")
 
@@ -2178,6 +2218,55 @@ def diagnostic_delete_test(test_id):
             flash(f'Error deleting test: {e}', 'danger')
 
     return redirect(url_for('diagnostic_catalog'))
+
+@app.route('/diagnostic/patients')
+@diagnostic_required
+def diagnostic_patients():
+    centre_id = session.get('user_id')
+    user_email = session.get('user_email')
+    user_name = session.get('user_name', '')
+    search_query = request.args.get('search', '').strip().lower()
+    
+    diagnostic_patient_ids = set()
+    diagnostic_patient_emails = set()
+    
+    if db is not None:
+        try:
+            booking_docs = list(db.collection('lab_test_bookings').stream())
+            for d in booking_docs:
+                data = d.to_dict()
+                if is_booking_for_diagnostic(data, centre_id, user_email, user_name):
+                    pid = data.get('patientId')
+                    pemail = data.get('patientEmail')
+                    if pid:
+                        diagnostic_patient_ids.add(pid)
+                    if pemail:
+                        diagnostic_patient_emails.add(pemail.lower())
+        except Exception as e:
+            print(f"Error fetching diagnostic patient IDs: {e}")
+            
+    patients = []
+    if db is not None and (diagnostic_patient_ids or diagnostic_patient_emails):
+        try:
+            all_patients = list(db.collection('users').where('role', '==', 'patient').stream())
+            for pdoc in all_patients:
+                pdata = pdoc.to_dict()
+                pid = pdoc.id
+                pemail = (pdata.get('email') or '').lower()
+                
+                if pid in diagnostic_patient_ids or (pemail and pemail in diagnostic_patient_emails):
+                    pdata['id'] = pid
+                    if search_query:
+                        if (search_query in pdata.get('name', '').lower() or
+                            search_query in pdata.get('phone', '').lower() or
+                            search_query in pemail):
+                            patients.append(pdata)
+                    else:
+                        patients.append(pdata)
+        except Exception as e:
+            print(f"Error fetching patient records: {e}")
+            
+    return render_template('diagnostic/patients.html', active_page='patients', patients=patients, search_query=search_query)
 
 @app.route('/diagnostic/profile', methods=['GET', 'POST'])
 @diagnostic_required

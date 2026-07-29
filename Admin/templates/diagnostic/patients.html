@@ -1,0 +1,76 @@
+{% extends "diagnostic/base.html" %}
+{% block title %}Patient Directory{% endblock %}
+{% block header_title %}Patient Directory & Lab History{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold text-dark mb-1">Assigned Diagnostic Patients</h4>
+        <p class="text-muted small mb-0">View patients who have booked lab tests or requested diagnostic services with your centre</p>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('diagnostic_patients') }}" class="row g-3 align-items-center">
+            <div class="col-md-8">
+                <input type="text" name="search" class="form-control form-control-lg" placeholder="Search patient by name, phone number, or email..." value="{{ search_query or '' }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary btn-lg fw-bold me-2"><i class="bi bi-search me-1"></i>Search Patients</button>
+                <a href="{{ url_for('diagnostic_patients') }}" class="btn btn-outline-secondary btn-lg">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Patients List Table -->
+<div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-0">
+        {% if patients %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Patient Name & ID</th>
+                        <th>Email / Contact Phone</th>
+                        <th>Blood Group / Gender</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in patients %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-dark">{{ p.name or 'Patient User' }}</div>
+                            <small class="text-muted">ID: {{ p.id[:8] if p.id else 'N/A' }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-primary">{{ p.email or 'N/A' }}</div>
+                            <small class="text-muted"><i class="bi bi-telephone me-1"></i>{{ p.phone or 'Not Provided' }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-danger bg-opacity-10 text-danger border me-1">{{ p.bloodGroup or 'N/A' }}</span>
+                            <span class="badge bg-light text-dark border">{{ p.gender or 'N/A' }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('diagnostic_bookings') }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-journal-medical me-1"></i>View Lab Bookings
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-person-x fs-1 text-secondary"></i>
+            <p class="mt-2 mb-0 fw-semibold">No assigned diagnostic patients found.</p>
+            <small class="text-muted d-block mt-1">Patients will appear here automatically when they book a lab test with your centre.</small>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
