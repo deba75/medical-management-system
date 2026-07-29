@@ -3,6 +3,35 @@
 {% block header_title %}Lab Test Bookings Queue{% endblock %}
 
 {% block content %}
+{% if stats %}
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <a href="{{ url_for('diagnostic_bookings') }}" class="card border-0 shadow-sm p-3 bg-white text-center rounded-3 text-decoration-none h-100 {% if not current_status %}border border-primary border-2{% endif %}" style="transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+            <small class="text-muted fw-bold">Total Lab Requests</small>
+            <h4 class="fw-bold mb-0 text-primary">{{ stats.total }}</h4>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{{ url_for('diagnostic_bookings', status='pending') }}" class="card border-0 shadow-sm p-3 bg-white text-center rounded-3 text-decoration-none h-100 {% if current_status == 'pending' %}border border-warning border-2{% endif %}" style="transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+            <small class="text-muted fw-bold">Pending Approvals</small>
+            <h4 class="fw-bold mb-0 text-warning">{{ stats.pending }}</h4>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{{ url_for('diagnostic_bookings', status='processing') }}" class="card border-0 shadow-sm p-3 bg-white text-center rounded-3 text-decoration-none h-100 {% if current_status == 'processing' %}border border-info border-2{% endif %}" style="transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+            <small class="text-muted fw-bold">Processing / In Transit</small>
+            <h4 class="fw-bold mb-0 text-info">{{ stats.processing }}</h4>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{{ url_for('diagnostic_bookings', status='completed') }}" class="card border-0 shadow-sm p-3 bg-white text-center rounded-3 text-decoration-none h-100 {% if current_status == 'completed' %}border border-success border-2{% endif %}" style="transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+            <small class="text-muted fw-bold">Completed Reports</small>
+            <h4 class="fw-bold mb-0 text-success">{{ stats.completed }}</h4>
+        </a>
+    </div>
+</div>
+{% endif %}
+
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
         <form method="GET" action="{{ url_for('diagnostic_bookings') }}" class="row g-3">

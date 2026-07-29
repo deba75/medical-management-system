@@ -1325,6 +1325,8 @@ def diagnostic_required(f):
 @doctor_required
 def doctor_dashboard():
     doctor_id = session.get('user_id')
+    user_email = session.get('user_email')
+    user_name = session.get('user_name', '')
     today_str = datetime.now().strftime('%Y-%m-%d')
     
     appointments = []
@@ -1339,7 +1341,13 @@ def doctor_dashboard():
             for d in docs:
                 data = d.to_dict()
                 data['id'] = d.id
-                doc_id_match = (data.get('doctorId') == doctor_id) or (session.get('user_role') == 'admin')
+                doc_id_match = (
+                    (data.get('doctorId') == doctor_id) or
+                    (user_email and data.get('doctorEmail') == user_email) or
+                    (user_email and data.get('doctorId') == user_email) or
+                    (user_name and data.get('doctorName', '').lower() in user_name.lower()) or
+                    (session.get('user_role') == 'admin')
+                )
                 if doc_id_match:
                     appointments.append(data)
                     if data.get('date') == today_str or data.get('createdAt') == today_str:
@@ -1365,6 +1373,8 @@ def doctor_dashboard():
 def doctor_appointments():
     status_filter = request.args.get('status', '')
     doctor_id = session.get('user_id')
+    user_email = session.get('user_email')
+    user_name = session.get('user_name', '')
     today_str = datetime.now().strftime('%Y-%m-%d')
     
     appointments = []
@@ -1376,7 +1386,13 @@ def doctor_appointments():
             for d in docs:
                 data = d.to_dict()
                 data['id'] = d.id
-                doc_id_match = (data.get('doctorId') == doctor_id) or (session.get('user_role') == 'admin')
+                doc_id_match = (
+                    (data.get('doctorId') == doctor_id) or
+                    (user_email and data.get('doctorEmail') == user_email) or
+                    (user_email and data.get('doctorId') == user_email) or
+                    (user_name and data.get('doctorName', '').lower() in user_name.lower()) or
+                    (session.get('user_role') == 'admin')
+                )
                 
                 if doc_id_match:
                     appt_status = data.get('status', 'pending')
@@ -1811,6 +1827,7 @@ def diagnostic_dashboard():
 def diagnostic_bookings():
     status_filter = request.args.get('status', '')
     bookings = []
+    stats = {'total': 0, 'pending': 0, 'approved': 0, 'processing': 0, 'completed': 0}
 
     if db is not None:
         try:
@@ -1818,18 +1835,25 @@ def diagnostic_bookings():
             for d in docs:
                 data = d.to_dict()
                 data['id'] = d.id
-                if status_filter:
-                    if data.get('status') == status_filter:
-                        bookings.append(data)
-                else:
-                    bookings.append(data)
+                bookings.append(data)
+                
+                status = data.get('status', 'pending')
+                stats['total'] += 1
+                if status in stats:
+                    stats[status] += 1
+                elif status in ['collectorAssigned', 'sampleCollected', 'processing']:
+                    stats['processing'] += 1
+
+            if status_filter:
+                bookings = [b for b in bookings if b.get('status') == status_filter]
         except Exception as e:
-            print(f"Error fetching lab bookings: {e}")
+            print(f"Error fetching lab test bookings: {e}")
 
     return render_template('diagnostic/bookings.html',
                            active_page='bookings',
                            bookings=bookings,
-                           current_status=status_filter)
+                           current_status=status_filter,
+                           stats=stats)
 
 @app.route('/diagnostic/booking/<booking_id>')
 @diagnostic_required
