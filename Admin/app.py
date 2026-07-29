@@ -1608,8 +1608,6 @@ def doctor_availability():
             endTime = request.form.get('endTime')
             slotDuration = int(request.form.get('slotDuration', 30))
             maxPatientsPerSlot = int(request.form.get('maxPatientsPerSlot', 1))
-            isInstantAvailable = request.form.get('isInstantAvailable') == 'true'
-            
             availability_payload = {
                 'availableDays': availableDays,
                 'startTime': startTime,
@@ -1619,7 +1617,6 @@ def doctor_availability():
             }
             doc_ref.set({
                 'availability': availability_payload,
-                'isInstantAvailable': isInstantAvailable,
                 'updatedAt': datetime.now()
             }, merge=True)
             flash('Schedule and availability updated!', 'success')

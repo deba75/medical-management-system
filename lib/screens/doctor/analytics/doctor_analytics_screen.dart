@@ -119,7 +119,7 @@ class _DoctorAnalyticsScreenState extends ConsumerState<DoctorAnalyticsScreen> {
       }
 
       // Appointment types
-      _appointmentTypes = {'In-Clinic': 0, 'Video': 0, 'Follow-up': 0};
+      _appointmentTypes = {'In-Clinic': 0, 'Follow-up': 0};
       for (final apt in appointments) {
         final type = apt.data()['appointmentType'] as String? ?? 'In-Clinic';
         _appointmentTypes[type] = (_appointmentTypes[type] ?? 0) + 1;

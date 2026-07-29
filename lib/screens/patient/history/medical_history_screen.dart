@@ -493,7 +493,7 @@ class _MedicalHistoryScreenState extends ConsumerState<MedicalHistoryScreen>
               _buildDetailRow(context, Icons.medical_services, 'Specialization', data['specialization'] ?? 'N/A'),
               _buildDetailRow(context, Icons.local_hospital, 'Hospital/Clinic', data['chamberName'] ?? data['location'] ?? 'N/A'),
               _buildDetailRow(context, Icons.access_time, 'Time Slot', data['timeSlot'] ?? 'N/A'),
-              _buildDetailRow(context, Icons.videocam, 'Type', data['isOnline'] == true ? 'Online Consultation' : 'In-Person Visit'),
+              _buildDetailRow(context, Icons.medical_information, 'Type', 'In-Person Visit'),
               
               if (data['symptoms'] != null && (data['symptoms'] as String).isNotEmpty)
                 _buildDetailRow(context, Icons.sick, 'Symptoms', data['symptoms']),

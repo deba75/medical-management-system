@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum TransactionType { consultation, videoCall, labReferral, prescription, refund }
+enum TransactionType { consultation, labReferral, prescription, refund }
 enum PaymentStatus { pending, completed, failed, refunded }
 enum PayoutStatus { pending, processed, failed }
 
@@ -82,8 +82,6 @@ class EarningsModel {
     switch (type) {
       case TransactionType.consultation:
         return 'Consultation';
-      case TransactionType.videoCall:
-        return 'Video Call';
       case TransactionType.labReferral:
         return 'Lab Referral';
       case TransactionType.prescription:
@@ -97,8 +95,6 @@ class EarningsModel {
     switch (type) {
       case TransactionType.consultation:
         return '👨‍⚕️';
-      case TransactionType.videoCall:
-        return '📹';
       case TransactionType.labReferral:
         return '🧪';
       case TransactionType.prescription:
