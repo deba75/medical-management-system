@@ -15,20 +15,20 @@
                     </div>
                     <div>
                         <h6 class="fw-bold mb-0 text-dark">MediBot AI Assistant</h6>
-                        <small class="text-success fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size: 0.55rem;"></i>Online & Ready • Powered by Gemini AI</small>
+                        <small class="text-success fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size: 0.55rem;"></i>Online & Ready • Gemini AI & Firestore Sync</small>
                     </div>
                 </div>
                 <span class="badge bg-teal-subtle text-teal border px-3 py-2" style="background: #e6fffa; color: #0d9488; border-color: #b2f5ea; border-radius: 20px;">
-                    <i class="bi bi-shield-check me-1"></i>Medical Advisor
+                    <i class="bi bi-shield-check me-1"></i>Conversational Doctor Booking
                 </span>
             </div>
 
-            <!-- Suggestion Quick Chips -->
+            <!-- Suggestion Quick Chips (Removed Lab Test Rules, Added Book Appointment) -->
             <div class="bg-light p-3 border-bottom overflow-x-auto d-flex gap-2 align-items-center">
                 <small class="text-muted fw-bold me-1 text-nowrap"><i class="bi bi-lightbulb me-1"></i>Suggestions:</small>
-                <button type="button" class="btn btn-sm btn-outline-teal rounded-pill text-nowrap px-3" onclick="sendQuickPrompt('What should I do for high fever and body ache?')">🤒 Fever & Cold</button>
+                <button type="button" class="btn btn-sm btn-teal rounded-pill text-nowrap px-3 text-white fw-bold" style="background: #0d9488;" onclick="startBookingFlow()">📅 Book Appointment</button>
+                <button type="button" class="btn btn-sm btn-outline-teal rounded-pill text-nowrap px-3" onclick="sendQuickPrompt('What should I do for fever and body ache?')">🤒 Fever & Cold</button>
                 <button type="button" class="btn btn-sm btn-outline-teal rounded-pill text-nowrap px-3" onclick="sendQuickPrompt('What specialty doctor should I see for chest discomfort?')">🫀 Chest Pain Advice</button>
-                <button type="button" class="btn btn-sm btn-outline-teal rounded-pill text-nowrap px-3" onclick="sendQuickPrompt('How do I prepare for a Fasting Blood Sugar and Lipid Profile test?')">🧪 Lab Test Rules</button>
                 <button type="button" class="btn btn-sm btn-outline-teal rounded-pill text-nowrap px-3" onclick="sendQuickPrompt('What are first aid steps for minor burns and cuts?')">🩹 First Aid</button>
             </div>
 
@@ -39,13 +39,13 @@
                     <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 38px; height: 38px; background: #0d9488;">
                         <i class="bi bi-robot"></i>
                     </div>
-                    <div class="p-3 bg-white border shadow-sm rounded-4" style="max-width: 85%; border-top-left-radius: 4px !important;">
+                    <div class="p-3 bg-white border shadow-sm rounded-4" style="max-width: 88%; border-top-left-radius: 4px !important;">
                         <div class="fw-bold mb-1" style="color: #0d9488;">MediBot AI</div>
                         <p class="mb-0 text-dark" style="line-height: 1.6;">
-                            Hello! 👋 I am <strong>MediBot</strong>, your AI medical assistant for <strong>MediConnect</strong>.<br><br>
-                            I can help you analyze symptoms, recommend medical specialist doctors, provide first aid guidance, or explain how to prepare for diagnostic lab tests. How can I assist your health today?
+                            Hello! 👋 I am <strong>MediBot</strong>, your AI medical assistant.<br><br>
+                            You can ask me health questions or click <strong>"📅 Book Appointment"</strong> below to search our registered doctor database and book a doctor appointment directly inside this chat!
                         </p>
-                        <small class="text-muted d-block mt-2" style="font-size: 0.72rem;"><i class="bi bi-info-circle me-1"></i>MediBot provides AI health information. Always consult a doctor for official diagnosis.</small>
+                        <small class="text-muted d-block mt-2" style="font-size: 0.72rem;"><i class="bi bi-info-circle me-1"></i>MediBot provides AI health guidance and Firestore doctor appointment booking.</small>
                     </div>
                 </div>
             </div>
@@ -53,7 +53,7 @@
             <!-- Chat Input Footer -->
             <div class="card-footer bg-white p-3 border-top">
                 <form id="chatForm" onsubmit="handleChatSubmit(event)" class="d-flex gap-2 align-items-center">
-                    <input type="text" id="userInput" class="form-control form-control-lg border-0 bg-light rounded-pill px-4 fs-6" placeholder="Describe symptoms or ask a health question..." required autocomplete="off">
+                    <input type="text" id="userInput" class="form-control form-control-lg border-0 bg-light rounded-pill px-4 fs-6" placeholder="Describe symptoms or type 'Book appointment'..." required autocomplete="off">
                     <button type="submit" id="sendBtn" class="btn btn-teal rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; background: #0d9488; color: white;">
                         <i class="bi bi-send-fill fs-5"></i>
                     </button>
@@ -66,58 +66,102 @@
     <div class="col-lg-4">
         <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px;">
             <div class="card-header bg-white py-3">
-                <h6 class="fw-bold mb-0 text-teal" style="color: #0d9488;"><i class="bi bi-shield-plus me-2"></i>Medical Triage Capabilities</h6>
+                <h6 class="fw-bold mb-0 text-teal" style="color: #0d9488;"><i class="bi bi-calendar-check me-2"></i>Conversational Booking Steps</h6>
             </div>
             <div class="card-body">
                 <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
                     <li class="d-flex gap-3 align-items-start">
-                        <div class="rounded-circle bg-teal-subtle text-teal p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #ccfbf1; color: #0f766e;">
-                            <i class="bi bi-thermometer-half"></i>
-                        </div>
+                        <div class="rounded-circle text-white p-2 d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; background: #0d9488;">1</div>
                         <div>
-                            <div class="fw-bold small">Symptom Assessment</div>
-                            <small class="text-muted">Describe your discomfort to find matching medical specialties.</small>
+                            <div class="fw-bold small">Describe Symptom / Specialty</div>
+                            <small class="text-muted">Type your issue or pick a specialty (Cardiology, Skin, Neuro, etc.).</small>
                         </div>
                     </li>
                     <li class="d-flex gap-3 align-items-start">
-                        <div class="rounded-circle bg-purple-subtle text-purple p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #f3e8ff; color: #7e22ce;">
-                            <i class="bi bi-bandaid"></i>
-                        </div>
+                        <div class="rounded-circle text-white p-2 d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; background: #0d9488;">2</div>
                         <div>
-                            <div class="fw-bold small">First Aid Instructions</div>
-                            <small class="text-muted">Immediate care steps for fever, headache, minor cuts, and burns.</small>
+                            <div class="fw-bold small">Select Doctor from Database</div>
+                            <small class="text-muted">MediBot queries Firestore and shows matching verified doctors.</small>
                         </div>
                     </li>
                     <li class="d-flex gap-3 align-items-start">
-                        <div class="rounded-circle bg-blue-subtle text-blue p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #e0f2fe; color: #0369a1;">
-                            <i class="bi bi-droplet"></i>
-                        </div>
+                        <div class="rounded-circle text-white p-2 d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; background: #0d9488;">3</div>
                         <div>
-                            <div class="fw-bold small">Lab Test Guidance</div>
-                            <small class="text-muted">Learn fasting rules and preparation for CBC, Diabetes, and Lipid tests.</small>
+                            <div class="fw-bold small">Pick Date & Time Slot</div>
+                            <small class="text-muted">Select schedule date and preferred visiting hours.</small>
+                        </div>
+                    </li>
+                    <li class="d-flex gap-3 align-items-start">
+                        <div class="rounded-circle text-white p-2 d-flex align-items-center justify-content-center fw-bold" style="width: 32px; height: 32px; background: #10b981;">4</div>
+                        <div>
+                            <div class="fw-bold small">Instant Firestore Sync</div>
+                            <small class="text-muted">Saves to database and updates Patient & Doctor Dashboards.</small>
                         </div>
                     </li>
                 </ul>
             </div>
         </div>
 
-        <!-- Recommended Doctors Widget -->
+        <!-- Registered Platform Doctors List Widget -->
         <div class="card border-0 shadow-sm" style="border-radius: 20px;">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0 text-teal" style="color: #0d9488;"><i class="bi bi-person-check me-2"></i>Consult Doctors</h6>
+                <h6 class="fw-bold mb-0 text-teal" style="color: #0d9488;"><i class="bi bi-people me-2"></i>Platform Doctors</h6>
                 <a href="{{ url_for('patient_find_doctors') }}" class="small fw-bold text-decoration-none" style="color: #0d9488;">View All</a>
             </div>
             <div class="card-body p-3" id="recommendedDoctorsList">
-                <div class="text-muted small text-center py-3">Ask MediBot a question to see recommended specialist doctors here.</div>
+                <div class="text-muted small text-center py-3">Start chat or click "Book Appointment" to view database doctors.</div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+// Global State for Conversational Booking
+let selectedDoctor = None = null;
+
 function sendQuickPrompt(promptText) {
     document.getElementById('userInput').value = promptText;
     handleChatSubmit(new Event('submit'));
+}
+
+function startBookingFlow() {
+    const chatContainer = document.getElementById('chatContainer');
+    
+    // User bubble
+    const userBubble = document.createElement('div');
+    userBubble.className = 'd-flex gap-3 mb-4 justify-content-end';
+    userBubble.innerHTML = `
+        <div class="p-3 text-white rounded-4 shadow-sm" style="max-width: 80%; background: #0d9488; border-top-right-radius: 4px !important;">
+            <p class="mb-0">📅 I want to book an appointment with a doctor.</p>
+        </div>
+        <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 38px; height: 38px; background: #0f766e;">
+            <i class="bi bi-person-fill"></i>
+        </div>
+    `;
+    chatContainer.appendChild(userBubble);
+
+    // MediBot Specialty Selection Bubble
+    const botBubble = document.createElement('div');
+    botBubble.className = 'd-flex gap-3 mb-4';
+    botBubble.innerHTML = `
+        <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 38px; height: 38px; background: #0d9488;">
+            <i class="bi bi-robot"></i>
+        </div>
+        <div class="p-3 bg-white border shadow-sm rounded-4" style="max-width: 88%; border-top-left-radius: 4px !important;">
+            <div class="fw-bold mb-1" style="color: #0d9488;">MediBot AI</div>
+            <p class="mb-2 text-dark">Sure! I can help you book an appointment from our doctor database.<br><strong>Which medical specialty or symptom are you looking for?</strong></p>
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                <button class="btn btn-sm btn-outline-teal rounded-pill px-3" onclick="sendQuickPrompt('Cardiology doctors')">🫀 Cardiology</button>
+                <button class="btn btn-sm btn-outline-teal rounded-pill px-3" onclick="sendQuickPrompt('General Physician doctors')">🩺 General Physician</button>
+                <button class="btn btn-sm btn-outline-teal rounded-pill px-3" onclick="sendQuickPrompt('Neurology doctors')">🧠 Neurology</button>
+                <button class="btn btn-sm btn-outline-teal rounded-pill px-3" onclick="sendQuickPrompt('Dermatology skin doctors')">🧴 Dermatology</button>
+                <button class="btn btn-sm btn-outline-teal rounded-pill px-3" onclick="sendQuickPrompt('Pediatrics child doctors')">👶 Pediatrics</button>
+                <button class="btn btn-sm btn-outline-teal rounded-pill px-3" onclick="sendQuickPrompt('Gynecology women doctors')">👩 Gynecology</button>
+            </div>
+        </div>
+    `;
+    chatContainer.appendChild(botBubble);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
 async function handleChatSubmit(e) {
@@ -152,7 +196,7 @@ async function handleChatSubmit(e) {
             <i class="bi bi-robot"></i>
         </div>
         <div class="p-3 bg-white border shadow-sm rounded-4" style="border-top-left-radius: 4px !important;">
-            <small class="text-muted fw-bold"><i class="bi bi-three-dots loading-dots me-1"></i>MediBot is thinking...</small>
+            <small class="text-muted fw-bold"><i class="bi bi-three-dots loading-dots me-1"></i>MediBot searching doctor database...</small>
         </div>
     `;
     chatContainer.appendChild(typingBubble);
@@ -172,24 +216,25 @@ async function handleChatSubmit(e) {
         const botBubble = document.createElement('div');
         botBubble.className = 'd-flex gap-3 mb-4';
         
-        let formattedText = escapeHtml(data.response || 'Thank you for your message. Consult a doctor for diagnosis.');
+        let formattedText = escapeHtml(data.response || 'Thank you for your message.');
         formattedText = formattedText.replace(/\n/g, '<br>').replace(/•/g, '&bull;');
 
         let doctorsHtml = '';
         if (data.suggestedDoctors && data.suggestedDoctors.length > 0) {
-            doctorsHtml += '<div class="mt-3 pt-2 border-top"><div class="fw-bold small mb-2" style="color: #0d9488;"><i class="bi bi-calendar-plus me-1"></i>Available Doctors in Platform Database:</div><div class="row g-2">';
+            doctorsHtml += '<div class="mt-3 pt-2 border-top"><div class="fw-bold small mb-2" style="color: #0d9488;"><i class="bi bi-check2-circle me-1"></i>Select a Doctor to Schedule Appointment:</div><div class="row g-2">';
             data.suggestedDoctors.forEach(doc => {
+                const docJson = JSON.stringify(doc).replace(/"/g, '&quot;');
                 doctorsHtml += `
                     <div class="col-md-6">
-                        <div class="p-2 border rounded-3 bg-light shadow-sm">
-                            <div class="fw-bold text-dark small">${escapeHtml(doc.name)}</div>
+                        <div class="p-3 border rounded-3 bg-light shadow-sm">
+                            <div class="fw-bold text-dark fs-6">${escapeHtml(doc.name)}</div>
                             <small class="badge border mb-1" style="background: #e6fffa; color: #0d9488; border-color: #b2f5ea;">${escapeHtml(doc.specialization)}</small>
                             <div class="small text-muted mb-1"><i class="bi bi-building me-1"></i>${escapeHtml(doc.workplaceHospital)}</div>
                             <div class="d-flex justify-content-between align-items-center mt-2">
-                                <span class="fw-bold text-success small">৳${doc.consultationFee || 800}</span>
-                                <a href="${doc.bookUrl || '/patient/book/' + doc.id}" class="btn btn-sm text-white py-1 px-2 fw-bold" style="font-size: 0.75rem; background: #0d9488;">
-                                    <i class="bi bi-calendar-event me-1"></i>Book Appointment
-                                </a>
+                                <span class="fw-bold text-success">৳${doc.consultationFee || 800}</span>
+                                <button type="button" onclick="selectDoctorForBooking(${docJson})" class="btn btn-sm text-white py-1 px-3 fw-bold" style="font-size: 0.8rem; background: #0d9488;">
+                                    <i class="bi bi-calendar-event me-1"></i>Select Doctor
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -206,10 +251,6 @@ async function handleChatSubmit(e) {
                 <div class="fw-bold mb-1" style="color: #0d9488;">MediBot AI</div>
                 <div class="text-dark" style="line-height: 1.6;">${formattedText}</div>
                 ${doctorsHtml}
-                <div class="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
-                    <small class="text-muted" style="font-size: 0.72rem;"><i class="bi bi-shield-check me-1"></i>MediConnect Doctor Database</small>
-                    <a href="{{ url_for('patient_find_doctors') }}" class="btn btn-sm btn-outline-teal rounded-pill px-3 py-1" style="font-size: 0.78rem;">View All Doctors</a>
-                </div>
             </div>
         `;
         chatContainer.appendChild(botBubble);
@@ -221,18 +262,136 @@ async function handleChatSubmit(e) {
     } catch (err) {
         document.getElementById('typingIndicator')?.remove();
         console.error(err);
-        const errBubble = document.createElement('div');
-        errBubble.className = 'd-flex gap-3 mb-4';
-        errBubble.innerHTML = `
-            <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 38px; height: 38px; background: #0d9488;">
-                <i class="bi bi-robot"></i>
+    }
+}
+
+// Step 3: Doctor Selection -> Render Date & Time Slot Picker
+function selectDoctorForBooking(doc) {
+    selectedDoctor = doc;
+    const chatContainer = document.getElementById('chatContainer');
+    
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    const botBubble = document.createElement('div');
+    botBubble.className = 'd-flex gap-3 mb-4';
+    botBubble.innerHTML = `
+        <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 38px; height: 38px; background: #0d9488;">
+            <i class="bi bi-robot"></i>
+        </div>
+        <div class="p-4 bg-white border border-teal shadow-sm rounded-4" style="max-width: 88%; border-top-left-radius: 4px !important; border-color: #0d9488 !important;">
+            <div class="fw-bold fs-6 mb-2" style="color: #0d9488;">
+                <i class="bi bi-calendar-event me-2"></i>Schedule Appointment with ${escapeHtml(doc.name)}
             </div>
-            <div class="p-3 bg-white border shadow-sm rounded-4" style="border-top-left-radius: 4px !important;">
-                <div class="fw-bold mb-1" style="color: #0d9488;">MediBot AI</div>
-                <p class="mb-0 text-dark">Hello! I am ready to assist you. Browse our database of doctors or ask a health question!</p>
+            <div class="small text-muted mb-3">${escapeHtml(doc.specialization)} • ${escapeHtml(doc.workplaceHospital)} • <strong class="text-success">Fee: ৳${doc.consultationFee || 800}</strong></div>
+            
+            <div class="row g-3 bg-light p-3 rounded-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-dark">Appointment Date</label>
+                    <input type="date" id="bookingDateInput" class="form-control" value="${tomorrowStr}" min="${tomorrowStr}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-dark">Visiting Time Slot</label>
+                    <select id="bookingTimeSlotInput" class="form-select">
+                        <option value="06:00 PM - 07:00 PM">06:00 PM - 07:00 PM</option>
+                        <option value="07:00 PM - 08:00 PM">07:00 PM - 08:00 PM</option>
+                        <option value="08:00 PM - 09:00 PM">08:00 PM - 09:00 PM</option>
+                        <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM (Morning)</option>
+                    </select>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label fw-bold small text-dark">Symptoms / Reason for Visit (Optional)</label>
+                    <input type="text" id="bookingSymptomsInput" class="form-control" placeholder="e.g. Regular health checkup, chest discomfort, skin rash">
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button" onclick="confirmAppointmentBooking()" class="btn btn-success fw-bold px-4 py-2 flex-fill" style="border-radius: 8px;">
+                    <i class="bi bi-check-circle-fill me-1"></i>Confirm & Save Appointment to Database
+                </button>
+            </div>
+        </div>
+    `;
+    chatContainer.appendChild(botBubble);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Step 4: Confirm Booking -> Call API & Save to Cloud Firestore
+async function confirmAppointmentBooking() {
+    if (!selectedDoctor) return;
+
+    const dateVal = document.getElementById('bookingDateInput').value;
+    const timeSlotVal = document.getElementById('bookingTimeSlotInput').value;
+    const symptomsVal = document.getElementById('bookingSymptomsInput').value || 'MediBot AI Conversational Appointment Booking';
+
+    const chatContainer = document.getElementById('chatContainer');
+
+    // Show booking status
+    const botBubble = document.createElement('div');
+    botBubble.className = 'd-flex gap-3 mb-4';
+    botBubble.id = 'savingStatusBubble';
+    botBubble.innerHTML = `
+        <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 38px; height: 38px; background: #0d9488;">
+            <i class="bi bi-robot"></i>
+        </div>
+        <div class="p-3 bg-white border shadow-sm rounded-4">
+            <small class="text-muted fw-bold"><i class="bi bi-cloud-arrow-up loading-dots me-2" style="color: #0d9488;"></i>Saving appointment to Cloud Firestore database...</small>
+        </div>
+    `;
+    chatContainer.appendChild(botBubble);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    try {
+        const res = await fetch('/api/patient/medibot/confirm_booking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                doctorId: selectedDoctor.id,
+                doctorName: selectedDoctor.name,
+                specialization: selectedDoctor.specialization,
+                hospital: selectedDoctor.workplaceHospital,
+                date: dateVal,
+                timeSlot: timeSlotVal,
+                fee: selectedDoctor.consultationFee || 800,
+                symptoms: symptomsVal
+            })
+        });
+
+        const data = await res.json();
+        document.getElementById('savingStatusBubble')?.remove();
+
+        const successBubble = document.createElement('div');
+        successBubble.className = 'd-flex gap-3 mb-4';
+        successBubble.innerHTML = `
+            <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 38px; height: 38px; background: #10b981;">
+                <i class="bi bi-check-lg"></i>
+            </div>
+            <div class="p-4 bg-white border border-success shadow-sm rounded-4" style="max-width: 88%; border-top-left-radius: 4px !important;">
+                <div class="fw-bold text-success fs-5 mb-2"><i class="bi bi-patch-check-fill me-2"></i>Appointment Booked Successfully!</div>
+                <p class="text-dark mb-3">
+                    Your appointment with <strong>${escapeHtml(selectedDoctor.name)}</strong> (${escapeHtml(selectedDoctor.specialization)}) on <strong>${dateVal}</strong> at <strong>${timeSlotVal}</strong> has been saved to Cloud Firestore!
+                </p>
+                <div class="p-3 bg-light rounded-3 mb-3 small">
+                    <div><strong>Doctor:</strong> ${escapeHtml(selectedDoctor.name)}</div>
+                    <div><strong>Hospital:</strong> ${escapeHtml(selectedDoctor.workplaceHospital)}</div>
+                    <div><strong>Scheduled Date:</strong> ${dateVal}</div>
+                    <div><strong>Time Slot:</strong> ${timeSlotVal}</div>
+                    <div><strong>Consultation Fee:</strong> <span class="text-success fw-bold">৳${selectedDoctor.consultationFee || 800}</span></div>
+                    <div><strong>Status:</strong> <span class="badge bg-warning-subtle text-warning border">Pending Confirmation</span></div>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('patient_appointments') }}" class="btn btn-teal text-white fw-bold px-4 py-2" style="background: #0d9488; border-radius: 8px;">
+                        <i class="bi bi-calendar-check me-1"></i>View My Appointments Dashboard
+                    </a>
+                </div>
             </div>
         `;
-        chatContainer.appendChild(errBubble);
+        chatContainer.appendChild(successBubble);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    } catch (err) {
+        document.getElementById('savingStatusBubble')?.remove();
+        console.error(err);
     }
 }
 
@@ -240,6 +399,7 @@ function renderRecommendedDoctors(doctors) {
     const container = document.getElementById('recommendedDoctorsList');
     let html = '';
     doctors.forEach(d => {
+        const docJson = JSON.stringify(d).replace(/"/g, '&quot;');
         html += `
             <div class="p-2 border rounded-3 mb-2 bg-light d-flex justify-content-between align-items-center shadow-sm">
                 <div>
@@ -247,7 +407,9 @@ function renderRecommendedDoctors(doctors) {
                     <div class="text-muted" style="font-size: 0.75rem;">${escapeHtml(d.specialization)}</div>
                     <div class="text-success fw-bold" style="font-size: 0.75rem;">৳${d.consultationFee || 800}</div>
                 </div>
-                <a href="${d.bookUrl || '/patient/book/' + d.id}" class="btn btn-sm btn-teal py-1 px-2 text-white fw-bold" style="font-size: 0.75rem; background: #0d9488;">Book</a>
+                <button type="button" onclick="selectDoctorForBooking(${docJson})" class="btn btn-sm btn-teal py-1 px-2 text-white fw-bold" style="font-size: 0.75rem; background: #0d9488;">
+                    Select
+                </button>
             </div>
         `;
     });
@@ -256,7 +418,7 @@ function renderRecommendedDoctors(doctors) {
 
 function escapeHtml(text) {
     const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    return (text || '').toString().replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 </script>
 {% endblock %}

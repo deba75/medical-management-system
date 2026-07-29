@@ -3559,6 +3559,61 @@ Help user understand symptoms, advise if urgent, and recommend booking an appoin
         })
 
 
+@app.route('/api/patient/medibot/confirm_booking', methods=['POST'])
+@patient_required
+def api_patient_medibot_confirm_booking():
+    try:
+        data = request.get_json(silent=True) or {}
+        doctor_id = data.get('doctorId')
+        doctor_name = data.get('doctorName', 'Doctor')
+        specialization = data.get('specialization', 'Specialist')
+        hospital = data.get('hospital', 'MediConnect Hospital')
+        appt_date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
+        time_slot = data.get('timeSlot', '06:00 PM - 07:00 PM')
+        fee = float(data.get('fee', 800))
+        symptoms = data.get('symptoms', 'MediBot AI Conversational Booking')
+
+        patient_id = session.get('user_id', 'demo_patient_id')
+        patient_name = session.get('user_name', 'Patient')
+        patient_email = session.get('user_email', 'patient@mediconnect.com')
+
+        if db is not None:
+            appt_ref = db.collection('appointments').document()
+            appt_data = {
+                'id': appt_ref.id,
+                'patientId': patient_id,
+                'patientName': patient_name,
+                'patientEmail': patient_email,
+                'doctorId': doctor_id,
+                'doctorName': doctor_name,
+                'specialization': specialization,
+                'hospital': hospital,
+                'chamber': 'Main Chamber',
+                'date': appt_date,
+                'timeSlot': time_slot,
+                'fee': fee,
+                'consultationType': 'in_person',
+                'paymentMethod': 'cash',
+                'paymentStatus': 'pending',
+                'status': 'pending',
+                'symptoms': symptoms,
+                'createdAt': datetime.now()
+            }
+            appt_ref.set(appt_data)
+            booking_id = appt_ref.id
+        else:
+            booking_id = 'demo_appt_' + datetime.now().strftime('%M%S')
+
+        return jsonify({
+            'success': True,
+            'bookingId': booking_id,
+            'message': f'Appointment booked successfully with Dr. {doctor_name} for {appt_date} at {time_slot}!'
+        })
+    except Exception as e:
+        print(f"Error in medibot confirm booking: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # =================== Error Handlers ===================
 
 @app.errorhandler(404)
