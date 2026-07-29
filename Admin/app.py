@@ -2235,19 +2235,30 @@ def diagnostic_save_test_results(booking_id):
     return redirect(url_for('diagnostic_booking_detail', booking_id=booking_id))
 
 @app.route('/diagnostic/report/print/<booking_id>')
-@diagnostic_required
 def diagnostic_report_print(booking_id):
+    if 'user_email' not in session and 'admin_email' not in session:
+        flash('Please login to view report.', 'warning')
+        return redirect(url_for('login'))
+
     booking = {'id': booking_id, 'patientName': 'Patient'}
-    centre_info = {'name': session.get('user_name', 'Diagnostic Centre')}
+    centre_info = {'name': 'Diagnostic Centre'}
+
     if db is not None:
         try:
             doc = db.collection('lab_test_bookings').document(booking_id).get()
             if doc.exists:
                 booking = doc.to_dict()
                 booking['id'] = doc.id
-            c_doc = db.collection('diagnostic_centres').document(session.get('user_id', '')).get()
-            if c_doc.exists:
-                centre_info = c_doc.to_dict()
+                
+            centre_id = booking.get('diagnosticCentreId') or session.get('user_id', '')
+            if centre_id:
+                c_doc = db.collection('diagnostic_centres').document(centre_id).get()
+                if c_doc.exists:
+                    centre_info = c_doc.to_dict()
+                else:
+                    centre_info = {'name': booking.get('diagnosticCentreName', 'Diagnostic Centre')}
+            else:
+                centre_info = {'name': booking.get('diagnosticCentreName', 'Diagnostic Centre')}
         except Exception as e:
             print(f"Error fetching report: {e}")
 
@@ -3041,8 +3052,11 @@ def patient_prescriptions():
 
 
 @app.route('/patient/prescription/<appointment_id>/print')
-@patient_required
 def patient_prescription_print(appointment_id):
+    if 'user_email' not in session and 'admin_email' not in session:
+        flash('Please login to view prescription.', 'warning')
+        return redirect(url_for('login'))
+
     appointment = None
     prescription = None
 
