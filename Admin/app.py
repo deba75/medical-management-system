@@ -137,7 +137,6 @@ def get_stats():
             "approved_doctors": approved_doctors,
             "rejected_doctors": rejected_doctors,
             "total_appointments": total_appointments,
-            "total_ambulances": total_ambulances,
             "total_diagnostic_centres": total_diagnostic_centres
         }
     except Exception as e:
@@ -149,7 +148,6 @@ def get_stats():
             "approved_doctors": 0,
             "rejected_doctors": 0,
             "total_appointments": 0,
-            "total_ambulances": 0,
             "total_diagnostic_centres": 0
         }
 
@@ -829,185 +827,6 @@ def patient_detail(patient_id):
     except Exception as e:
         flash(f'Error loading patient details: {str(e)}', 'danger')
         return redirect(url_for('patients'))
-
-# =================== Ambulance Management Routes ===================
-
-@app.route('/ambulances')
-@login_required
-def ambulances():
-    """Ambulance drivers management page"""
-    try:
-        if db is None:
-            flash('Firebase not connected. Please check service account key.', 'warning')
-            empty_stats = {'total': 0, 'online': 0, 'offline': 0, 'icu': 0}
-            return render_template('ambulances.html', ambulances=[], stats=empty_stats)
-        
-        search_query = request.args.get('search', '')
-        type_filter = request.args.get('type', '')
-        status_filter = request.args.get('status', '')
-        
-        # Get all ambulances from Firestore
-        ambulances_ref = db.collection('ambulances')
-        ambulances_list = []
-        
-        for doc in ambulances_ref.stream():
-            ambulance_data = doc.to_dict()
-            ambulance_data['id'] = doc.id
-            
-            # Apply search filter
-            if search_query:
-                search_lower = search_query.lower()
-                if not (search_lower in ambulance_data.get('driverName', '').lower() or
-                        search_lower in ambulance_data.get('driverPhone', '').lower() or
-                        search_lower in ambulance_data.get('vehicleNumber', '').lower()):
-                    continue
-            
-            # Apply type filter
-            if type_filter and ambulance_data.get('type') != type_filter:
-                continue
-            
-            # Apply status filter
-            if status_filter and ambulance_data.get('availability') != status_filter:
-                continue
-            
-            ambulances_list.append(ambulance_data)
-        
-        # Calculate statistics
-        all_ambulances = list(db.collection('ambulances').stream())
-        stats = {
-            'total': len(all_ambulances),
-            'online': sum(1 for a in all_ambulances if a.to_dict().get('availability') == 'online'),
-            'offline': sum(1 for a in all_ambulances if a.to_dict().get('availability') == 'offline'),
-            'icu': sum(1 for a in all_ambulances if a.to_dict().get('type') == 'icu')
-        }
-        
-        return render_template('ambulances.html', ambulances=ambulances_list, stats=stats)
-    except Exception as e:
-        flash(f'Error loading ambulances: {str(e)}', 'danger')
-        empty_stats = {'total': 0, 'online': 0, 'offline': 0, 'icu': 0}
-        return render_template('ambulances.html', ambulances=[], stats=empty_stats)
-
-
-@app.route('/ambulances/add', methods=['POST'])
-@login_required
-def add_ambulance():
-    """Add a new ambulance driver"""
-    if db is None:
-        flash('Firebase not connected. Cannot add ambulance.', 'warning')
-        return redirect(url_for('ambulances'))
-    
-    try:
-        driver_name = request.form.get('driverName', '').strip()
-        driver_phone = request.form.get('driverPhone', '').strip()
-        vehicle_number = request.form.get('vehicleNumber', '').strip()
-        ambulance_type = request.form.get('type', 'basic')
-        availability = request.form.get('availability', 'offline')
-        current_address = request.form.get('currentAddress', '').strip()
-        
-        # Validation
-        if not driver_name or not driver_phone or not vehicle_number:
-            flash('Please fill in all required fields.', 'danger')
-            return redirect(url_for('ambulances'))
-        
-        # Create ambulance document
-        ambulance_data = {
-            'driverName': driver_name,
-            'driverPhone': driver_phone,
-            'vehicleNumber': vehicle_number,
-            'type': ambulance_type,
-            'availability': availability,
-            'currentAddress': current_address,
-            'currentLat': None,
-            'currentLng': None,
-            'createdAt': datetime.now(),
-            'updatedAt': datetime.now()
-        }
-        
-        db.collection('ambulances').add(ambulance_data)
-        flash(f'Ambulance driver "{driver_name}" added successfully!', 'success')
-        
-    except Exception as e:
-        flash(f'Error adding ambulance: {str(e)}', 'danger')
-    
-    return redirect(url_for('ambulances'))
-
-
-@app.route('/ambulances/update', methods=['POST'])
-@login_required
-def update_ambulance():
-    """Update an existing ambulance driver"""
-    if db is None:
-        flash('Firebase not connected. Cannot update ambulance.', 'warning')
-        return redirect(url_for('ambulances'))
-    
-    try:
-        ambulance_id = request.form.get('ambulance_id')
-        driver_name = request.form.get('driverName', '').strip()
-        driver_phone = request.form.get('driverPhone', '').strip()
-        vehicle_number = request.form.get('vehicleNumber', '').strip()
-        ambulance_type = request.form.get('type', 'basic')
-        availability = request.form.get('availability', 'offline')
-        current_address = request.form.get('currentAddress', '').strip()
-        
-        if not ambulance_id:
-            flash('Ambulance ID is required.', 'danger')
-            return redirect(url_for('ambulances'))
-        
-        # Validation
-        if not driver_name or not driver_phone or not vehicle_number:
-            flash('Please fill in all required fields.', 'danger')
-            return redirect(url_for('ambulances'))
-        
-        # Update ambulance document
-        ambulance_ref = db.collection('ambulances').document(ambulance_id)
-        
-        if not ambulance_ref.get().exists:
-            flash('Ambulance not found.', 'danger')
-            return redirect(url_for('ambulances'))
-        
-        ambulance_ref.update({
-            'driverName': driver_name,
-            'driverPhone': driver_phone,
-            'vehicleNumber': vehicle_number,
-            'type': ambulance_type,
-            'availability': availability,
-            'currentAddress': current_address,
-            'updatedAt': datetime.now()
-        })
-        
-        flash(f'Ambulance driver "{driver_name}" updated successfully!', 'success')
-        
-    except Exception as e:
-        flash(f'Error updating ambulance: {str(e)}', 'danger')
-    
-    return redirect(url_for('ambulances'))
-
-
-@app.route('/ambulances/<ambulance_id>/delete', methods=['POST'])
-@login_required
-def delete_ambulance(ambulance_id):
-    """Delete an ambulance driver"""
-    if db is None:
-        flash('Firebase not connected. Cannot delete ambulance.', 'warning')
-        return redirect(url_for('ambulances'))
-    
-    try:
-        ambulance_ref = db.collection('ambulances').document(ambulance_id)
-        doc = ambulance_ref.get()
-        
-        if not doc.exists:
-            flash('Ambulance not found.', 'danger')
-            return redirect(url_for('ambulances'))
-        
-        driver_name = doc.to_dict().get('driverName', 'Unknown')
-        ambulance_ref.delete()
-        
-        flash(f'Ambulance driver "{driver_name}" deleted successfully!', 'success')
-        
-    except Exception as e:
-        flash(f'Error deleting ambulance: {str(e)}', 'danger')
-    
-    return redirect(url_for('ambulances'))
 
 # =================== Diagnostic Centre Management Routes ===================
 

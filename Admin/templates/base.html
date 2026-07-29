@@ -478,10 +478,6 @@
                 <i class="bi bi-people-fill"></i>
                 <span>Patients</span>
             </a>
-            <a href="{{ url_for('ambulances') }}" class="sidebar-link {% if 'ambulances' in request.path %}active{% endif %}">
-                <i class="bi bi-truck"></i>
-                <span>Ambulances</span>
-            </a>
             <a href="{{ url_for('diagnostic_centres') }}" class="sidebar-link {% if 'diagnostic' in request.path %}active{% endif %}">
                 <i class="bi bi-building"></i>
                 <span>Diagnostic Centres</span>
