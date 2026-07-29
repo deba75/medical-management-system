@@ -1610,12 +1610,12 @@ class _NotificationsSheet extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           
-          // Blood Request Notifications
+          // Notifications Query Stream
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('notifications')
                 .where('userId', isEqualTo: currentUserId)
-                .where('type', whereIn: ['blood_request', 'blood_request_refused', 'appointment_pdf'])
+                .where('type', whereIn: ['blood_request', 'blood_request_refused', 'appointment_pdf', 'missed_appointment'])
                 .snapshots(),
             builder: (context, snapshot) {
               // Handle errors
@@ -1632,7 +1632,11 @@ class _NotificationsSheet extends StatelessWidget {
                   return bTime.compareTo(aTime); // Descending order
                 });
               
-              // Separate blood requests, refusals, and appointment pdf notifications
+              // Separate missed appointments, blood requests, refusals, and appointment pdf notifications
+              final missedNotifications = allNotifications
+                  .where((doc) => (doc.data() as Map<String, dynamic>)['type'] == 'missed_appointment')
+                  .take(5)
+                  .toList();
               final pdfNotifications = allNotifications
                   .where((doc) => (doc.data() as Map<String, dynamic>)['type'] == 'appointment_pdf')
                   .take(5)
@@ -1646,7 +1650,7 @@ class _NotificationsSheet extends StatelessWidget {
                   .take(5)
                   .toList();
               
-              if (pdfNotifications.isEmpty && bloodRequests.isEmpty && refusals.isEmpty && appointments.isEmpty) {
+              if (missedNotifications.isEmpty && pdfNotifications.isEmpty && bloodRequests.isEmpty && refusals.isEmpty && appointments.isEmpty) {
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
@@ -1675,6 +1679,32 @@ class _NotificationsSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Missed Appointments Section
+                      if (missedNotifications.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.event_busy, color: Colors.red, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Missed Appointments Alerts',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red[700],
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ...missedNotifications.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          return _MissedAppointmentCard(
+                            data: data,
+                            docId: doc.id,
+                          );
+                        }),
+                        const SizedBox(height: 16),
+                      ],
+
                       // Appointment PDF Receipts Section
                       if (pdfNotifications.isNotEmpty) ...[
                         Row(
@@ -2344,4 +2374,253 @@ class _AppointmentPdfCard extends StatelessWidget {
     );
   }
 }
+
+// Missed Appointment Card Widget with Interactive Reschedule and Cancel Actions
+class _MissedAppointmentCard extends StatefulWidget {
+  final Map<String, dynamic> data;
+  final String docId;
+
+  const _MissedAppointmentCard({
+    required this.data,
+    required this.docId,
+  });
+
+  @override
+  State<_MissedAppointmentCard> createState() => _MissedAppointmentCardState();
+}
+
+class _MissedAppointmentCardState extends State<_MissedAppointmentCard> {
+  bool _isLoading = false;
+
+  Future<void> _handleCancel(BuildContext context) async {
+    final appointmentId = widget.data['appointmentId'] as String?;
+    final doctorId = widget.data['doctorId'] as String?;
+
+    setState(() => _isLoading = true);
+    try {
+      if (appointmentId != null && appointmentId.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('appointments')
+            .doc(appointmentId)
+            .update({
+          'status': 'cancelled',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(widget.docId)
+          .update({
+        'read': true,
+        'actionTaken': 'cancelled',
+      });
+
+      if (doctorId != null && doctorId.isNotEmpty) {
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'userId': doctorId,
+          'title': 'Appointment Cancelled',
+          'body': 'Patient ${widget.data['patientName'] ?? 'Patient'} cancelled their missed appointment.',
+          'type': 'patient_cancelled',
+          'appointmentId': appointmentId,
+          'createdAt': FieldValue.serverTimestamp(),
+          'read': false,
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment cancelled successfully.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error cancelling appointment: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleReschedule(BuildContext context) async {
+    final appointmentId = widget.data['appointmentId'] as String?;
+    final doctorId = widget.data['doctorId'] as String?;
+
+    DateTime? selectedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+    );
+
+    if (selectedDate == null) return;
+
+    if (!context.mounted) return;
+
+    TimeOfDay? selectedTime = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 10, minute: 0),
+    );
+
+    if (selectedTime == null) return;
+
+    final formattedDate = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+    final formattedTime = selectedTime.format(context);
+
+    setState(() => _isLoading = true);
+    try {
+      if (appointmentId != null && appointmentId.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('appointments')
+            .doc(appointmentId)
+            .update({
+          'status': 'pending',
+          'date': formattedDate,
+          'timeSlot': formattedTime,
+          'rescheduledFromMissed': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(widget.docId)
+          .update({
+        'read': true,
+        'actionTaken': 'rescheduled',
+      });
+
+      if (doctorId != null && doctorId.isNotEmpty) {
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'userId': doctorId,
+          'title': 'Appointment Rescheduled',
+          'body': 'Patient ${widget.data['patientName'] ?? 'Patient'} rescheduled their missed appointment to $formattedDate at $formattedTime.',
+          'type': 'patient_rescheduled',
+          'appointmentId': appointmentId,
+          'createdAt': FieldValue.serverTimestamp(),
+          'read': false,
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Appointment rescheduled to $formattedDate at $formattedTime!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error rescheduling: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = widget.data['title'] as String? ?? 'Missed Appointment Alert';
+    final body = widget.data['body'] as String? ?? 'You missed your scheduled appointment.';
+    final doctorName = widget.data['doctorName'] as String? ?? 'Doctor';
+    final actionTaken = widget.data['actionTaken'] as String?;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.event_busy, color: Colors.red, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    Text(
+                      'Dr. $doctorName',
+                      style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(body, style: const TextStyle(fontSize: 13)),
+          const SizedBox(height: 12),
+          if (actionTaken != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: actionTaken == 'rescheduled' ? Colors.green.shade100 : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                actionTaken == 'rescheduled' ? '✓ Rescheduled' : '✓ Cancelled',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: actionTaken == 'rescheduled' ? Colors.green.shade800 : Colors.grey.shade800,
+                ),
+              ),
+            )
+          else if (_isLoading)
+            const Center(child: CircularProgressIndicator())
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _handleReschedule(context),
+                    icon: const Icon(Icons.calendar_month, size: 16),
+                    label: const Text('Reschedule'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _handleCancel(context),
+                    icon: const Icon(Icons.close, size: 16),
+                    label: const Text('Cancel'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red.shade700,
+                      side: BorderSide(color: Colors.red.shade400),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 

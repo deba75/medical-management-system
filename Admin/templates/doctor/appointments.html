@@ -1,20 +1,58 @@
 {% extends "doctor/base.html" %}
 {% block title %}Appointments{% endblock %}
-{% block header_title %}Appointment Management{% endblock %}
+{% block header_title %}Appointment & Missed Patient Management{% endblock %}
 
 {% block content %}
+<!-- Stats Banner -->
+{% if stats %}
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 bg-white text-center rounded-3">
+            <small class="text-muted fw-bold">Total Appointments</small>
+            <h4 class="fw-bold mb-0 text-primary">{{ stats.total }}</h4>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 bg-white text-center rounded-3">
+            <small class="text-muted fw-bold">Pending / Scheduled</small>
+            <h4 class="fw-bold mb-0 text-warning">{{ stats.pending + stats.approved }}</h4>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 bg-white text-center rounded-3">
+            <small class="text-muted fw-bold">Completed Consultations</small>
+            <h4 class="fw-bold mb-0 text-success">{{ stats.completed }}</h4>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3 bg-danger bg-opacity-10 text-center rounded-3 border-danger">
+            <small class="text-danger fw-bold"><i class="bi bi-exclamation-circle me-1"></i>Missed Patients</small>
+            <h4 class="fw-bold mb-0 text-danger">{{ stats.missed }}</h4>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ url_for('doctor_appointments') }}" class="row g-3">
-            <div class="col-md-4">
-                <select name="status" class="form-select" onchange="this.form.submit()">
-                    <option value="" {% if not current_status %}selected{% endif %}>All Statuses</option>
+        <form method="GET" action="{{ url_for('doctor_appointments') }}" class="row g-3 align-items-center">
+            <div class="col-md-5">
+                <select name="status" class="form-select fw-bold" onchange="this.form.submit()">
+                    <option value="" {% if not current_status %}selected{% endif %}>All Appointment Statuses</option>
                     <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending Approval</option>
                     <option value="approved" {% if current_status == 'approved' %}selected{% endif %}>Approved / Upcoming</option>
                     <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="missed" {% if current_status == 'missed' %}selected{% endif %}>⚠️ Missed / No-Show Patients ({{ stats.missed if stats else 0 }})</option>
                     <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
                 </select>
             </div>
+            {% if current_status == 'missed' %}
+            <div class="col-md-7">
+                <span class="badge bg-danger text-white p-2">
+                    <i class="bi bi-info-circle me-1"></i> Showing list of patients who missed their scheduled appointments.
+                </span>
+            </div>
+            {% endif %}
         </form>
     </div>
 </div>
@@ -60,8 +98,10 @@
                             <span class="badge bg-warning-subtle text-warning">Pending</span>
                             {% elif appt.status == 'completed' %}
                             <span class="badge bg-info-subtle text-info">Completed</span>
+                            {% elif appt.status == 'missed' %}
+                            <span class="badge bg-danger text-white"><i class="bi bi-exclamation-triangle me-1"></i>Missed / No-Show</span>
                             {% elif appt.status == 'cancelled' %}
-                            <span class="badge bg-danger-subtle text-danger">Cancelled</span>
+                            <span class="badge bg-secondary">Cancelled</span>
                             {% else %}
                             <span class="badge bg-secondary">{{ appt.status }}</span>
                             {% endif %}
@@ -70,11 +110,19 @@
                             <div class="btn-group btn-group-sm">
                                 {% if appt.status == 'pending' %}
                                 <a href="{{ url_for('doctor_update_appointment', appointment_id=appt.id, action='approve') }}" class="btn btn-success">Approve</a>
+                                {% endif %}
+                                
+                                {% if appt.status in ['pending', 'approved', 'scheduled'] %}
+                                <a href="{{ url_for('doctor_update_appointment', appointment_id=appt.id, action='missed') }}" class="btn btn-warning text-dark" onclick="return confirm('Mark this patient as Missed / No-Show?')">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>Mark Missed
+                                </a>
                                 <a href="{{ url_for('doctor_update_appointment', appointment_id=appt.id, action='cancel') }}" class="btn btn-outline-danger">Cancel</a>
                                 {% endif %}
+
                                 <a href="{{ url_for('doctor_write_prescription', appointment_id=appt.id) }}" class="btn btn-primary">
                                     <i class="bi bi-file-earmark-medical me-1"></i>Prescribe
                                 </a>
+
                                 {% if appt.prescriptionId %}
                                 <a href="{{ url_for('doctor_view_prescription', prescription_id=appt.prescriptionId) }}" class="btn btn-outline-secondary" target="_blank">
                                     <i class="bi bi-printer"></i>

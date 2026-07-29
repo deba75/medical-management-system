@@ -1365,18 +1365,57 @@ def doctor_dashboard():
 def doctor_appointments():
     status_filter = request.args.get('status', '')
     doctor_id = session.get('user_id')
+    today_str = datetime.now().strftime('%Y-%m-%d')
     
     appointments = []
+    stats = {'total': 0, 'pending': 0, 'approved': 0, 'completed': 0, 'missed': 0, 'cancelled': 0}
+    
     if db is not None:
         try:
-            docs = db.collection('appointments').stream()
+            docs = list(db.collection('appointments').stream())
             for d in docs:
                 data = d.to_dict()
                 data['id'] = d.id
                 doc_id_match = (data.get('doctorId') == doctor_id) or (session.get('user_role') == 'admin')
+                
                 if doc_id_match:
+                    appt_status = data.get('status', 'pending')
+                    appt_date = data.get('date', '')
+                    
+                    # Auto-expire past unfulfilled appointments to 'missed'
+                    if appt_date and appt_date < today_str and appt_status in ['pending', 'approved', 'scheduled']:
+                        db.collection('appointments').document(d.id).update({
+                            'status': 'missed',
+                            'updatedAt': datetime.now().strftime('%Y-%m-%d %H:%M')
+                        })
+                        appt_status = 'missed'
+                        data['status'] = 'missed'
+                        
+                        # Trigger notification to patient
+                        patient_id = data.get('patientId')
+                        if patient_id:
+                            db.collection('notifications').add({
+                                'userId': patient_id,
+                                'patientId': patient_id,
+                                'patientName': data.get('patientName', 'Patient'),
+                                'doctorId': doctor_id,
+                                'doctorName': session.get('user_name', 'Doctor'),
+                                'title': 'Missed Appointment Alert',
+                                'body': f"You missed your scheduled consultation on {appt_date}. Please reschedule or cancel.",
+                                'type': 'missed_appointment',
+                                'appointmentId': d.id,
+                                'createdAt': datetime.now(),
+                                'read': False
+                            })
+
+                    # Update stats count
+                    if appt_status in stats:
+                        stats[appt_status] += 1
+                    stats['total'] += 1
+                    
+                    # Filter matching
                     if status_filter:
-                        if data.get('status') == status_filter:
+                        if appt_status == status_filter:
                             appointments.append(data)
                     else:
                         appointments.append(data)
@@ -1386,20 +1425,49 @@ def doctor_appointments():
     return render_template('doctor/appointments.html',
                            active_page='appointments',
                            appointments=appointments,
-                           current_status=status_filter)
+                           current_status=status_filter,
+                           stats=stats)
 
 @app.route('/doctor/appointment/<appointment_id>/<action>')
 @doctor_required
 def doctor_update_appointment(appointment_id, action):
+    doctor_id = session.get('user_id')
+    doctor_name = session.get('user_name', 'Doctor')
+    
     if db is not None:
         try:
             doc_ref = db.collection('appointments').document(appointment_id)
+            doc_snap = doc_ref.get()
+            appt_data = doc_snap.to_dict() if doc_snap.exists else {}
+            patient_id = appt_data.get('patientId')
+            patient_name = appt_data.get('patientName', 'Patient')
+            appt_date = appt_data.get('date', datetime.now().strftime('%Y-%m-%d'))
+            
             if action == 'approve':
                 doc_ref.update({'status': 'approved', 'updatedAt': datetime.now().strftime('%Y-%m-%d %H:%M')})
                 flash('Appointment approved successfully!', 'success')
             elif action == 'cancel':
                 doc_ref.update({'status': 'cancelled', 'updatedAt': datetime.now().strftime('%Y-%m-%d %H:%M')})
                 flash('Appointment cancelled.', 'info')
+            elif action == 'missed':
+                doc_ref.update({'status': 'missed', 'updatedAt': datetime.now().strftime('%Y-%m-%d %H:%M')})
+                
+                # Send missed notification to patient
+                if patient_id:
+                    db.collection('notifications').add({
+                        'userId': patient_id,
+                        'patientId': patient_id,
+                        'patientName': patient_name,
+                        'doctorId': doctor_id,
+                        'doctorName': doctor_name,
+                        'title': 'Missed Appointment Alert',
+                        'body': f"You missed your scheduled appointment with Dr. {doctor_name} on {appt_date}. Please reschedule or cancel.",
+                        'type': 'missed_appointment',
+                        'appointmentId': appointment_id,
+                        'createdAt': datetime.now(),
+                        'read': False
+                    })
+                flash(f'Marked appointment for {patient_name} as Missed. Notification sent to patient.', 'warning')
         except Exception as e:
             flash(f'Error updating appointment: {e}', 'danger')
     return redirect(url_for('doctor_appointments'))
