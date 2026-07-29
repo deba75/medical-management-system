@@ -1,221 +1,223 @@
-# MediConnect - Telemedicine & Diagnostic Management System
+# MediConnect - Unified Telemedicine & Diagnostic Management Platform
 
 [![Flutter Version](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)](https://flutter.dev)
-[![Firebase](https://img.shields.io/badge/Firebase-Integrated-FFCA28?logo=firebase)](https://firebase.google.com)
-[![Python Flask](https://img.shields.io/badge/Flask-Web_Portal-000000?logo=flask)](https://flask.palletsprojects.com/)
-[![AI Assistant](https://img.shields.io/badge/MediBot-Gemini_AI-8E44AD?logo=google)](https://ai.google.dev/)
-[![License](https://img.shields.io/badge/License-Academic_Defense-green)](#)
+[![Firebase](https://img.shields.io/badge/Firebase-Cloud_Firestore-FFCA28?logo=firebase)](https://firebase.google.com)
+[![Python Flask](https://img.shields.io/badge/Flask-Web_Portals-000000?logo=flask)](https://flask.palletsprojects.com/)
+[![Google Gemini AI](https://img.shields.io/badge/MediBot-Gemini_AI-8E44AD?logo=google)](https://ai.google.dev/)
+[![Currency](https://img.shields.io/badge/Currency-BDT_%28%E0%A7%B3%29-green)](#)
 
-MediConnect is an end-to-end, production-grade Telemedicine and Diagnostic Management platform built with **Flutter**, **Firebase**, **Python Flask**, and **Google Gemini AI**. The platform bridges **Patients**, **Doctors**, **Diagnostic Centres**, and **System Administrators**, delivering real-time consultation booking, AI-assisted health triage, interactive lab test management, automated PDF report generation, and official credential verification via DGHS & BMDC registration codes.
+**MediConnect** is an enterprise-grade, end-to-end Telemedicine and Diagnostic Lab Management ecosystem designed for **Patients**, **Doctors**, **Diagnostic Centres**, and **System Administrators**. Built with **Flutter (Mobile & Web)**, **Firebase (Firestore & Auth)**, **Python Flask (Web Portals)**, and **Google Gemini AI**, MediConnect powers real-time doctor appointments, digital e-prescriptions, isolated diagnostic lab test ordering, 5-stage sample tracking, and automated PDF medical report generation with official DGHS & BMDC credential verification.
 
 ---
 
 ## 📑 Table of Contents
-
-- [System Architecture & Tech Stack](#-system-architecture--tech-stack)
-- [Key Features by Role](#-key-features-by-role)
-  - [1. Patient Mobile & Web Portal](#1-patient-mobile--web-portal)
-  - [2. Doctor Web & Mobile Portal](#2-doctor-web--mobile-portal)
-  - [3. Diagnostic Centre Web & Mobile Portal](#3-diagnostic-centre-web--mobile-portal)
-  - [4. Super Admin Web Portal](#4-super-admin-web-portal)
+- [System Architecture](#-system-architecture)
+- [Complete Feature Matrix by Role](#-complete-feature-matrix-by-role)
+  - [1. Patient Portal (Flutter Mobile & Web)](#1-patient-portal-flutter-mobile--web)
+  - [2. Doctor Portal (Flutter Mobile & Web)](#2-doctor-portal-flutter-mobile--web)
+  - [3. Diagnostic Centre Portal (Flutter Mobile & Web)](#3-diagnostic-centre-portal-flutter-mobile--web)
+  - [4. Super Admin Web Portal (Python Flask)](#4-super-admin-web-portal-python-flask)
 - [5-Stage Diagnostic Lab Test Pipeline](#-5-stage-diagnostic-lab-test-pipeline)
+- [Database Schema & Data Architecture](#-database-schema--data-architecture)
+- [PDF Generation & E-Prescription Engine](#-pdf-generation--e-prescription-engine)
 - [Project Directory Structure](#-project-directory-structure)
-- [Database Schema & Data Models](#-database-schema--data-models)
-- [Credential Verification Engine](#-credential-verification-engine)
-- [AI Health Assistant (MediBot)](#-ai-health-assistant-medibot)
 - [Installation & Setup Guide](#-installation--setup-guide)
-  - [Mobile & Web App (Flutter)](#mobile--web-app-flutter)
-  - [Web Admin & Doctor/Diagnostic Portal (Python Flask)](#web-admin--doctordiagnostic-portal-python-flask)
-- [Deployment & Cloud Host Setup](#-deployment--cloud-host-setup)
+  - [Flutter Mobile App](#flutter-mobile-app)
+  - [Python Flask Web Server](#python-flask-web-server)
+- [Cloud Deployment & GitHub Workflow](#-cloud-deployment--github-workflow)
 
 ---
 
-## 🏗 System Architecture & Tech Stack
-
-MediConnect utilizes a modular, decoupled architecture adhering to Clean Architecture principles and strict Role-Based Access Control (RBAC).
+## 🏗 System Architecture
 
 ```
-                      ┌─────────────────────────────────────────┐
-                      │              MediConnect                │
-                      └────────────────────┬────────────────────┘
-                                           │
-         ┌───────────────────┬─────────────┴───────┬────────────────────┐
-         │                   │                     │                    │
-┌────────▼────────┐ ┌────────▼────────┐ ┌──────────▼─────────┐ ┌─────────▼────────┐
-│  Patient App    │ │   Doctor App    │ │ Diagnostic Centre │ │ Admin Web Portal │
-│ (Flutter Multi) │ │ (Flutter Multi) │ │  (Flutter Multi)  │ │  (Python Flask)  │
-└────────┬────────┘ └────────┬────────┘ └──────────┬──────────┘ └────────┬────────┘
-         │                   │                     │                     │
-         └───────────────────┴──────────┬──────────┴─────────────────────┘
-                                        │
-                         ┌──────────────▼──────────────┐
-                         │   Firebase Cloud Backend    │
-                         │ ├─ Firebase Authentication  │
-                         │ ├─ Cloud Firestore DB       │
-                         │ └─ Firebase Storage         │
-                         └──────────────┬──────────────┘
-                                        │
-                         ┌──────────────▼──────────────┐
-                         │   Google Gemini 1.5 Flash   │
-                         │ (MediBot AI Health Engine)  │
-                         └─────────────────────────────┘
-```
-
-### Technology Highlights
-- **Frontend App**: Flutter 3.x (Dart), Material Design 3, Riverpod & Provider State Management, Google Fonts (Plus Jakarta Sans).
-- **Backend & Cloud Infrastructure**: Firebase Authentication, Cloud Firestore (Real-time DB), Firebase Storage (Base64 & PDF document hosting).
-- **Web Portal Backend**: Python Flask with Jinja2 templates, REST endpoints, and security middleware.
-- **AI Integration**: Google Gemini API via `ChatbotService` for intelligent patient symptom analysis and doctor specialization recommendations.
-- **PDF & Report Engine**: High-resolution PDF compilation via `pdf` and `printing` packages with interactive in-app viewers (`PdfPreview`).
-
----
-
-## ✨ Key Features by Role
-
-### 1. Patient Mobile & Web Portal
-- **Doctor Discovery & Booking**: Real-time doctor search filtered by specialization, rating, hospital affiliation, and consultation fee.
-- **MediBot AI Health Triage**: Interactive AI assistant that evaluates patient symptoms, answers medical queries, and suggests appropriate specialists.
-- **Interactive Payments**: Support for online payments (bKash / Nagad / Card with OTP & PIN modal flow), pay-at-lab, and cash-on-visit.
-- **E-Prescription Viewer**: High-resolution PDF viewer for doctor prescriptions (`PdfPreview`), printable and downloadable.
-- **Diagnostic Lab Test Ordering**: Order lab tests with **Home Sample Collection** (৳150 biohazard fee) or **Centre Visit** options. Real-time 5-stage tracking timeline.
-
-### 2. Doctor Web & Mobile Portal
-- **Chamber Management**: Add and manage practice chambers with full address, contact numbers, visiting hours, and editable consultation fees. Synchronizes live to Firebase for patient discovery.
-- **Interactive Schedule & Time Slots**: Select active practice days (Saturday–Friday), shift start/end times, and slot durations (15m, 20m, 30m, 45m, 60m). Features auto-generated interactive time slot chips.
-- **Isolated Patient Directory**: Doctors access ONLY their assigned patients who have booked or completed consultations.
-- **Earnings & Financial Analytics**: Comprehensive dashboard tracking total revenue, online vs in-person cash breakdowns, and paid patient histories.
-- **E-Prescription Generator**: Write digital prescriptions with medicine dosage, frequency, diagnostic test recommendations, and clinical notes.
-
-### 3. Diagnostic Centre Web & Mobile Portal
-- **Official Credential Registration**: Mandatory registration including **DGHS Registration Code**, **Chief Pathologist Name**, and **Pathologist BMDC Reg. Number**.
-- **Isolated Lab Test Pipeline**: Centre-specific dashboard displaying ONLY bookings and patient records matching the facility ID.
-- **Collector Dispatch**: Assign certified Phlebotomists / Sample Collectors with contact details and biohazard equipment info.
-- **PDF Report Generation & Printing**: Input parameter readings, normal ranges, and Pathologist findings to publish instant verified PDF diagnostic reports.
-
-### 4. Super Admin Web Portal
-- **Direct Admin Authentication**: Dedicated secure route (`/admin`) protecting admin login credentials from public portals.
-- **Official Credential Verification**: Review doctor BMDC codes and diagnostic centre **DGHS Registration Codes** & **Pathologist BMDC Numbers** before approving facility activation.
-- **System Monitoring**: System statistics, disease outbreak heatmaps, user restrictions, and published article oversight.
-
----
-
-## 🔬 5-Stage Diagnostic Lab Test Pipeline
-
-```mermaid
-flowchart TD
-    subgraph Stage 1: Patient Discovery & Booking
-        A[Patient App: Select Diagnostic Centre] --> B[Pick Tests: CBC, Lipid Profile, etc.]
-        B --> C[Select Collection Mode: Home Visit vs Walk-in]
-        C --> D[Pay via bKash / Nagad / Cash]
-        D --> E[Write Booking to Firestore `lab_test_bookings`]
-    end
-
-    subgraph Stage 2: Verification & Dispatch
-        E --> F[Diagnostic Web Portal Notification]
-        F --> G[Centre Admin Approves Booking]
-        G --> H[Assign Certified Phlebotomist / Collector]
-        H --> I[Update Status: `collectorAssigned`]
-    end
-
-    subgraph Stage 3: Sample Collection & Transit
-        I --> J[Phlebotomist Visits Patient / Accepts Walk-in]
-        J --> K[Sample Collected with Biohazard Barcode]
-        K --> L[Update Status: `sampleCollected` -> `processing`]
-    end
-
-    subgraph Stage 4: Lab Analysis & Report Generation
-        L --> M[Automated Analyzer Test Processing]
-        M --> N[Lab Technician Inputs Parameter Readings]
-        N --> O[Generate Verified PDF Diagnostic Report]
-        O --> P[Upload Report to Firebase & Set `status: completed`]
-    end
-
-    subgraph Stage 5: Patient Notification & Live PDF View
-        P --> Q[Patient Push Notification Alert]
-        Q --> R[Patient App 5-Stage Timeline Updated]
-        R --> S[Patient Views/Downloads PDF Report]
-    end
+                                  ┌──────────────────────────────────────────────┐
+                                  │          MediConnect Platform                │
+                                  └──────────────────────┬───────────────────────┘
+                                                         │
+               ┌─────────────────────────────────────────┼────────────────────────────────────────┐
+               ▼                                         ▼                                        ▼
+    ┌──────────────────────┐                  ┌─────────────────────┐                 ┌──────────────────────┐
+    │ Flutter Mobile/Web   │                  │  Python Flask Web   │                 │   Google Gemini AI   │
+    │  (Patient/Doc/Diag)  │                  │  (Unified Portals)  │                 │ (MediBot Assistant)  │
+    └──────────┬───────────┘                  └──────────┬──────────┘                 └──────────┬───────────┘
+               │                                         │                                       │
+               └────────────────────┬────────────────────┘                                       │
+                                    ▼                                                            │
+                       ┌─────────────────────────┐                                               │
+                       │   Firebase Cloud Services│◄─────────────────────────────────────────────┘
+                       │ (Firestore / Auth / Storage)
+                       └─────────────────────────┘
 ```
 
 ---
 
-## 📂 Project Directory Structure
+## 🌟 Complete Feature Matrix by Role
+
+### 1. Patient Portal (Flutter Mobile & Web)
+- **Account Management**: Signup/login with personal details, blood group, emergency contact, and Date of Birth.
+- **Doctor Discovery**: Filter specialist doctors by name, hospital, and medical specialization (Cardiology, Neurology, Pediatrics, Gynecology, Medicine, etc.).
+- **Chamber & Schedule View**: Inspect doctor qualifications, BMDC registration numbers, practice chambers, visiting hours, and consultation fees in Bangladeshi Taka (**৳ / BDT**).
+- **Appointment Booking**: Select chamber, date, time slot, consultation mode (In-Person / Online), and payment method (Cash on Visit / Online bKash/Nagad).
+- **Overdue Appointment Evaluator**: Automatically evaluates appointment schedules; overdue appointments shift from "Upcoming" to **"Missed"** status with distinct badge indicators.
+- **Digital E-Prescriptions**: View issued digital prescriptions online with dosage schedules (e.g. `1-0-1`), duration, doctor notes, and printable PDF report generation.
+- **Diagnostic Centres**: Browse verified diagnostic centers in Bangladesh with isolated test catalogs and prices.
+- **5-Stage Lab Test Booking**: Order lab tests with sample collection mode selection (**Home Visit Biohazard Collection** vs. **Walk-in Centre Visit**).
+- **Live Status Tracking**: Monitor test orders in real-time across 5 stages:
+  1. `Stage 1: Pending` (Booking submitted by patient)
+  2. `Stage 2: Approved` (Diagnostic Centre approves booking)
+  3. `Stage 3: Collector Assigned` (Phlebotomist dispatched for sample collection)
+  4. `Stage 4: Sample Processing` (Lab analyzer testing in progress)
+  5. `Stage 5: Report Issued / Completed` (Diagnostic report published)
+- **Frictionless PDF Report Viewing**: Direct access to view and print official diagnostic PDF reports without any login redirection.
+- **MediBot AI Assistant**: Interactive symptom checker and preliminary health triage powered by Google Gemini AI.
+
+---
+
+### 2. Doctor Portal (Flutter Mobile & Web)
+- **Doctor Verification Workflow**: Secure registration requiring full name, email, phone, BMDC license registration number, workplace hospital, and qualifications. Accounts are submitted for Super Admin verification.
+- **Chamber & Availability Settings**: Add/edit practice chambers, visiting hours, consultation fees (**৳**), and active appointment days.
+- **Appointment Dashboard**: Real-time view of daily appointment queues, patient symptoms, and booking status (`Pending`, `Confirmed`, `Completed`, `Missed`).
+- **Digital E-Prescription Authoring Engine**:
+  - Prescribe medicines with dosage (e.g. `1+0+1`), duration, and instructions (Before/After meals).
+  - Add recommended diagnostic tests (CBC, Lipid Profile, USG, X-Ray, etc.).
+  - Include clinical notes and follow-up advice.
+  - Automatically generates an official printable PDF E-Prescription signed with the doctor's BMDC credentials.
+
+---
+
+### 3. Diagnostic Centre Portal (Flutter Mobile & Web)
+- **Facility Verification Workflow**: Registration requiring DGHS license code, Chief Pathologist name, Pathologist BMDC registration code, trade license, operating hours, and home sample collection fees (**৳150**).
+- **Isolated Test Catalog Management**:
+  - Add and remove lab tests with test name, category (Pathology, Biochemistry, Radiology, Cardiology, Hormones), preparation instructions, turnaround time, and price in BDT (**৳**).
+  - Dual-synced with Cloud Firestore so tests added on web immediately populate inside the center's profile in the Flutter Patient App.
+- **5-Stage Order Operations**:
+  - Accept/Approve patient lab test requests.
+  - Assign certified phlebotomists/sample collectors.
+  - Process samples and input structured parameter test results.
+  - Publish official diagnostic PDF reports.
+- **Dynamic Action Status Handling**: Action buttons transition from `Manage` to **`Done`** once a lab request reaches completed status.
+- **Sample Collector Management**: Add/remove phlebotomist staff with name, contact number, and motorcycle/vehicle registration.
+
+---
+
+### 4. Super Admin Web Portal (Python Flask)
+- **System Executive Dashboard**: Real-time analytics on registered patients, verified doctors, approved diagnostic centers, total appointments, and platform revenue.
+- **Credential Verification Engine**:
+  - Review doctor BMDC license credentials and approve/reject accounts.
+  - Audit diagnostic centre DGHS codes and pathologist BMDC numbers before granting platform access.
+- **Patient Account Controls**: Monitor patient list, view booking histories, and restrict/activate accounts.
+- **Health Knowledge Base & Articles**: Publish, edit, and moderate verified medical articles for patient education.
+
+---
+
+## 🧪 5-Stage Diagnostic Lab Test Pipeline
+
+```
+  ┌──────────────────────────┐      ┌──────────────────────────┐      ┌──────────────────────────┐
+  │   Stage 1: Booking       │─────►│   Stage 2: Verification  │─────►│   Stage 3: Dispatch      │
+  │  Patient selects test &  │      │ Diagnostic Centre Admin  │      │ Assign Certified         │
+  │  collection mode (Home)  │      │ Approves Request         │      │ Phlebotomist / Collector │
+  └──────────────────────────┘      └──────────────────────────┘      └────────────┬─────────────┘
+                                                                                   │
+  ┌──────────────────────────┐      ┌──────────────────────────┐                   │
+  │   Stage 5: PDF Report    │◄─────│   Stage 4: Lab Testing   │◄──────────────────┘
+  │ Diagnostic Report Issued │      │ Sample Analyzed & Results│
+  │ Patient Views PDF Report │      │ Entered into System      │
+  └──────────────────────────┘      └──────────────────────────┘
+```
+
+---
+
+## 🗄 Database Schema & Data Architecture
+
+MediConnect relies on **Cloud Firestore** structured document collections:
+
+| Collection Name | Document Key | Key Fields & Schema |
+| :--- | :--- | :--- |
+| `users` | `userId` | `name`, `email`, `phone`, `role` (`patient`/`doctor`/`diagnostic_centre`/`admin`), `dob`, `gender`, `blood_group`, `emergency_contact`, `verificationStatus` |
+| `doctors` | `doctorId` | `name`, `email`, `phone`, `bmdcNumber`, `specialization`, `workplaceHospital`, `qualifications`, `consultationFee`, `chambers`, `availability`, `verificationStatus` |
+| `diagnostic_centres` | `centreId` | `name`, `email`, `phone`, `city`, `address`, `dghsCode`, `pathologistName`, `pathologistBmdcNumber`, `tests` (embedded list), `collectors`, `verificationStatus` |
+| `available_lab_tests` | `testId` | `testName`, `name`, `category`, `price`, `preparation`, `turnaroundTime`, `centreId`, `isAvailable` |
+| `appointments` | `appointmentId` | `patientId`, `patientName`, `doctorId`, `doctorName`, `date`, `timeSlot`, `fee`, `symptoms`, `status` (`pending`/`confirmed`/`completed`/`missed`), `prescription` |
+| `lab_test_bookings` | `bookingId` | `patientId`, `patientName`, `diagnosticCentreId`, `diagnosticCentreName`, `tests`, `collectionType`, `status` (`pending`/`approved`/`collectorAssigned`/`sampleCollected`/`processing`/`completed`), `totalAmount`, `reportResults` |
+| `health_articles` | `articleId` | `title`, `authorName`, `category`, `content`, `status` (`published`/`draft`/`restricted`) |
+
+---
+
+## 📄 PDF Generation & E-Prescription Engine
+
+MediConnect generates official, print-ready PDF documents formatted with CSS `@media print`:
+
+1. **Digital E-Prescription PDF**:
+   - Header with doctor's name, specialization, qualifications, and BMDC registration code.
+   - Patient information strip (Name, Date, Prescription ID).
+   - Clinical notes, symptoms, and recommended diagnostic tests.
+   - Formatted Rx medicine table with dosages (`1-0-1`), duration, and instructions.
+   - Doctor's authorized digital signature block.
+
+2. **Diagnostic Lab Report PDF**:
+   - Header with diagnostic facility name, DGHS license code, address, and Chief Pathologist details.
+   - Patient demographics, specimen collection date, and mode.
+   - Test parameter result table showing measured values, unit, and reference ranges.
+   - Pathologist signature and official verification QR/barcode data.
+
+---
+
+## 📁 Project Directory Structure
 
 ```
 telemedicine/
-├── Admin/                          # Python Flask Web Portal & Admin Backend
-│   ├── app.py                      # Core Flask Server, Auth, & Firestore Routes
-│   ├── requirements.txt            # Python Dependencies (Flask, firebase-admin)
+├── Admin/                          # Python Flask Unified Web Portals
+│   ├── app.py                      # Flask Application Server (Routes & Logic)
+│   ├── serviceAccountKey.json      # Firebase Admin SDK Credentials
 │   └── templates/                  # Jinja2 HTML Templates
-│       ├── admin/                  # Super Admin Dashboard & Verification
-│       ├── doctor/                 # Doctor Portal (Chambers, Schedule, Earnings, Patients)
-│       ├── diagnostic/              # Diagnostic Centre Portal (Bookings, Catalog, Patients)
-│       └── register_diagnostic.html# Official DGHS & BMDC Registration Form
-├── lib/                            # Flutter Multi-Platform Application
+│       ├── login.html              # Unified Gateway (Doctor / Diagnostic / Patient Tabs)
+│       ├── register_patient.html   # Patient Web Signup
+│       ├── register_doctor.html    # Doctor Web Signup
+│       ├── register_diagnostic.html# Diagnostic Centre Web Signup
+│       ├── patient/                # Patient Web Portal
+│       │   ├── base.html           # Emerald Sidebar Base Template
+│       │   ├── dashboard.html      # Patient Dashboard & Metrics
+│       │   ├── find_doctors.html   # Doctor Search & Specialty Filter
+│       │   ├── doctor_profile.html # Doctor Profile & Chambers
+│       │   ├── book_appointment.html# Appointment Booking Form
+│       │   ├── appointments.html   # Appointments History
+│       │   ├── appointment_detail.html # Appointment Detail & Digital Prescription
+│       │   ├── prescriptions.html  # Prescriptions List
+│       │   ├── prescription_print.html # Printable PDF Prescription
+│       │   ├── diagnostic_centres.html # Diagnostic Centre Discovery
+│       │   ├── diagnostic_detail.html  # Centre Test Catalog & Booking Modal
+│       │   ├── lab_tests.html      # 5-Stage Lab Order Tracker
+│       │   └── profile.html        # Patient Profile Settings
+│       ├── doctor/                 # Doctor Web Portal Templates
+│       └── diagnostic/             # Diagnostic Centre Web Portal Templates
+├── lib/                            # Flutter Mobile & Web App
 │   ├── main.dart                   # Application Entry Point
-│   ├── core/                       # Services, Providers, Themes, & Widgets
-│   │   ├── services/               # Firestore, Auth, PDF Generator, Chatbot Services
-│   │   └── theme/                  # App Theme & Color Tokens
-│   ├── models/                     # Data Models (Doctor, Patient, Chamber, LabTest)
-│   └── screens/                    # UI Screens by Module
-│       ├── auth/                   # Authentication & Verification Screens
-│       ├── patient/                # Patient Home, Booking, Prescriptions, Lab Tests
-│       ├── doctor/                 # Doctor Dashboard, Chambers, Schedule, Earnings
-│       └── diagnostic_centre/      # Diagnostic Centre Verification & Lab Pipeline
-├── diagnostic_booking_pipeline.md  # Detailed Diagnostic Workflow Documentation
-├── firestore.rules                 # Cloud Firestore Security Rules
-├── storage.rules                   # Firebase Storage Access Rules
+│   ├── core/                       # Services, Theme, Utility Helpers
+│   ├── models/                     # Data Models (DiagnosticCentreModel, Appointment, etc.)
+│   └── screens/                    # Flutter UI Screens (Patient, Doctor, Diagnostic)
+├── README.md                       # Comprehensive Project Documentation
 └── pubspec.yaml                    # Flutter Dependencies
 ```
 
 ---
 
-## 🗄 Database Schema & Data Models
-
-### Core Collections in Cloud Firestore:
-
-1. **`users`**: User profile credentials (`role`: `patient`, `doctor`, `diagnostic_centre`, `admin`).
-2. **`doctors`**: Doctor profile data, BMDC code, qualifications, `chambers` array, and `availability` schedules.
-3. **`diagnostic_centres`**: Diagnostic facility profile, `dghsCode`, `pathologistName`, `pathologistBmdcNumber`, `tradeLicenseNumber`, and verification status.
-4. **`chambers`**: Top-level practice location records linked by `doctorId`.
-5. **`appointments`**: Consultation bookings with payment status, fee, meeting links, and digital prescription objects.
-6. **`lab_test_bookings`**: Diagnostic lab test bookings tracking the 5-stage lifecycle, phlebotomist assignment, findings, and `reportUrl`.
-
----
-
-## 🛡 Credential Verification Engine
-
-MediConnect mandates official health ministry verification before provider accounts are unlocked:
-
-- **Doctor Verification**: Super Admin verifies the doctor's Bangladesh Medical and Dental Council (**BMDC**) Registration Number against official databases.
-- **Diagnostic Centre Verification**: Super Admin validates the Directorate General of Health Services (**DGHS**) Registration Code and the Chief Pathologist's **BMDC Registration Number**.
-- **Pending Safeguard**: Providers attempting to log in prior to admin approval are safely held at the `verification_pending` screen displaying their submitted credentials.
-
----
-
-## 🤖 AI Health Assistant (MediBot)
-
-Integrated via `ChatbotService` utilizing **Google Gemini 1.5 Flash**:
-
-- Evaluates patient symptom descriptions in natural language.
-- Recommends appropriate medical specialists (e.g. *Cardiologist*, *Dermatologist*, *Neurologist*).
-- Provides preliminary health advice and urgency triage (Low, Medium, Emergency).
-
----
-
-## 🚀 Installation & Setup Guide
+## ⚡ Installation & Setup Guide
 
 ### Prerequisites
-- [Flutter SDK](https://flutter.dev/docs/get-started/install) (v3.19.0 or higher)
-- [Python](https://www.python.org/downloads/) (v3.10 or higher)
-- [Firebase CLI](https://firebase.google.com/docs/cli)
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (`v3.19.0` or higher)
+- [Python 3.10+](https://www.python.org/downloads/)
+- [Firebase Account & CLI](https://firebase.google.com/)
 
-### Mobile & Web Application (Flutter)
+---
 
-1. **Clone the Repository**:
+### Mobile & Web App (Flutter)
+
+1. **Clone Repository**:
    ```bash
    git clone https://github.com/deba75/medical-management-system.git
-   cd medical-management-system
+   cd telemedicine
    ```
 
 2. **Install Flutter Dependencies**:
@@ -223,17 +225,16 @@ Integrated via `ChatbotService` utilizing **Google Gemini 1.5 Flash**:
    flutter pub get
    ```
 
-3. **Configure Firebase**:
-   Ensure `google-services.json` (Android) and `firebase_options.dart` are linked to your Firebase project.
-
-4. **Run the Application**:
+3. **Run Mobile / Web App**:
    ```bash
-   # Run on Chrome Web
+   # Run on Chrome
    flutter run -d chrome
 
-   # Run on Android Emulator / Physical Device
+   # Run on Connected Android Device / Emulator
    flutter run -d android
    ```
+
+---
 
 ### Web Admin & Doctor/Diagnostic Portal (Python Flask)
 
@@ -244,21 +245,19 @@ Integrated via `ChatbotService` utilizing **Google Gemini 1.5 Flash**:
 
 2. **Install Python Dependencies**:
    ```bash
-   pip install -r requirements.txt
+   pip install flask firebase-admin werkzeug
    ```
 
-3. **Service Account Key**:
-   Place your Firebase Service Account Key JSON file at `Admin/serviceAccountKey.json`.
-
-4. **Launch Flask Web Portal**:
+3. **Start Flask Web Server**:
    ```bash
    python app.py
    ```
-   Access the web portal at `http://127.0.0.1:5000`.
+   *Access Web Portal at: `http://localhost:5000`*
 
 ---
 
-## ☁️ Deployment & Cloud Host Setup
+## ☁ Deployment & Cloud Host Setup
 
-- **Live Web Portal**: Deployed on Render / Cloud Host linked to GitHub main branch.
-- **Firebase Host**: Production Firestore DB & Storage rules configured via `firestore.rules` and `storage.rules`.
+- **GitHub Repository**: [deba75/medical-management-system](https://github.com/deba75/medical-management-system.git)
+- **Main Branch**: `main`
+- **Currency**: Standardized in Bangladeshi Taka (**৳ / BDT**)
