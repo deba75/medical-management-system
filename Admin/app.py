@@ -2178,19 +2178,35 @@ def diagnostic_bookings():
 @app.route('/diagnostic/booking/<booking_id>')
 @diagnostic_required
 def diagnostic_booking_detail(booking_id):
+    centre_id = session.get('user_id')
     booking = {'id': booking_id, 'patientName': 'Patient', 'status': 'pending'}
+    collectors = []
+
     if db is not None:
         try:
             doc = db.collection('lab_test_bookings').document(booking_id).get()
             if doc.exists:
                 booking = doc.to_dict()
                 booking['id'] = doc.id
+                
+            if centre_id:
+                c_doc = db.collection('diagnostic_centres').document(centre_id).get()
+                if c_doc.exists:
+                    collectors = c_doc.to_dict().get('collectors', [])
         except Exception as e:
             print(f"Error fetching booking: {e}")
 
+    if not collectors:
+        collectors = [
+            {'name': 'Rahul Hasan', 'phone': '+880 1712-998877', 'vehicle': 'Motorcycle (Dhaka Metro)'},
+            {'name': 'Suman Chowdhury', 'phone': '+880 1812-445566', 'vehicle': 'Motorcycle (Dhaka Metro)'},
+            {'name': 'Kabir Hossain', 'phone': '+880 1912-112233', 'vehicle': 'Bicycle Bio-bag'}
+        ]
+
     return render_template('diagnostic/booking_detail.html',
                            active_page='bookings',
-                           booking=booking)
+                           booking=booking,
+                           collectors=collectors)
 
 @app.route('/diagnostic/booking/<booking_id>/status', methods=['POST'])
 @diagnostic_required

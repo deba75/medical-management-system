@@ -1,36 +1,88 @@
 {% extends "diagnostic/base.html" %}
 {% block title %}Manage Booking #{{ booking.id[:8] }}{% endblock %}
-{% block header_title %}Lab Test Booking Details & Status{% endblock %}
+{% block header_title %}5-Stage Lab Test Operations Pipeline{% endblock %}
 
 {% block content %}
-<div class="row g-4 mb-4">
+<!-- 5-Stage Stepper Banner -->
+<div class="card border-0 shadow-sm mb-4" style="border-radius: 16px;">
+    <div class="card-body py-4">
+        <h6 class="fw-bold mb-3 text-muted text-uppercase small"><i class="bi bi-diagram-3 me-2" style="color: #0d9488;"></i>Current Pipeline Progress</h6>
+        {% set st = booking.get('status', 'pending') %}
+        <div class="d-flex justify-content-between align-items-center position-relative">
+            <div class="text-center flex-fill position-relative z-1">
+                <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center fw-bold mb-1 {% if st in ['pending','approved','collectorAssigned','sampleCollected','processing','completed'] %}bg-success text-white{% else %}bg-secondary text-white{% endif %}" style="width:38px;height:38px;">1</div>
+                <small class="fw-bold {% if st == 'pending' %}text-success{% else %}text-muted{% endif %}">1. Submitted</small>
+            </div>
+            <div class="text-center flex-fill position-relative z-1">
+                <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center fw-bold mb-1 {% if st in ['approved','collectorAssigned','sampleCollected','processing','completed'] %}bg-success text-white{% else %}bg-light text-muted border{% endif %}" style="width:38px;height:38px;">2</div>
+                <small class="fw-bold {% if st == 'approved' %}text-success{% else %}text-muted{% endif %}">2. Approved</small>
+            </div>
+            <div class="text-center flex-fill position-relative z-1">
+                <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center fw-bold mb-1 {% if st in ['collectorAssigned','sampleCollected','processing','completed'] %}bg-success text-white{% else %}bg-light text-muted border{% endif %}" style="width:38px;height:38px;">3</div>
+                <small class="fw-bold {% if st == 'collectorAssigned' %}text-success{% else %}text-muted{% endif %}">3. Collector Assigned</small>
+            </div>
+            <div class="text-center flex-fill position-relative z-1">
+                <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center fw-bold mb-1 {% if st in ['sampleCollected','processing','completed'] %}bg-success text-white{% else %}bg-light text-muted border{% endif %}" style="width:38px;height:38px;">4</div>
+                <small class="fw-bold {% if st in ['sampleCollected','processing'] %}text-success{% else %}text-muted{% endif %}">4. Processing</small>
+            </div>
+            <div class="text-center flex-fill position-relative z-1">
+                <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center fw-bold mb-1 {% if st == 'completed' %}bg-success text-white{% else %}bg-light text-muted border{% endif %}" style="width:38px;height:38px;">5</div>
+                <small class="fw-bold {% if st == 'completed' %}text-success{% else %}text-muted{% endif %}">5. Report Issued</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
     <div class="col-md-7">
-        <div class="card border-0 shadow-sm mb-4">
+        <!-- Patient & Booking Info -->
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 16px;">
             <div class="card-header bg-white py-3">
                 <h6 class="fw-bold mb-0 text-teal" style="color: #0d9488;"><i class="bi bi-person-circle me-2"></i>Patient & Booking Info</h6>
             </div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-6"><strong>Patient Display Name:</strong> {{ booking.targetPatientDisplay or booking.patientName }}</div>
-                    <div class="col-md-6"><strong>Account Name:</strong> {{ booking.patientName }}</div>
-                    <div class="col-md-6"><strong>Phone Number:</strong> {{ booking.patientPhone or 'N/A' }}</div>
-                    <div class="col-md-6"><strong>Scheduled Date:</strong> {{ booking.scheduledDate or 'N/A' }}</div>
-                    <div class="col-md-6"><strong>Collection Type:</strong>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Patient Name</small>
+                        <span class="fw-bold fs-6">{{ booking.targetPatientDisplay or booking.patientName }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Phone Number</small>
+                        <span class="fw-bold">{{ booking.patientPhone or '+880 1700-000000' }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Scheduled Date</small>
+                        <span class="fw-bold">{{ booking.scheduledDate or 'N/A' }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Collection Mode</small>
                         {% if booking.collectionType == 'homeSample' %}
-                        <span class="badge bg-purple-subtle text-purple border"><i class="bi bi-house me-1"></i>Home Sample Collection</span>
+                        <span class="badge bg-purple-subtle text-purple border"><i class="bi bi-house me-1"></i>Home Visit Biohazard Collection</span>
                         {% else %}
-                        <span class="badge bg-light text-dark border"><i class="bi bi-building me-1"></i>Centre Visit</span>
+                        <span class="badge bg-light text-dark border"><i class="bi bi-building me-1"></i>Walk-in Centre Visit</span>
                         {% endif %}
                     </div>
-                    <div class="col-md-6"><strong>Total Price:</strong> <span class="fw-bold text-success">৳{{ booking.totalAmount or 0 }}</span></div>
-                    <div class="col-md-12"><strong>Collection Address:</strong> {{ booking.address or 'Centre Visit' }}</div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Total Amount</small>
+                        <span class="fw-bold text-success fs-5">৳{{ booking.totalAmount or 0 }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Assigned Phlebotomist</small>
+                        <span class="fw-bold text-primary">{{ booking.collectorName or 'Not Assigned Yet' }}</span>
+                        {% if booking.collectorPhone %}<div class="small text-muted">{{ booking.collectorPhone }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-12">
+                        <small class="text-muted d-block">Collection Address</small>
+                        <div class="bg-light p-2 rounded-3 mt-1 small">{{ booking.address or 'Centre Visit' }}</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm">
+        <!-- Requested Tests Table -->
+        <div class="card border-0 shadow-sm" style="border-radius: 16px;">
             <div class="card-header bg-white py-3">
-                <h6 class="fw-bold mb-0"><i class="bi bi-card-checklist me-2"></i>Requested Tests</h6>
+                <h6 class="fw-bold mb-0"><i class="bi bi-card-checklist me-2" style="color: #0d9488;"></i>Requested Diagnostic Tests</h6>
             </div>
             <div class="card-body p-0">
                 <table class="table align-middle mb-0">
@@ -42,16 +94,22 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% if booking.tests %}
+                        {% if booking.tests and booking.tests|length > 0 %}
                             {% for t in booking.tests %}
                             <tr>
-                                <td class="fw-bold">{{ t.testName }}</td>
-                                <td><span class="badge bg-light text-dark">{{ t.category or 'General' }}</span></td>
-                                <td class="fw-bold">৳{{ t.price }}</td>
+                                <td class="fw-bold">{{ t.get('testName', t.get('name', 'Lab Test')) }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ t.get('category', 'Pathology') }}</span></td>
+                                <td class="fw-bold text-success">৳{{ t.get('price', 500) }}</td>
                             </tr>
                             {% endfor %}
+                        {% elif booking.testName or booking.testNames %}
+                            <tr>
+                                <td class="fw-bold">{{ booking.testName or booking.testNames }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ booking.category or 'Pathology' }}</span></td>
+                                <td class="fw-bold text-success">৳{{ booking.totalAmount or booking.price or 500 }}</td>
+                            </tr>
                         {% else %}
-                        <tr><td colspan="3" class="text-muted">No test items details available.</td></tr>
+                        <tr><td colspan="3" class="text-muted p-3">Diagnostic test details registered.</td></tr>
                         {% endif %}
                     </tbody>
                 </table>
@@ -59,54 +117,81 @@
         </div>
     </div>
 
+    <!-- Automated Stage Control Actions -->
     <div class="col-md-5">
-        <div class="card border-0 shadow-sm mb-4">
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 16px;">
             <div class="card-header bg-white py-3">
-                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-gear-fill me-2"></i>Update Request Status</h6>
+                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-lightning-charge me-2"></i>Automated Stage Controls</h6>
             </div>
             <div class="card-body">
-                <p>Current Status: <span class="badge bg-dark">{{ booking.status }}</span></p>
-
-                <form method="POST" action="{{ url_for('diagnostic_update_booking_status', booking_id=booking.id) }}" class="mb-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Select Status Step</label>
-                        <select name="status" class="form-select">
-                            <option value="approved" {% if booking.status == 'approved' %}selected{% endif %}>Approve Request</option>
-                            <option value="collectorAssigned" {% if booking.status == 'collectorAssigned' %}selected{% endif %}>Assign Collector / Phlebotomist</option>
-                            <option value="sampleCollected" {% if booking.status == 'sampleCollected' %}selected{% endif %}>Sample Collected / In Transit</option>
-                            <option value="processing" {% if booking.status == 'processing' %}selected{% endif %}>Processing in Lab</option>
-                            <option value="completed" {% if booking.status == 'completed' %}selected{% endif %}>Complete & Publish Report</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Sample Collector Name</label>
-                        <input type="text" name="collectorName" class="form-control" value="{{ booking.collectorName or '' }}" placeholder="e.g. Rahul Hasan">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Sample Collector Phone</label>
-                        <input type="text" name="collectorPhone" class="form-control" value="{{ booking.collectorPhone or '' }}" placeholder="+880 1700-000000">
-                    </div>
-
-                    <button type="submit" class="btn btn-teal w-100" style="background: #0d9488; color: white;">
-                        <i class="bi bi-check2-circle me-1"></i>Update Status
+                <!-- Step 1: Approve Booking -->
+                <form method="POST" action="{{ url_for('diagnostic_update_booking_status', booking_id=booking.id) }}" class="mb-3">
+                    <input type="hidden" name="status" value="approved">
+                    <button type="submit" class="btn btn-outline-primary w-100 py-2 fw-bold text-start d-flex justify-content-between align-items-center" {% if st != 'pending' %}disabled{% endif %}>
+                        <span><i class="bi bi-check2-circle me-2"></i>Step 1: Approve Booking Request</span>
+                        {% if st != 'pending' %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}
                     </button>
                 </form>
 
-                <hr>
-
-                <!-- Enter Test Results -->
-                <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-file-text me-2"></i>Lab Test Report Notes / Values</h6>
-                <form method="POST" action="{{ url_for('diagnostic_save_test_results', booking_id=booking.id) }}">
-                    <div class="mb-3">
-                        <textarea name="testResults" class="form-control" rows="4" placeholder="Enter test result values, parameters, and findings here... e.g. HbA1c: 6.2%, Fasting Glucose: 95 mg/dL">{{ booking.testResults or '' }}</textarea>
-                    </div>
-                    <button type="submit" class="btn btn-success w-100">
-                        <i class="bi bi-cloud-upload me-1"></i>Save Results & Complete
+                <!-- Step 2: Assign Registered Collector -->
+                <form method="POST" action="{{ url_for('diagnostic_update_booking_status', booking_id=booking.id) }}" class="mb-3 border p-3 rounded-3 bg-light">
+                    <input type="hidden" name="status" value="collectorAssigned">
+                    <label class="form-label fw-bold small text-dark"><i class="bi bi-person-badge me-1"></i>Step 2: Assign Phlebotomist / Collector Staff</label>
+                    <select name="collector_select" id="collectorSelect" class="form-select mb-2" onchange="onCollectorSelect(this)" required>
+                        <option value="">-- Select Registered Staff Collector --</option>
+                        {% for c in collectors %}
+                        <option value="{{ c.get('name') }}" data-phone="{{ c.get('phone', '') }}">{{ c.get('name') }} ({{ c.get('phone', 'No Phone') }})</option>
+                        {% endfor %}
+                    </select>
+                    <input type="hidden" name="collectorName" id="collectorNameInput" value="{{ booking.collectorName or '' }}">
+                    <input type="hidden" name="collectorPhone" id="collectorPhoneInput" value="{{ booking.collectorPhone or '' }}">
+                    
+                    <button type="submit" class="btn btn-teal w-100 py-2 fw-bold" style="background: #0d9488; color: white;" {% if st in ['completed'] %}disabled{% endif %}>
+                        <i class="bi bi-send me-1"></i>Assign Collector & Dispatch
                     </button>
                 </form>
+
+                <!-- Step 3: Mark Sample Collected / Processing -->
+                <form method="POST" action="{{ url_for('diagnostic_update_booking_status', booking_id=booking.id) }}" class="mb-3">
+                    <input type="hidden" name="status" value="processing">
+                    <button type="submit" class="btn btn-outline-info w-100 py-2 fw-bold text-start d-flex justify-content-between align-items-center" {% if st in ['pending','approved'] %}disabled{% endif %}>
+                        <span><i class="bi bi-droplet-half me-2"></i>Step 3: Sample Collected & Processing in Lab</span>
+                        {% if st in ['processing','completed'] %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}
+                    </button>
+                </form>
+
+                <!-- Step 4: Enter Results & Publish PDF Report -->
+                <div class="border p-3 rounded-3">
+                    <h6 class="fw-bold small text-dark mb-2"><i class="bi bi-file-earmark-medical me-1"></i>Step 4: Input Results & Issue PDF Report</h6>
+                    <form method="POST" action="{{ url_for('diagnostic_save_test_results', booking_id=booking.id) }}">
+                        <div class="mb-3">
+                            <textarea name="testResults" class="form-control" rows="3" placeholder="Enter findings, e.g. Haemoglobin: 14.2 g/dL, Fasting Glucose: 95 mg/dL" required>{{ booking.testResults or '' }}</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 py-2 fw-bold">
+                            <i class="bi bi-file-earmark-check me-1"></i>Save Results & Publish Report
+                        </button>
+                    </form>
+                </div>
+
+                {% if st == 'completed' %}
+                <div class="mt-3">
+                    <a href="{{ url_for('diagnostic_report_print', booking_id=booking.id) }}" target="_blank" class="btn btn-outline-success w-100 fw-bold py-2">
+                        <i class="bi bi-printer me-1"></i>View / Print Official Report PDF
+                    </a>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function onCollectorSelect(sel) {
+    const selectedOpt = sel.options[sel.selectedIndex];
+    const name = selectedOpt.value;
+    const phone = selectedOpt.getAttribute('data-phone') || '';
+    document.getElementById('collectorNameInput').value = name;
+    document.getElementById('collectorPhoneInput').value = phone;
+}
+</script>
 {% endblock %}
