@@ -1300,37 +1300,74 @@ def verification_pending():
                            status=status,
                            user_data=user_data)
 
+def is_appointment_for_doctor(appt_data, doctor_id, user_email, user_name):
+    """Check if an appointment belongs to the specified doctor using ID, email, or name matching"""
+    if not appt_data or not isinstance(appt_data, dict):
+        return False
+        
+    doc_id = str(appt_data.get('doctorId') or '').strip()
+    doc_email = str(appt_data.get('doctorEmail') or '').lower().strip()
+    doc_name = str(appt_data.get('doctorName') or '').lower().strip()
+    
+    target_id = str(doctor_id or '').strip()
+    target_email = str(user_email or '').lower().strip()
+    target_name = str(user_name or '').lower().strip()
+    
+    # 1. Match by Exact Doctor ID
+    if target_id and doc_id and doc_id == target_id:
+        return True
+        
+    # 2. Match by Doctor Email
+    if target_email and (doc_email == target_email or doc_id == target_email):
+        return True
+        
+    # 3. Match by Name (stripping Dr. prefix)
+    clean_target = target_name.replace('dr.', '').replace('dr', '').strip()
+    clean_doc = doc_name.replace('dr.', '').replace('dr', '').strip()
+    
+    if clean_target and clean_doc and len(clean_target) >= 3:
+        if clean_target == clean_doc or clean_target in clean_doc or clean_doc in clean_target:
+            return True
+            
+    return False
+
 # =================== Doctor & Diagnostic Auth Decorators ===================
 
 def doctor_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'admin_email' not in session and 'user_email' not in session:
-            flash('Please login to access Doctor Portal', 'warning')
-            return redirect(url_for('login'))
         role = session.get('user_role')
-        if role not in ['doctor', 'admin']:
-            flash('Access restricted to Doctors only', 'danger')
+        if role == 'admin':
+            flash('Access restricted to Doctors. You are logged in as Super Admin.', 'warning')
+            return redirect(url_for('dashboard'))
+            
+        if 'user_email' not in session or role != 'doctor':
+            flash('Please login with your Doctor account to access Doctor Portal', 'warning')
             return redirect(url_for('login'))
-        if role == 'doctor' and session.get('verification_status') != 'approved':
-            flash('Your account is pending admin verification.', 'warning')
+            
+        if session.get('verification_status') != 'approved':
+            flash('Your Doctor account is pending admin verification.', 'warning')
             return redirect(url_for('verification_pending'))
+            
         return f(*args, **kwargs)
     return decorated_function
 
 def diagnostic_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'admin_email' not in session and 'user_email' not in session:
-            flash('Please login to access Diagnostic Portal', 'warning')
-            return redirect(url_for('login'))
         role = session.get('user_role')
-        if role not in ['diagnostic_centre', 'diagnostic', 'admin']:
-            flash('Access restricted to Diagnostic Centres only', 'danger')
+        if role == 'admin':
+            flash('Access restricted to Diagnostic Centres. You are logged in as Super Admin.', 'warning')
+            return redirect(url_for('dashboard'))
+            
+        if 'user_email' not in session or role not in ['diagnostic_centre', 'diagnostic']:
+            flash('Please login with your Diagnostic Centre account', 'warning')
             return redirect(url_for('login'))
-        if role in ['diagnostic_centre', 'diagnostic'] and session.get('verification_status') != 'approved':
-            flash('Your account is pending admin verification.', 'warning')
+            
+        if session.get('verification_status') != 'approved':
+            flash('Your Diagnostic Centre account is pending admin verification.', 'warning')
             return redirect(url_for('verification_pending'))
+            
         return f(*args, **kwargs)
     return decorated_function
 
@@ -1348,30 +1385,27 @@ def doctor_dashboard():
     today_count = 0
     pending_count = 0
     completed_count = 0
-    total_earnings = 0
+    total_earnings = 0.0
 
     if db is not None:
         try:
-            docs = db.collection('appointments').stream()
+            docs = list(db.collection('appointments').stream())
             for d in docs:
                 data = d.to_dict()
                 data['id'] = d.id
-                doc_id_match = (
-                    (data.get('doctorId') == doctor_id) or
-                    (user_email and data.get('doctorEmail') == user_email) or
-                    (user_email and data.get('doctorId') == user_email) or
-                    (user_name and data.get('doctorName', '').lower() in user_name.lower()) or
-                    (session.get('user_role') == 'admin')
-                )
-                if doc_id_match:
+                
+                if is_appointment_for_doctor(data, doctor_id, user_email, user_name):
                     appointments.append(data)
+                    status = data.get('status', 'pending').lower()
+                    
                     if data.get('date') == today_str or data.get('createdAt') == today_str:
                         today_count += 1
-                    if data.get('status') == 'pending':
+                        
+                    if status == 'pending':
                         pending_count += 1
-                    elif data.get('status') == 'completed':
+                    elif status == 'completed':
                         completed_count += 1
-                        total_earnings += float(data.get('fee') or 500)
+                        total_earnings += float(data.get('fee') or data.get('consultationFee') or 500)
         except Exception as e:
             print(f"Error fetching doctor appointments: {e}")
             
@@ -1386,7 +1420,7 @@ def doctor_dashboard():
 @app.route('/doctor/appointments')
 @doctor_required
 def doctor_appointments():
-    status_filter = request.args.get('status', '')
+    status_filter = request.args.get('status', '').strip().lower()
     doctor_id = session.get('user_id')
     user_email = session.get('user_email')
     user_name = session.get('user_name', '')
@@ -1401,16 +1435,9 @@ def doctor_appointments():
             for d in docs:
                 data = d.to_dict()
                 data['id'] = d.id
-                doc_id_match = (
-                    (data.get('doctorId') == doctor_id) or
-                    (user_email and data.get('doctorEmail') == user_email) or
-                    (user_email and data.get('doctorId') == user_email) or
-                    (user_name and data.get('doctorName', '').lower() in user_name.lower()) or
-                    (session.get('user_role') == 'admin')
-                )
                 
-                if doc_id_match:
-                    appt_status = data.get('status', 'pending')
+                if is_appointment_for_doctor(data, doctor_id, user_email, user_name):
+                    appt_status = data.get('status', 'pending').lower()
                     appt_date = data.get('date', '')
                     
                     # Auto-expire past unfulfilled appointments to 'missed'
@@ -1702,18 +1729,50 @@ def doctor_delete_chamber(index):
 @app.route('/doctor/patients')
 @doctor_required
 def doctor_patients():
-    search_query = request.args.get('search', '').lower()
-    patients = []
+    doctor_id = session.get('user_id')
+    user_email = session.get('user_email')
+    user_name = session.get('user_name', '')
+    search_query = request.args.get('search', '').strip().lower()
+    
+    doctor_patient_ids = set()
+    doctor_patient_emails = set()
+    
     if db is not None:
-        docs = db.collection('users').where('role', '==', 'patient').stream()
-        for d in docs:
-            data = d.to_dict()
-            data['id'] = d.id
-            if search_query:
-                if search_query in data.get('name', '').lower() or search_query in data.get('phone', '').lower() or search_query in data.get('email', '').lower():
-                    patients.append(data)
-            else:
-                patients.append(data)
+        try:
+            appt_docs = list(db.collection('appointments').stream())
+            for d in appt_docs:
+                data = d.to_dict()
+                if is_appointment_for_doctor(data, doctor_id, user_email, user_name):
+                    pid = data.get('patientId')
+                    pemail = data.get('patientEmail')
+                    if pid:
+                        doctor_patient_ids.add(pid)
+                    if pemail:
+                        doctor_patient_emails.add(pemail.lower())
+        except Exception as e:
+            print(f"Error fetching doctor patient IDs: {e}")
+            
+    patients = []
+    if db is not None and (doctor_patient_ids or doctor_patient_emails):
+        try:
+            all_patients = list(db.collection('users').where('role', '==', 'patient').stream())
+            for pdoc in all_patients:
+                pdata = pdoc.to_dict()
+                pid = pdoc.id
+                pemail = (pdata.get('email') or '').lower()
+                
+                if pid in doctor_patient_ids or (pemail and pemail in doctor_patient_emails):
+                    pdata['id'] = pid
+                    if search_query:
+                        if (search_query in pdata.get('name', '').lower() or
+                            search_query in pdata.get('phone', '').lower() or
+                            search_query in pemail):
+                            patients.append(pdata)
+                    else:
+                        patients.append(pdata)
+        except Exception as e:
+            print(f"Error fetching patient records: {e}")
+            
     return render_template('doctor/patients.html', active_page='patients', patients=patients, search_query=search_query)
 
 @app.route('/doctor/request-access/<patient_id>')
