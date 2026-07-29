@@ -1,60 +1,142 @@
 {% extends "doctor/base.html" %}
 {% block title %}Schedule & Availability{% endblock %}
-{% block header_title %}Schedule & Time Slot Management{% endblock %}
+{% block header_title %}Schedule & Interactive Time Slot Management{% endblock %}
 
 {% block content %}
 <div class="row g-4">
-    <div class="col-md-8">
-        <div class="card border-0 shadow-sm">
+    <div class="col-md-9">
+        <div class="card border-0 shadow-sm rounded-3">
             <div class="card-header bg-white py-3">
-                <h6 class="fw-bold mb-0 text-primary"><i class="bi bi-clock-history me-2"></i>Weekly Practice Availability</h6>
+                <h6 class="fw-bold mb-0 text-primary">
+                    <i class="bi bi-calendar-check me-2"></i>Configure Consultation Days & Time Slots
+                </h6>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 <form method="POST" action="{{ url_for('doctor_availability') }}">
+                    <!-- Days Selector -->
                     <div class="mb-4">
-                        <label class="form-label fw-bold">Select Available Days</label>
-                        <div class="d-flex flex-wrap gap-3">
-                            {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                        <label class="form-label fw-bold">Select Active Practice Days</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% set days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] %}
+                            {% set selected_days = doctor_data.availability.get('availableDays', ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']) if doctor_data.availability else ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'] %}
                             {% for day in days %}
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="availableDays" value="{{ day }}" id="day_{{ day }}"
-                                {% if doctor_data.availability and day in doctor_data.availability.get('availableDays', []) %}checked{% endif %}>
-                                <label class="form-check-label" for="day_{{ day }}">{{ day }}</label>
-                            </div>
+                            <input type="checkbox" class="btn-check" name="availableDays" value="{{ day }}" id="btn_day_{{ day }}"
+                            {% if day in selected_days %}checked{% endif %}>
+                            <label class="btn btn-outline-primary px-3 py-2 fw-semibold" for="btn_day_{{ day }}">{{ day }}</label>
                             {% endfor %}
                         </div>
                     </div>
 
+                    <!-- Time & Slot Settings -->
                     <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Start Time</label>
-                            <input type="time" name="startTime" class="form-control" value="{{ doctor_data.availability.get('startTime', '09:00') if doctor_data.availability else '09:00' }}">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Shift Start Time</label>
+                            <input type="time" id="startTimeInput" name="startTime" class="form-control form-control-lg"
+                                   value="{{ doctor_data.availability.get('startTime', '09:00') if doctor_data.availability else '09:00' }}" onchange="generateTimeSlots()">
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">End Time</label>
-                            <input type="time" name="endTime" class="form-control" value="{{ doctor_data.availability.get('endTime', '17:00') if doctor_data.availability else '17:00' }}">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Shift End Time</label>
+                            <input type="time" id="endTimeInput" name="endTime" class="form-control form-control-lg"
+                                   value="{{ doctor_data.availability.get('endTime', '17:00') if doctor_data.availability else '17:00' }}" onchange="generateTimeSlots()">
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Slot Duration (Minutes)</label>
-                            <select name="slotDuration" class="form-select">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Slot Duration</label>
+                            <select id="slotDurationSelect" name="slotDuration" class="form-select form-select-lg" onchange="generateTimeSlots()">
                                 <option value="15" {% if doctor_data.availability and doctor_data.availability.get('slotDuration') == 15 %}selected{% endif %}>15 Minutes</option>
                                 <option value="20" {% if doctor_data.availability and doctor_data.availability.get('slotDuration') == 20 %}selected{% endif %}>20 Minutes</option>
-                                <option value="30" {% if doctor_data.availability and doctor_data.availability.get('slotDuration') == 30 %}selected{% endif %}>30 Minutes</option>
+                                <option value="30" {% if doctor_data.availability and (not doctor_data.availability or doctor_data.availability.get('slotDuration') == 30) %}selected{% endif %}>30 Minutes</option>
                                 <option value="45" {% if doctor_data.availability and doctor_data.availability.get('slotDuration') == 45 %}selected{% endif %}>45 Minutes</option>
+                                <option value="60" {% if doctor_data.availability and doctor_data.availability.get('slotDuration') == 60 %}selected{% endif %}>60 Minutes</option>
                             </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Max Patients Per Slot</label>
-                            <input type="number" name="maxPatientsPerSlot" class="form-control" value="{{ doctor_data.availability.get('maxPatientsPerSlot', 1) if doctor_data.availability else 1 }}">
                         </div>
                     </div>
 
-                    <div class="mt-4">
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle me-1"></i>Save Schedule Settings</button>
+                    <!-- Auto Generated Time Slot Chips Preview -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-bold mb-0">Generated Time Slots Preview (Click to Disable/Enable Specific Slot)</label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="generateTimeSlots()">Refresh Slots</button>
+                        </div>
+                        <div id="slotsContainer" class="d-flex flex-wrap gap-2 p-3 bg-light rounded-3 border">
+                            <!-- Populated via JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" class="btn btn-primary btn-lg fw-bold px-4">
+                            <i class="bi bi-check-circle me-2"></i>Save Schedule & Slot Settings
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function formatAMPM(timeStr) {
+    let parts = timeStr.split(':');
+    let hours = parseInt(parts[0]);
+    let minutes = parseInt(parts[1]);
+    let ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    return hours + ':' + minutes + ' ' + ampm;
+}
+
+function generateTimeSlots() {
+    let startVal = document.getElementById('startTimeInput').value || '09:00';
+    let endVal = document.getElementById('endTimeInput').value || '17:00';
+    let duration = parseInt(document.getElementById('slotDurationSelect').value || 30);
+    
+    let startParts = startVal.split(':');
+    let endParts = endVal.split(':');
+    
+    let startMins = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+    let endMins = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+    
+    let container = document.getElementById('slotsContainer');
+    container.innerHTML = '';
+    
+    if (endMins <= startMins) {
+        container.innerHTML = '<span class="text-danger small fw-bold"><i class="bi bi-exclamation-circle me-1"></i>End time must be after start time.</span>';
+        return;
+    }
+    
+    let current = startMins;
+    let count = 0;
+    
+    while (current + duration <= endMins) {
+        let next = current + duration;
+        
+        let sh = Math.floor(current / 60);
+        let sm = current % 60;
+        let sStr = (sh < 10 ? '0' + sh : sh) + ':' + (sm < 10 ? '0' + sm : sm);
+        
+        let eh = Math.floor(next / 60);
+        let em = next % 60;
+        let eStr = (eh < 10 ? '0' + eh : eh) + ':' + (em < 10 ? '0' + em : em);
+        
+        let slotText = formatAMPM(sStr) + ' - ' + formatAMPM(eStr);
+        
+        let chip = document.createElement('span');
+        chip.className = 'badge bg-primary bg-opacity-10 text-primary border border-primary p-2 fs-7 me-1 mb-1';
+        chip.style.cursor = 'pointer';
+        chip.innerHTML = '<i class="bi bi-clock me-1"></i>' + slotText;
+        
+        container.appendChild(chip);
+        current = next;
+        count++;
+    }
+    
+    if (count === 0) {
+        container.innerHTML = '<span class="text-muted small">No slots fit in selected range.</span>';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    generateTimeSlots();
+});
+</script>
 {% endblock %}

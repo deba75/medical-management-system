@@ -1687,28 +1687,72 @@ def doctor_chambers():
 @doctor_required
 def doctor_add_chamber():
     doctor_id = session.get('user_id')
+    user_email = session.get('user_email')
+    
     if db is not None and doctor_id:
         name = request.form.get('name')
         address = request.form.get('address')
         phone = request.form.get('phone')
         visitingHours = request.form.get('visitingHours')
-        fee = int(request.form.get('fee', 500))
+        fee = float(request.form.get('fee', 500))
+        
+        chamber_id = f"c_{int(datetime.now().timestamp())}"
         
         new_chamber = {
+            'id': chamber_id,
             'name': name,
+            'chamberName': name,
+            'hospitalName': name,
             'address': address,
+            'fullAddress': address,
             'phone': phone,
+            'contactPhone': phone,
             'visitingHours': visitingHours,
-            'fee': fee
+            'fee': fee,
+            'consultationFee': fee,
+            'doctorId': doctor_id,
+            'doctorEmail': user_email,
+            'isActive': True,
+            'createdAt': datetime.now().isoformat()
         }
         
+        # 1. Update doctors collection
         doc_ref = db.collection('doctors').document(doctor_id)
         doc = doc_ref.get()
-        current_chambers = doc.to_dict().get('chambers', []) if doc.exists else []
-        current_chambers.append(new_chamber)
+        doc_data = doc.to_dict() if doc.exists else {}
         
-        doc_ref.set({'chambers': current_chambers}, merge=True)
-        flash('Chamber added successfully!', 'success')
+        current_chambers = doc_data.get('chambers', [])
+        current_hospitals = doc_data.get('hospitals', [])
+        
+        current_chambers.append(new_chamber)
+        if name and name not in current_hospitals:
+            current_hospitals.append(name)
+            
+        doc_ref.set({
+            'chambers': current_chambers,
+            'hospitals': current_hospitals,
+            'hospital': name,
+            'updatedAt': datetime.now()
+        }, merge=True)
+        
+        # 2. Sync to users collection
+        try:
+            db.collection('users').document(doctor_id).set({
+                'chambers': current_chambers,
+                'hospitals': current_hospitals,
+                'hospital': name,
+                'updatedAt': datetime.now()
+            }, merge=True)
+        except Exception as sync_err:
+            print(f"Chamber sync error to users: {sync_err}")
+            
+        # 3. Create document in top-level chambers collection
+        try:
+            db.collection('chambers').document(chamber_id).set(new_chamber)
+        except Exception as top_err:
+            print(f"Top level chambers collection add error: {top_err}")
+            
+        flash(f'Chamber "{name}" added and synced live for patients!', 'success')
     return redirect(url_for('doctor_chambers'))
 
 @app.route('/doctor/chambers/delete/<int:index>')
@@ -1719,10 +1763,25 @@ def doctor_delete_chamber(index):
         doc_ref = db.collection('doctors').document(doctor_id)
         doc = doc_ref.get()
         if doc.exists:
-            chambers = doc.to_dict().get('chambers', [])
+            doc_data = doc.to_dict()
+            chambers = doc_data.get('chambers', [])
+            hospitals = doc_data.get('hospitals', [])
             if 0 <= index < len(chambers):
-                chambers.pop(index)
-                doc_ref.set({'chambers': chambers}, merge=True)
+                removed = chambers.pop(index)
+                removed_name = removed.get('name')
+                if removed_name in hospitals:
+                    hospitals.remove(removed_name)
+                    
+                doc_ref.set({'chambers': chambers, 'hospitals': hospitals}, merge=True)
+                try:
+                    db.collection('users').document(doctor_id).set({'chambers': chambers, 'hospitals': hospitals}, merge=True)
+                except Exception:
+                    pass
+                if removed.get('id'):
+                    try:
+                        db.collection('chambers').document(removed.get('id')).delete()
+                    except Exception:
+                        pass
                 flash('Chamber removed.', 'info')
     return redirect(url_for('doctor_chambers'))
 

@@ -30,25 +30,37 @@ class DoctorModel {
   String get hospital => hospitals.isNotEmpty ? hospitals.first : '';
 
   factory DoctorModel.fromJson(Map<String, dynamic> json, String id) {
-    // Support both old format (single hospital) and new format (list)
-    List<String> hospitalsList;
+    // Support both old format (single hospital) and new format (list) and chambers
+    List<String> hospitalsList = [];
     if (json['hospitals'] != null && json['hospitals'] is List) {
       hospitalsList = List<String>.from(json['hospitals']);
     } else if (json['hospital'] != null && json['hospital'] is String) {
       hospitalsList = [json['hospital']];
-    } else {
-      hospitalsList = [];
     }
+
+    if (json['chambers'] != null && json['chambers'] is List) {
+      for (var c in json['chambers']) {
+        if (c is Map && (c['name'] != null || c['chamberName'] != null)) {
+          String cName = (c['name'] ?? c['chamberName']).toString();
+          if (cName.isNotEmpty && !hospitalsList.contains(cName)) {
+            hospitalsList.add(cName);
+          }
+        }
+      }
+    }
+
+    final feeVal = json['consultationFee'] ?? json['fee'] ?? fixedConsultationFee;
+    final feeDouble = (feeVal is num) ? feeVal.toDouble() : fixedConsultationFee;
 
     return DoctorModel(
       doctorId: id,
-      userId: json['userId'] ?? '',
+      userId: json['userId'] ?? id,
       name: json['name'] ?? '',
       specialization: json['specialization'] ?? '',
       hospitals: hospitalsList,
-      consultationFee: fixedConsultationFee, // Always use fixed fee of 500
+      consultationFee: feeDouble,
       rating: (json['rating'] ?? 0).toDouble(),
-      profileBio: json['profileBio'] ?? '',
+      profileBio: json['profileBio'] ?? json['bio'] ?? '',
       active: json['active'] ?? true,
       photoURL: json['photoURL'],
     );
