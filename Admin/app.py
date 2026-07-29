@@ -2790,9 +2790,10 @@ def patient_dashboard():
                 p_email = data.get('patientEmail', '')
                 
                 if p_id == patient_id or p_email == user_email or patient_id == 'demo_patient_id':
+                    data = update_appointment_status_if_overdue(data)
                     appointments.append(data)
                     st = data.get('status', 'pending')
-                    if st in ['pending', 'confirmed']:
+                    if st in ['pending', 'confirmed', 'upcoming']:
                         upcoming_count += 1
                     if st == 'completed':
                         total_visits += 1
@@ -2977,6 +2978,7 @@ def patient_appointments():
                 p_id = data.get('patientId', '')
                 p_email = data.get('patientEmail', '')
                 if p_id == patient_id or p_email == user_email or patient_id == 'demo_patient_id':
+                    data = update_appointment_status_if_overdue(data)
                     appointments.append(data)
             appointments.sort(key=lambda x: str(x.get('createdAt', '')), reverse=True)
         except Exception as e:
@@ -2997,6 +2999,7 @@ def patient_appointment_detail(appointment_id):
             if a_doc.exists:
                 appointment = a_doc.to_dict()
                 appointment['id'] = a_doc.id
+                appointment = update_appointment_status_if_overdue(appointment)
                 if appointment.get('prescription'):
                     prescription = appointment.get('prescription')
         except Exception as e:
@@ -3084,6 +3087,42 @@ def patient_diagnostic_centres():
     return render_template('patient/diagnostic_centres.html', active_page='diagnostics', centres=centres, search_query=search_query)
 
 
+def update_appointment_status_if_overdue(data):
+    """If appointment date & time has passed and status is pending/confirmed/upcoming, evaluate as missed."""
+    st = str(data.get('status', 'pending')).lower()
+    if st in ['pending', 'confirmed', 'upcoming']:
+        appt_date_str = data.get('date', '')
+        time_slot = data.get('timeSlot', '')
+        if appt_date_str:
+            try:
+                if 'T' in str(appt_date_str):
+                    appt_date = datetime.fromisoformat(str(appt_date_str).replace('Z', '+00:00')).date()
+                else:
+                    appt_date = datetime.strptime(str(appt_date_str)[:10], '%Y-%m-%d').date()
+                
+                now = datetime.now()
+                today = now.date()
+                
+                if appt_date < today:
+                    data['status'] = 'missed'
+                elif appt_date == today and time_slot:
+                    parts = time_slot.split('-')
+                    if len(parts) >= 2:
+                        end_time_str = parts[1].strip()
+                        try:
+                            if 'PM' in end_time_str or 'AM' in end_time_str:
+                                slot_end = datetime.strptime(end_time_str, '%I:%M %p').time()
+                            else:
+                                slot_end = datetime.strptime(end_time_str, '%H:%M').time()
+                            if now.time() > slot_end:
+                                data['status'] = 'missed'
+                        except Exception:
+                            pass
+            except Exception as e:
+                print(f"Error checking overdue appt status: {e}")
+    return data
+
+
 @app.route('/patient/diagnostic/<centre_id>')
 @patient_required
 def patient_diagnostic_detail(centre_id):
@@ -3098,9 +3137,9 @@ def patient_diagnostic_detail(centre_id):
                 centre['id'] = c_doc.id
                 tests = centre.get('tests', [])
                 
-                # Fallback to available_lab_tests if centre.tests is empty
+                # Fetch available_lab_tests matching ONLY this centre_id
                 if not tests:
-                    t_docs = db.collection('available_lab_tests').stream()
+                    t_docs = db.collection('available_lab_tests').where('centreId', '==', centre_id).stream()
                     for t in t_docs:
                         t_data = t.to_dict()
                         t_data['id'] = t.id
