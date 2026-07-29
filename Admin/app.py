@@ -320,23 +320,41 @@ def register_diagnostic():
 
     return render_template('register_diagnostic.html')
 
+@app.route('/admin')
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        if email in ADMIN_CREDENTIALS and check_password_hash(ADMIN_CREDENTIALS[email], password):
+            session['admin_email'] = email
+            session['user_id'] = 'admin_super'
+            session['user_email'] = email
+            session['user_role'] = 'admin'
+            session['user_name'] = 'Super Admin'
+            session['verification_status'] = 'approved'
+            flash('Logged in as Super Admin!', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Invalid Super Admin credentials.', 'danger')
+            
+    return render_template('admin_login.html')
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
+        login_role = request.form.get('login_role', 'doctor')
         
-        # 1. Super Admin Check
-        if email in ADMIN_CREDENTIALS and check_password_hash(ADMIN_CREDENTIALS[email], password):
-            session['admin_email'] = email
-            session['user_id'] = 'admin'
-            session['user_email'] = email
-            session['user_role'] = 'admin'
-            session['user_name'] = 'Super Admin'
-            flash('Login successful as Super Admin!', 'success')
-            return redirect(url_for('dashboard'))
+        # Prevent admin login via public portal gateway
+        if login_role == 'admin':
+            flash('Admin login is restricted to the secure admin gateway link.', 'warning')
+            return redirect(url_for('login'))
             
-        # 2. Doctor & Diagnostic Centre Check in Firestore
+        # Doctor & Diagnostic Centre Check in Firestore
         if db is not None:
             try:
                 # Check users collection
@@ -344,7 +362,7 @@ def login():
                 if user_docs:
                     user = user_docs[0].to_dict()
                     uid = user_docs[0].id
-                    role = user.get('role', 'patient')
+                    role = user.get('role', 'doctor')
                     name = user.get('name', 'User')
                     v_status = user.get('verificationStatus', 'approved')
                     
@@ -361,7 +379,7 @@ def login():
                             v_status = doc_check.to_dict().get('verificationStatus', 'pending')
                             session['verification_status'] = v_status
                         if v_status != 'approved':
-                            flash('Your Doctor verification is pending or under review. Dashboard access restricted.', 'warning')
+                            flash('Your Doctor verification is pending admin review. Dashboard access restricted.', 'warning')
                             return redirect(url_for('verification_pending'))
                         flash(f'Welcome back, Dr. {name}!', 'success')
                         return redirect(url_for('doctor_dashboard'))
@@ -375,9 +393,6 @@ def login():
                             return redirect(url_for('verification_pending'))
                         flash(f'Welcome back, {name}!', 'success')
                         return redirect(url_for('diagnostic_dashboard'))
-                    elif role == 'admin':
-                        flash('Welcome back, Admin!', 'success')
-                        return redirect(url_for('dashboard'))
                 
                 # Also check doctors collection directly
                 doctor_docs = list(db.collection('doctors').where('email', '==', email).stream())

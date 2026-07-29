@@ -50,12 +50,7 @@
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="diagnostic-tab" data-bs-toggle="tab" data-bs-target="#diagnostic-pane" type="button" onclick="setRole('diagnostic')">
-                    <i class="bi bi-building me-1"></i>Diagnostic
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin-pane" type="button" onclick="setRole('admin')">
-                    <i class="bi bi-shield-lock me-1"></i>Admin
+                    <i class="bi bi-building me-1"></i>Diagnostic Centre
                 </button>
             </li>
         </ul>
@@ -89,7 +84,7 @@
             <div id="signup_prompt">
                 <small class="text-muted d-block mb-1">New Doctor? Register your professional account</small>
                 <a href="{{ url_for('register_doctor') }}" class="btn btn-sm btn-outline-primary fw-bold">
-                    <i class="bi bi-person-plus me-1"></i>Doctor Sign Up
+                    <i class="bi bi-person-plus me-1"></i>Doctor Web Sign Up
                 </a>
             </div>
         </div>
@@ -113,7 +108,7 @@
                     <i class="bi bi-person-plus me-1"></i>Doctor Web Sign Up
                 </a>
             `;
-        } else if (role === 'diagnostic') {
+        } else {
             submitBtn.className = 'btn btn-role-diag w-100 py-3 fw-bold rounded-3 mb-3';
             submitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>Sign In to Diagnostic Portal';
             emailField.placeholder = 'diagnostic@mediconnect.com';
@@ -122,14 +117,6 @@
                 <a href="{{ url_for('register_diagnostic') }}" class="btn btn-sm btn-outline-success fw-bold" style="color: #0d9488; border-color: #0d9488;">
                     <i class="bi bi-building-add me-1"></i>Diagnostic Centre Sign Up
                 </a>
-            `;
-        } else {
-            submitBtn.className = 'btn btn-role-admin w-100 py-3 fw-bold rounded-3 mb-3';
-            submitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>Sign In to Super Admin Dashboard';
-            emailField.placeholder = 'admin@mediconnect.com';
-            signupPrompt.innerHTML = `
-                <small class="text-muted d-block mb-1">Super Admin Credentials</small>
-                <code class="small">admin@mediconnect.com / admin123</code>
             `;
         }
     }
