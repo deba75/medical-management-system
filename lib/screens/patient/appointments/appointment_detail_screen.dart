@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../models/appointment_model.dart';
@@ -494,31 +495,43 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   }
 
   void _viewPrescriptionPdf(BuildContext context, Map<String, dynamic> pData, AppointmentModel appointment) async {
-    final bool isManual = pData['isManualPhoto'] ?? false;
-    final String? fileUrl = pData['fileURL'];
+    final String? fileUrl = pData['fileURL'] ?? pData['fileUrl'] ?? pData['prescriptionUrl'];
 
-    if (isManual && fileUrl != null && fileUrl.isNotEmpty) {
-      showDialog(
-        context: context,
-        builder: (context) => Dialog(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppBar(
-                title: const Text('Prescription Image'),
-                leading: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+    if (fileUrl != null && fileUrl.isNotEmpty) {
+      final isPdf = fileUrl.startsWith('data:application/pdf') ||
+          fileUrl.toLowerCase().contains('.pdf') ||
+          fileUrl.toLowerCase().contains('pdf');
+
+      if (isPdf && (fileUrl.startsWith('http://') || fileUrl.startsWith('https://'))) {
+        try {
+          await launchUrl(Uri.parse(fileUrl), mode: LaunchMode.externalApplication);
+          return;
+        } catch (e) {
+          debugPrint('Error launching prescription PDF URL: $e');
+        }
+      } else if (!isPdf && (fileUrl.startsWith('http://') || fileUrl.startsWith('https://'))) {
+        showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppBar(
+                  title: const Text('Prescription Image'),
+                  leading: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
                 ),
-              ),
-              InteractiveViewer(
-                child: Image.network(fileUrl, fit: BoxFit.contain),
-              ),
-            ],
+                InteractiveViewer(
+                  child: Image.network(fileUrl, fit: BoxFit.contain),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-      return;
+        );
+        return;
+      }
     }
 
     // Generate digital PDF preview
@@ -532,14 +545,14 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       doctorName: pData['doctorName'] ?? appointment.doctorName,
       doctorSpecialization: appointment.specialization,
       doctorQualifications: 'MBBS',
-      bmdcNumber: '',
+      bmdcNumber: pData['bmdcNumber'] ?? '',
       hospitalName: pData['hospital'] ?? 'MediConnect Hospital',
       patientName: appointment.patientName,
       patientAgeGender: 'Patient',
       date: appointment.date,
       medicines: medicinesList,
       diagnosticTests: testsList,
-      clinicalNotes: pData['notes'] ?? '',
+      clinicalNotes: pData['notes'] ?? pData['instructions'] ?? '',
     );
 
     if (!context.mounted) return;

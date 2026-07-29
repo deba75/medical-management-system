@@ -9,6 +9,7 @@ import '../../../core/providers/family_member_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/pdf_generator_service.dart';
 
 
@@ -685,15 +686,26 @@ class _LabTestBookingScreenState extends ConsumerState<LabTestBookingScreen>
                     onPressed: () => _cancelBooking(booking),
                     child: const Text('Cancel', style: TextStyle(color: Colors.red, fontSize: 12)),
                   ),
-                if (booking.reportUrl != null)
+                if (booking.reportUrl != null || booking.status == LabTestStatus.completed)
                   ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Downloading diagnostic report PDF...')),
-                      );
+                    onPressed: () async {
+                      try {
+                        if (booking.reportUrl != null && (booking.reportUrl!.startsWith('http://') || booking.reportUrl!.startsWith('https://'))) {
+                          await launchUrl(Uri.parse(booking.reportUrl!), mode: LaunchMode.externalApplication);
+                        } else {
+                          final pdfBytes = await PdfGeneratorService.generateLabTestReportPdf(booking);
+                          await Printing.layoutPdf(onLayout: (_) => pdfBytes, name: 'Report_${booking.id}.pdf');
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error viewing report PDF: $e'), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
                     },
-                    icon: const Icon(Icons.download, size: 16, color: Colors.white),
-                    label: const Text('Report', style: TextStyle(fontSize: 12, color: Colors.white)),
+                    icon: const Icon(Icons.picture_as_pdf, size: 16, color: Colors.white),
+                    label: const Text('View PDF Report', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
