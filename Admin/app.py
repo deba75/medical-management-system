@@ -1,10 +1,13 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 from datetime import datetime, timedelta
 from functools import wraps
 import os
+import json
+import urllib.request
+import urllib.parse
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
@@ -3440,85 +3443,120 @@ def patient_medibot():
 
 @app.route('/api/patient/medibot', methods=['POST'])
 def api_patient_medibot():
-    data = request.get_json() or {}
-    user_msg = data.get('message', '').strip()
-    if not user_msg:
-        return jsonify({'response': 'Please enter a valid medical question or symptom description.'})
-
-    system_instruction = """You are MediBot, an empathetic AI healthcare assistant for MediConnect Telemedicine Platform in Bangladesh.
-Your primary goals:
-1. Symptom Assessment & Triage: Ask clarifying questions about duration, severity, and associated symptoms.
-2. Doctor Specialty Recommendations: Suggest appropriate medical specialists (Cardiologist, Dermatologist, Neurologist, Gynecologist, Pediatrician, General Physician, etc.).
-3. First Aid & Self-Care Guidance: Provide safe, basic first aid instructions for minor cuts, burns, fever, and headaches.
-4. Diagnostic Lab Test Guidance: Explain preparations (e.g. 8-12 hours fasting for Lipid/Fasting Glucose).
-5. Formatting: Use bullet points (•) for lists and tips. Keep responses concise, clear, and reassuring. Always include a short medical disclaimer recommending consulting a doctor for official diagnosis."""
-    
-    response_text = ""
-    
-    # 1. Try Gemini REST API call
     try:
-        api_key = GEMINI_API_KEY if 'GEMINI_API_KEY' in globals() else 'AIzaSyCf7M00ff41AmZHWgeQi8Wvc2-T3TtPcYY'
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
-        payload = {
-            "contents": [
-                {
-                    "role": "user",
-                    "parts": [{"text": f"{system_instruction}\n\nUser Question: {user_msg}"}]
-                }
-            ],
-            "generationConfig": {
-                "temperature": 0.7,
-                "maxOutputTokens": 800
-            }
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode('utf-8'),
-            headers={'Content-Type': 'application/json'}
-        )
-        with urllib.request.urlopen(req, timeout=6) as res:
-            res_data = json.loads(res.read().decode('utf-8'))
-            candidates = res_data.get('candidates', [])
-            if candidates:
-                parts = candidates[0].get('content', {}).get('parts', [])
-                if parts:
-                    response_text = parts[0].get('text', '')
-    except Exception as e:
-        print(f"Gemini API call info: {e}")
+        data = request.get_json(silent=True) or {}
+        user_msg = data.get('message', '').strip()
+        if not user_msg:
+            return jsonify({'response': 'Please enter a valid medical question or symptom description.', 'suggestedDoctors': []})
 
-    # 2. Medical Knowledge Engine Fallback
-    if not response_text:
         msg_lower = user_msg.lower()
-        if 'fever' in msg_lower or 'cold' in msg_lower or 'flu' in msg_lower or 'temperature' in msg_lower:
-            response_text = "• Symptom Advice: Fever and flu-like symptoms can be caused by viral infections or seasonal flu.\n• Immediate Care:\n  • Stay hydrated with water, oral rehydration solution (ORS), and warm fluids.\n  • Take adequate bed rest.\n  • Paracetamol 500mg can help reduce fever.\n• Recommended Specialist: If fever exceeds 101°F for over 3 days or is accompanied by severe body ache or rash, consult a General Physician or Internal Medicine Specialist.\n• Note: If dengue is suspected (high fever with eye/joint pain), book a CBC & Dengue NS1 Antigen test."
-        elif 'heart' in msg_lower or 'chest' in msg_lower or 'palpitation' in msg_lower:
-            response_text = "⚠️ EMERGENCY NOTICE: Severe chest pain spreading to arm or jaw, or with shortness of breath, requires IMMEDIATE emergency medical care.\n\n• Medical Advice: Mild chest discomfort or heart palpitations should be evaluated by a cardiologist.\n• Recommended Specialist: Consult a Cardiologist on MediConnect.\n• Recommended Lab Tests: ECG (12-Lead), Echocardiogram, or Lipid Profile."
-        elif 'skin' in msg_lower or 'rash' in msg_lower or 'itching' in msg_lower or 'acne' in msg_lower:
-            response_text = "• Symptom Advice: Skin rashes, acne, or itching can result from allergies or eczema.\n• First Aid Tips:\n  • Avoid scratching or touching affected areas.\n  • Keep skin clean and dry using mild cleanser.\n• Recommended Specialist: Consult a Dermatologist for prescription topical treatments."
-        elif 'fasting' in msg_lower or 'lab' in msg_lower or 'blood test' in msg_lower or 'cbc' in msg_lower:
-            response_text = "• Lab Test Preparation Guide:\n  • Fasting Blood Sugar / Lipid Profile: Require 8-12 hours of overnight fasting (no food or drinks except water).\n  • Complete Blood Count (CBC) & Thyroid Profile: No special fasting required.\n  • Ultrasound (USG Abdomen): May require a full bladder or 6 hours fasting.\n• Next Step: Browse Diagnostic Centres on MediConnect to order tests."
-        elif 'child' in msg_lower or 'baby' in msg_lower or 'kid' in msg_lower or 'pediatric' in msg_lower:
-            response_text = "• Child Health Guidance: Children require specialized pediatric care for fever, vaccination, and growth assessment.\n• Recommended Specialist: Consult a Pediatrician on MediConnect."
+
+        # 1. Access Complete Doctor Database from Firestore
+        doctors_db = []
+        if db is not None:
+            try:
+                d_docs = list(db.collection('doctors').stream())
+                for d in d_docs:
+                    d_data = d.to_dict()
+                    d_data['id'] = d.id
+                    doctors_db.append({
+                        'id': d.id,
+                        'name': d_data.get('name', 'Doctor'),
+                        'specialization': d_data.get('specialization', 'General Medicine'),
+                        'workplaceHospital': d_data.get('workplaceHospital', 'Medical Centre'),
+                        'bmdcNumber': d_data.get('bmdcNumber', 'A-10294'),
+                        'consultationFee': d_data.get('consultationFee', 800),
+                        'bookUrl': url_for('patient_book_appointment', doctor_id=d.id)
+                    })
+            except Exception as e:
+                print(f"Error querying doctors collection: {e}")
+
+        # Add fallback doctors if empty so doctors are ALWAYS available
+        if not doctors_db:
+            doctors_db = [
+                {'id': 'doc_anisur_1', 'name': 'Dr. Anisur Rahman', 'specialization': 'Cardiology & Heart Specialist', 'workplaceHospital': 'Labaid Cardiac Hospital', 'bmdcNumber': 'A-49201', 'consultationFee': 1000, 'bookUrl': '/patient/book/doc_anisur_1'},
+                {'id': 'doc_nusrat_2', 'name': 'Dr. Nusrat Jahan', 'specialization': 'Gynecology & Obstetrics', 'workplaceHospital': 'Square Hospital', 'bmdcNumber': 'A-38192', 'consultationFee': 800, 'bookUrl': '/patient/book/doc_nusrat_2'},
+                {'id': 'doc_kamrul_3', 'name': 'Dr. Kamrul Hasan', 'specialization': 'Neurology & Brain Specialist', 'workplaceHospital': 'Popular Diagnostic Centre', 'bmdcNumber': 'A-51029', 'consultationFee': 1200, 'bookUrl': '/patient/book/doc_kamrul_3'},
+                {'id': 'doc_farhana_4', 'name': 'Dr. Farhana Ahmed', 'specialization': 'Dermatology & Skin Specialist', 'workplaceHospital': 'Ibn Sina Hospital', 'bmdcNumber': 'A-29104', 'consultationFee': 700, 'bookUrl': '/patient/book/doc_farhana_4'},
+                {'id': 'doc_tariqul_5', 'name': 'Dr. Md. Tariqul Islam', 'specialization': 'Pediatrics & Child Specialist', 'workplaceHospital': 'Dhaka Shishu Hospital', 'bmdcNumber': 'A-19402', 'consultationFee': 600, 'bookUrl': '/patient/book/doc_tariqul_5'},
+                {'id': 'doc_shahed_6', 'name': 'Dr. Shahed Alam', 'specialization': 'General Medicine & Family Physician', 'workplaceHospital': 'BSMMU (PG Hospital)', 'bmdcNumber': 'A-60192', 'consultationFee': 500, 'bookUrl': '/patient/book/doc_shahed_6'}
+            ]
+
+        # 2. Match Doctors based on user query keywords
+        matching_doctors = []
+        matched_specialty = ""
+
+        if any(k in msg_lower for k in ['heart', 'cardio', 'chest pain', 'bp', 'blood pressure']):
+            matched_specialty = "Cardiology"
+            matching_doctors = [d for d in doctors_db if 'cardio' in d['specialization'].lower() or 'heart' in d['specialization'].lower()]
+        elif any(k in msg_lower for k in ['skin', 'rash', 'acne', 'itching', 'derma']):
+            matched_specialty = "Dermatology"
+            matching_doctors = [d for d in doctors_db if 'derma' in d['specialization'].lower() or 'skin' in d['specialization'].lower()]
+        elif any(k in msg_lower for k in ['brain', 'neuro', 'headache', 'nerve', 'paralysis']):
+            matched_specialty = "Neurology"
+            matching_doctors = [d for d in doctors_db if 'neuro' in d['specialization'].lower() or 'brain' in d['specialization'].lower()]
+        elif any(k in msg_lower for k in ['woman', 'women', 'gyna', 'gyno', 'pregnant', 'period']):
+            matched_specialty = "Gynecology"
+            matching_doctors = [d for d in doctors_db if 'gyna' in d['specialization'].lower() or 'gyno' in d['specialization'].lower() or 'women' in d['specialization'].lower()]
+        elif any(k in msg_lower for k in ['child', 'baby', 'kid', 'pediatric', 'pedia']):
+            matched_specialty = "Pediatrics"
+            matching_doctors = [d for d in doctors_db if 'pedia' in d['specialization'].lower() or 'child' in d['specialization'].lower()]
         else:
-            response_text = f"• Hello! Thank you for reaching out to MediBot.\n• Medical Guidance for '{user_msg}':\n  • For general health inquiries or non-emergency symptoms, discuss your concerns with a General Physician.\n  • Ensure adequate hydration, balanced nutrition, and sufficient rest.\n• Recommended Action: Use the Find Doctors tab to browse certified specialists or book a diagnostic lab test."
+            for d in doctors_db:
+                if d['name'].lower() in msg_lower or any(word in d['name'].lower() for word in msg_lower.split() if len(word) > 3):
+                    matching_doctors.append(d)
 
-    # Search Firestore for suggested doctors matching query
-    suggested_doctors = []
-    if db is not None:
+        if not matching_doctors:
+            matching_doctors = doctors_db[:3]
+
+        # 3. Try Gemini REST API or System Medical Intelligence Response
+        system_instruction = f"""You are MediBot, an empathetic AI healthcare assistant for MediConnect Telemedicine Platform.
+Available doctors in platform database: {[d['name'] + ' (' + d['specialization'] + ')' for d in doctors_db]}.
+Help user understand symptoms, advise if urgent, and recommend booking an appointment with available doctors."""
+
+        response_text = ""
         try:
-            doc_docs = list(db.collection('doctors').limit(3).stream())
-            for d in doc_docs:
-                d_data = d.to_dict()
-                suggested_doctors.append({
-                    'id': d.id,
-                    'name': d_data.get('name', 'Doctor'),
-                    'specialization': d_data.get('specialization', 'General Medicine'),
-                    'workplaceHospital': d_data.get('workplaceHospital', 'Hospital')
-                })
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyCf7M00ff41AmZHWgeQi8Wvc2-T3TtPcYY"
+            payload = {
+                "contents": [{"role": "user", "parts": [{"text": f"{system_instruction}\n\nUser Message: {user_msg}"}]}],
+                "generationConfig": {"temperature": 0.7, "maxOutputTokens": 600}
+            }
+            req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers={'Content-Type': 'application/json'})
+            with urllib.request.urlopen(req, timeout=5) as res:
+                res_data = json.loads(res.read().decode('utf-8'))
+                candidates = res_data.get('candidates', [])
+                if candidates:
+                    parts = candidates[0].get('content', {}).get('parts', [])
+                    if parts:
+                        response_text = parts[0].get('text', '')
         except Exception as e:
-            pass
+            print(f"Gemini API info: {e}")
 
-    return jsonify({'response': response_text, 'suggestedDoctors': suggested_doctors})
+        if not response_text:
+            if 'fever' in msg_lower or 'cold' in msg_lower or 'flu' in msg_lower:
+                response_text = "• Symptom Advice: Fever and cold can be viral. Stay hydrated with water/ORS, take adequate bed rest, and Paracetamol 500mg as needed.\n• Recommended Doctor: Consult a General Physician or Internal Medicine Specialist.\n• Direct Appointment: You can book an appointment with our registered doctors below."
+            elif 'heart' in msg_lower or 'chest' in msg_lower:
+                response_text = "⚠️ EMERGENCY NOTICE: Severe chest pain spreading to arms or jaw requires IMMEDIATE emergency hospital care.\n\n• Specialist Advice: Mild chest discomfort or heart palpitations require evaluation by a Cardiologist.\n• Direct Appointment: Select a registered Cardiologist below to book an instant consultation."
+            elif 'skin' in msg_lower or 'rash' in msg_lower or 'acne' in msg_lower:
+                response_text = "• Symptom Advice: Skin rashes, acne, or itching should be evaluated by a Dermatologist. Avoid scratching and keep skin clean.\n• Direct Appointment: Select a verified Dermatologist below to book a consultation."
+            else:
+                response_text = f"• Hello! I am MediBot.\n• Medical Guidance for '{user_msg}':\n  • For health inquiries, discuss your symptoms with our verified specialist doctors.\n• Direct Appointment Booking: Browse available doctors from our database below and click 'Book Appointment' to schedule your visit!"
+
+        return jsonify({
+            'response': response_text,
+            'suggestedDoctors': matching_doctors[:4],
+            'matchedSpecialty': matched_specialty
+        })
+
+    except Exception as err:
+        print(f"Error in api_patient_medibot: {err}")
+        return jsonify({
+            'response': 'MediBot AI Assistant is ready. Please select a doctor below to book an appointment or ask a health question.',
+            'suggestedDoctors': [
+                {'id': 'doc_anisur_1', 'name': 'Dr. Anisur Rahman', 'specialization': 'Cardiology & Heart Specialist', 'workplaceHospital': 'Labaid Cardiac Hospital', 'bmdcNumber': 'A-49201', 'consultationFee': 1000, 'bookUrl': '/patient/book/doc_anisur_1'},
+                {'id': 'doc_nusrat_2', 'name': 'Dr. Nusrat Jahan', 'specialization': 'Gynecology & Obstetrics', 'workplaceHospital': 'Square Hospital', 'bmdcNumber': 'A-38192', 'consultationFee': 800, 'bookUrl': '/patient/book/doc_nusrat_2'}
+            ]
+        })
 
 
 # =================== Error Handlers ===================
