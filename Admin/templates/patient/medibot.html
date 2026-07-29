@@ -1,0 +1,226 @@
+{% extends "patient/base.html" %}
+{% block title %}MediBot AI Healthcare Assistant{% endblock %}
+{% block header_title %}MediBot AI Healthcare Assistant{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Main Chat Window -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm" style="border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; height: calc(100vh - 170px); min-height: 550px;">
+            <!-- Chat Header -->
+            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 48px; height: 48px; background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%); font-size: 1.5rem; box-shadow: 0 4px 10px rgba(13, 148, 136, 0.2);">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold mb-0 text-dark">MediBot AI Assistant</h6>
+                        <small class="text-success fw-semibold"><i class="bi bi-circle-fill me-1" style="font-size: 0.55rem;"></i>Online & Ready • Powered by Gemini AI</small>
+                    </div>
+                </div>
+                <span class="badge bg-teal-subtle text-teal border px-3 py-2" style="background: #e6fffa; color: #0d9488; border-color: #b2f5ea; border-radius: 20px;">
+                    <i class="bi bi-shield-check me-1"></i>Medical Advisor
+                </span>
+            </div>
+
+            <!-- Suggestion Quick Chips -->
+            <div class="bg-light p-3 border-bottom overflow-x-auto d-flex gap-2 align-items-center">
+                <small class="text-muted fw-bold me-1 text-nowrap"><i class="bi bi-lightbulb me-1"></i>Suggestions:</small>
+                <button type="button" class="btn btn-sm btn-outline-teal rounded-pill text-nowrap px-3" onclick="sendQuickPrompt('What should I do for high fever and body ache?')">🤒 Fever & Cold</button>
+                <button type="button" class="btn btn-sm btn-outline-teal rounded-pill text-nowrap px-3" onclick="sendQuickPrompt('What specialty doctor should I see for chest discomfort?')">🫀 Chest Pain Advice</button>
+                <button type="button" class="btn btn-sm btn-outline-teal rounded-pill text-nowrap px-3" onclick="sendQuickPrompt('How do I prepare for a Fasting Blood Sugar and Lipid Profile test?')">🧪 Lab Test Rules</button>
+                <button type="button" class="btn btn-sm btn-outline-teal rounded-pill text-nowrap px-3" onclick="sendQuickPrompt('What are first aid steps for minor burns and cuts?')">🩹 First Aid</button>
+            </div>
+
+            <!-- Chat Messages Container -->
+            <div class="card-body p-4 overflow-y-auto" id="chatContainer" style="flex: 1; background: #f8fafc;">
+                <!-- Initial Bot Greeting -->
+                <div class="d-flex gap-3 mb-4">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 38px; height: 38px; background: #0d9488;">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div class="p-3 bg-white border shadow-sm rounded-4" style="max-width: 85%; border-top-left-radius: 4px !important;">
+                        <div class="fw-bold mb-1" style="color: #0d9488;">MediBot AI</div>
+                        <p class="mb-0 text-dark" style="line-height: 1.6;">
+                            Hello! 👋 I am <strong>MediBot</strong>, your AI medical assistant for <strong>MediConnect</strong>.<br><br>
+                            I can help you analyze symptoms, recommend medical specialist doctors, provide first aid guidance, or explain how to prepare for diagnostic lab tests. How can I assist your health today?
+                        </p>
+                        <small class="text-muted d-block mt-2" style="font-size: 0.72rem;"><i class="bi bi-info-circle me-1"></i>MediBot provides AI health information. Always consult a doctor for official diagnosis.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input Footer -->
+            <div class="card-footer bg-white p-3 border-top">
+                <form id="chatForm" onsubmit="handleChatSubmit(event)" class="d-flex gap-2 align-items-center">
+                    <input type="text" id="userInput" class="form-control form-control-lg border-0 bg-light rounded-pill px-4 fs-6" placeholder="Describe symptoms or ask a health question..." required autocomplete="off">
+                    <button type="submit" id="sendBtn" class="btn btn-teal rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; background: #0d9488; color: white;">
+                        <i class="bi bi-send-fill fs-5"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Sidebar Info & Recommended Doctors -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px;">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0 text-teal" style="color: #0d9488;"><i class="bi bi-shield-plus me-2"></i>Medical Triage Capabilities</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
+                    <li class="d-flex gap-3 align-items-start">
+                        <div class="rounded-circle bg-teal-subtle text-teal p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #ccfbf1; color: #0f766e;">
+                            <i class="bi bi-thermometer-half"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold small">Symptom Assessment</div>
+                            <small class="text-muted">Describe your discomfort to find matching medical specialties.</small>
+                        </div>
+                    </li>
+                    <li class="d-flex gap-3 align-items-start">
+                        <div class="rounded-circle bg-purple-subtle text-purple p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #f3e8ff; color: #7e22ce;">
+                            <i class="bi bi-bandaid"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold small">First Aid Instructions</div>
+                            <small class="text-muted">Immediate care steps for fever, headache, minor cuts, and burns.</small>
+                        </div>
+                    </li>
+                    <li class="d-flex gap-3 align-items-start">
+                        <div class="rounded-circle bg-blue-subtle text-blue p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #e0f2fe; color: #0369a1;">
+                            <i class="bi bi-droplet"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold small">Lab Test Guidance</div>
+                            <small class="text-muted">Learn fasting rules and preparation for CBC, Diabetes, and Lipid tests.</small>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Recommended Doctors Widget -->
+        <div class="card border-0 shadow-sm" style="border-radius: 20px;">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-teal" style="color: #0d9488;"><i class="bi bi-person-check me-2"></i>Consult Doctors</h6>
+                <a href="{{ url_for('patient_find_doctors') }}" class="small fw-bold text-decoration-none" style="color: #0d9488;">View All</a>
+            </div>
+            <div class="card-body p-3" id="recommendedDoctorsList">
+                <div class="text-muted small text-center py-3">Ask MediBot a question to see recommended specialist doctors here.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function sendQuickPrompt(promptText) {
+    document.getElementById('userInput').value = promptText;
+    handleChatSubmit(new Event('submit'));
+}
+
+async function handleChatSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('userInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    const chatContainer = document.getElementById('chatContainer');
+
+    // 1. Append User Message
+    const userBubble = document.createElement('div');
+    userBubble.className = 'd-flex gap-3 mb-4 justify-content-end';
+    userBubble.innerHTML = `
+        <div class="p-3 text-white rounded-4 shadow-sm" style="max-width: 80%; background: #0d9488; border-top-right-radius: 4px !important;">
+            <p class="mb-0" style="line-height: 1.5;">${escapeHtml(msg)}</p>
+        </div>
+        <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 38px; height: 38px; background: #0f766e;">
+            <i class="bi bi-person-fill"></i>
+        </div>
+    `;
+    chatContainer.appendChild(userBubble);
+    input.value = '';
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // 2. Append Typing Indicator
+    const typingBubble = document.createElement('div');
+    typingBubble.className = 'd-flex gap-3 mb-4';
+    typingBubble.id = 'typingIndicator';
+    typingBubble.innerHTML = `
+        <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 38px; height: 38px; background: #0d9488;">
+            <i class="bi bi-robot"></i>
+        </div>
+        <div class="p-3 bg-white border shadow-sm rounded-4" style="border-top-left-radius: 4px !important;">
+            <small class="text-muted fw-bold"><i class="bi bi-three-dots loading-dots me-1"></i>MediBot is thinking...</small>
+        </div>
+    `;
+    chatContainer.appendChild(typingBubble);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // 3. Send Request to Flask API
+    try {
+        const res = await fetch('/api/patient/medibot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: msg })
+        });
+        const data = await res.json();
+        
+        document.getElementById('typingIndicator')?.remove();
+
+        const botBubble = document.createElement('div');
+        botBubble.className = 'd-flex gap-3 mb-4';
+        
+        let formattedText = escapeHtml(data.response || 'Thank you for your message. Consult a doctor for diagnosis.');
+        formattedText = formattedText.replace(/\n/g, '<br>').replace(/•/g, '&bull;');
+
+        botBubble.innerHTML = `
+            <div class="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 38px; height: 38px; background: #0d9488;">
+                <i class="bi bi-robot"></i>
+            </div>
+            <div class="p-3 bg-white border shadow-sm rounded-4" style="max-width: 85%; border-top-left-radius: 4px !important;">
+                <div class="fw-bold mb-1" style="color: #0d9488;">MediBot AI</div>
+                <div class="text-dark" style="line-height: 1.6;">${formattedText}</div>
+                <div class="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+                    <small class="text-muted" style="font-size: 0.72rem;"><i class="bi bi-shield-check me-1"></i>MediConnect AI Assistant</small>
+                    <a href="{{ url_for('patient_find_doctors') }}" class="btn btn-sm btn-outline-teal rounded-pill px-3 py-1" style="font-size: 0.78rem;">Book Doctor</a>
+                </div>
+            </div>
+        `;
+        chatContainer.appendChild(botBubble);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        // Render suggested doctors if returned
+        if (data.suggestedDoctors && data.suggestedDoctors.length > 0) {
+            renderRecommendedDoctors(data.suggestedDoctors);
+        }
+    } catch (err) {
+        document.getElementById('typingIndicator')?.remove();
+        console.error(err);
+    }
+}
+
+function renderRecommendedDoctors(doctors) {
+    const container = document.getElementById('recommendedDoctorsList');
+    let html = '';
+    doctors.forEach(d => {
+        html += `
+            <div class="p-2 border rounded-3 mb-2 bg-light d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="fw-bold small text-dark">${escapeHtml(d.name)}</div>
+                    <div class="text-muted" style="font-size: 0.75rem;">${escapeHtml(d.specialization)}</div>
+                </div>
+                <a href="/patient/doctor/${d.id}" class="btn btn-sm btn-teal py-1 px-2 text-white" style="font-size: 0.75rem; background: #0d9488;">Book</a>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+</script>
+{% endblock %}

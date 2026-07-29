@@ -124,6 +124,9 @@
             <a href="{{ url_for('patient_lab_tests') }}" class="nav-link {% if active_page == 'lab_tests' %}active{% endif %}">
                 <i class="bi bi-droplet-half"></i> Lab Tests
             </a>
+            <a href="{{ url_for('patient_medibot') }}" class="nav-link {% if active_page == 'medibot' %}active{% endif %}" style="background: rgba(45, 212, 191, 0.15); border: 1px solid rgba(45, 212, 191, 0.3);">
+                <i class="bi bi-robot" style="color: #2dd4bf;"></i> MediBot AI Assistant
+            </a>
             <a href="{{ url_for('patient_profile') }}" class="nav-link {% if active_page == 'profile' %}active{% endif %}">
                 <i class="bi bi-person-gear"></i> Profile
             </a>
@@ -141,6 +144,9 @@
                 <small class="text-muted">Welcome, {{ session.get('user_name', 'Patient') }}</small>
             </div>
             <div class="d-flex align-items-center gap-3">
+                <a href="{{ url_for('patient_medibot') }}" class="btn btn-sm text-teal rounded-pill px-3 fw-bold" style="background: #e6fffa; color: #0d9488; border: 1px solid #b2f5ea;">
+                    <i class="bi bi-robot me-1"></i>Ask MediBot AI
+                </a>
                 <div class="dropdown">
                     <button class="btn btn-light dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
                         <i class="bi bi-person-circle" style="font-size: 1.2rem; color: var(--primary);"></i>
@@ -168,6 +174,11 @@
 
         {% block content %}{% endblock %}
     </div>
+
+    <!-- Global Floating MediBot AI Button -->
+    <a href="{{ url_for('patient_medibot') }}" class="position-fixed bottom-0 end-0 m-4 btn rounded-circle shadow-lg d-flex align-items-center justify-content-center" style="width: 56px; height: 56px; z-index: 1050; background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%); color: white; border: 2px solid white;" title="Ask MediBot AI Assistant">
+        <i class="bi bi-robot fs-3"></i>
+    </a>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     {% block extra_js %}{% endblock %}
