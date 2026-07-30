@@ -15,64 +15,91 @@
             --primary: #0d9488;
             --primary-dark: #0f766e;
             --sidebar-width: 260px;
+            --primary-gradient: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+            --sidebar-gradient: linear-gradient(180deg, #0f4c45 0%, #064e3b 100%);
         }
         body {
             font-family: 'Inter', sans-serif;
             background: #f8fafc;
             min-height: 100vh;
+            color: #1e293b;
         }
         .sidebar {
             position: fixed;
             top: 0; left: 0;
             width: var(--sidebar-width);
             height: 100vh;
-            background: linear-gradient(180deg, #134e4a 0%, #064e3b 100%);
+            background: var(--sidebar-gradient);
             color: white;
             z-index: 1000;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: 4px 0 20px rgba(0,0,0,0.12);
+            transition: all 0.3s ease;
         }
         .sidebar-brand {
-            padding: 20px;
+            padding: 22px 20px;
             font-weight: 700;
             font-size: 1.2rem;
             display: flex;
             align-items: center;
             gap: 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.1);
         }
         .sidebar-nav {
-            padding: 15px 10px;
+            padding: 18px 12px;
         }
         .nav-link {
             color: #99f6e4;
-            padding: 12px 16px;
-            border-radius: 8px;
+            padding: 12px 18px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             gap: 12px;
             font-weight: 500;
             font-size: 0.95rem;
-            margin-bottom: 4px;
-            transition: all 0.2s ease;
+            margin-bottom: 6px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .nav-link:hover, .nav-link.active {
+        .nav-link:hover {
             color: white;
-            background: rgba(20, 184, 166, 0.25);
-            border-left: 4px solid var(--primary);
+            background: rgba(255,255,255,0.18);
+            transform: translateX(4px);
+        }
+        .nav-link.active {
+            color: white;
+            background: rgba(20, 184, 166, 0.3);
+            border-left: 4px solid #2dd4bf;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
         }
         .main-content {
             margin-left: var(--sidebar-width);
-            padding: 24px;
+            padding: 28px;
+            animation: fadeIn 0.4s ease-out;
         }
         .navbar-top {
-            background: white;
-            border-radius: 12px;
-            padding: 14px 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 16px 28px;
+            margin-bottom: 28px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.05);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+        .card {
+            border-radius: 18px !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(13, 148, 136, 0.08) !important;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
     {% block extra_css %}{% endblock %}
