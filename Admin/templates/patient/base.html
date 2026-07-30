@@ -207,6 +207,9 @@
             <a href="{{ url_for('patient_medibot') }}" class="nav-link {% if active_page == 'medibot' %}active{% endif %}" style="background: rgba(45, 212, 191, 0.15); border: 1px solid rgba(45, 212, 191, 0.3);">
                 <i class="bi bi-robot" style="color: #2dd4bf;"></i> MediBot AI Assistant
             </a>
+            <a href="{{ url_for('patient_family') }}" class="nav-link {% if active_page == 'family' %}active{% endif %}">
+                <i class="bi bi-people"></i> Family Members
+            </a>
             <a href="{{ url_for('patient_profile') }}" class="nav-link {% if active_page == 'profile' %}active{% endif %}">
                 <i class="bi bi-person-gear"></i> Profile
             </a>

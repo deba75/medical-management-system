@@ -3492,6 +3492,66 @@ def patient_profile():
     return render_template('patient/profile.html', active_page='profile', profile=profile)
 
 
+@app.route('/patient/family', methods=['GET', 'POST'])
+@patient_required
+def patient_family():
+    patient_id = session.get('user_id')
+    family_members = []
+
+    if db is not None:
+        try:
+            m_docs = db.collection('users').document(patient_id).collection('family_members').get()
+            for d in m_docs:
+                m_data = d.to_dict()
+                m_data['id'] = d.id
+                family_members.append(m_data)
+        except Exception as e:
+            print(f"Error fetching family members: {e}")
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        relationship = request.form.get('relationship')
+        phone = request.form.get('phone', '')
+        dob = request.form.get('dob', '')
+        gender = request.form.get('gender', '')
+
+        if db is not None:
+            try:
+                db.collection('users').document(patient_id).collection('family_members').add({
+                    'name': name,
+                    'relationship': relationship,
+                    'phone': phone,
+                    'dob': dob,
+                    'gender': gender,
+                    'userId': patient_id,
+                    'createdAt': datetime.now()
+                })
+                flash(f'Family member {name} added successfully!', 'success')
+                return redirect(url_for('patient_family'))
+            except Exception as e:
+                flash(f'Error adding family member: {e}', 'danger')
+        else:
+            flash('Demo Mode: Family member added!', 'success')
+            return redirect(url_for('patient_family'))
+
+    return render_template('patient/family.html', active_page='family', family_members=family_members)
+
+
+@app.route('/patient/family/delete/<member_id>')
+@patient_required
+def patient_delete_family_member(member_id):
+    patient_id = session.get('user_id')
+    if db is not None:
+        try:
+            db.collection('users').document(patient_id).collection('family_members').document(member_id).delete()
+            flash('Family member deleted successfully!', 'success')
+        except Exception as e:
+            flash(f'Error deleting family member: {e}', 'danger')
+    else:
+        flash('Demo Mode: Family member deleted!', 'success')
+    return redirect(url_for('patient_family'))
+
+
 @app.route('/patient/medibot')
 @patient_required
 def patient_medibot():
