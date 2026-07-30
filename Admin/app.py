@@ -2972,6 +2972,21 @@ def patient_book_appointment(doctor_id):
         recipient = request.form.get('recipient', 'self')
         fee = float(doctor.get('consultationFee', 500))
 
+        # Check if the appointment time is at least 6 hours in the future
+        try:
+            start_time_str = time_slot.split('-')[0].strip()
+            appt_datetime_str = f"{appt_date} {start_time_str}"
+            appt_datetime = datetime.strptime(appt_datetime_str, "%Y-%m-%d %I:%M %p")
+            
+            now_datetime = datetime.now()
+            time_diff = appt_datetime - now_datetime
+            if time_diff.total_seconds() < 6 * 3600:
+                flash("Appointments must be booked at least 6 hours in advance!", "danger")
+                min_date = datetime.now().strftime('%Y-%m-%d')
+                return render_template('patient/book_appointment.html', active_page='doctors', doctor=doctor, chambers=chambers, time_slots=time_slots, min_date=min_date, family_members=family_members)
+        except Exception as te:
+            print(f"Error parsing date/time for validation: {te}")
+
         family_member_id = None
         family_member_name = None
         family_member_relationship = None

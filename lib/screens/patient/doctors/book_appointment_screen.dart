@@ -450,6 +450,27 @@ class _BookAppointmentScreenState extends ConsumerState<BookAppointmentScreen> {
     setState(() => _isBooking = true);
 
     try {
+      // Validate appointment time (must be at least 6 hours in the future)
+      final currentDateTime = DateTime.now();
+      final apptDateTime = _getAppointmentDateTime(_selectedDate, _selectedSlot!.start);
+      if (apptDateTime != null) {
+        final difference = apptDateTime.difference(currentDateTime);
+        if (difference.inSeconds < 6 * 3600) {
+          setState(() => _isBooking = false);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Appointments must be booked at least 6 hours in advance!',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+      }
+
       final selectedFamilyMember = ref.read(selectedFamilyMemberProvider);
       final effectiveDoctorId = widget.doctor.userId.isNotEmpty 
           ? widget.doctor.userId 
@@ -590,6 +611,31 @@ class _BookAppointmentScreenState extends ConsumerState<BookAppointmentScreen> {
           ),
         );
       }
+    }
+  }
+
+  DateTime? _getAppointmentDateTime(DateTime date, String startTimeStr) {
+    try {
+      final timeParts = startTimeStr.trim().split(' ');
+      if (timeParts.length != 2) return null;
+      
+      final hMSplit = timeParts[0].split(':');
+      if (hMSplit.length < 2) return null;
+      
+      int hour = int.parse(hMSplit[0]);
+      int minute = int.parse(hMSplit[1]);
+      final amPm = timeParts[1].toUpperCase();
+      
+      if (amPm == 'PM' && hour < 12) {
+        hour += 12;
+      } else if (amPm == 'AM' && hour == 12) {
+        hour = 0;
+      }
+      
+      return DateTime(date.year, date.month, date.day, hour, minute);
+    } catch (e) {
+      debugPrint('Error parsing appointment time: $e');
+      return null;
     }
   }
 
