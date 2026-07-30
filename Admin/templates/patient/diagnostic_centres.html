@@ -35,7 +35,7 @@
                 <p class="text-muted small mb-2"><i class="bi bi-geo-alt-fill me-1"></i>{{ c.get('address', 'N/A') }}</p>
                 <p class="text-muted small mb-3"><i class="bi bi-telephone me-1"></i>{{ c.get('contactNumber', 'N/A') }}</p>
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span class="badge bg-light text-dark border"><i class="bi bi-star-fill text-warning me-1"></i>{{ c.get('rating', '4.8') }}</span>
+                    <span class="badge bg-light text-dark border"><i class="bi bi-star-fill text-warning me-1"></i>{{ c.get('rating', 0.0) }}</span>
                     <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle me-1"></i>Verified</span>
                 </div>
                 <a href="{{ url_for('patient_diagnostic_detail', centre_id=c.get('id', '')) }}" class="btn btn-teal w-100">

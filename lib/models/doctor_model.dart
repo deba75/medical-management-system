@@ -6,6 +6,7 @@ class DoctorModel {
   final List<String> hospitals; // Changed from single hospital to list
   final double consultationFee;
   final double rating;
+  final int totalReviews;
   final String profileBio;
   final bool active;
   final String? photoURL;
@@ -21,6 +22,7 @@ class DoctorModel {
     required this.hospitals,
     this.consultationFee = fixedConsultationFee, // Default to fixed fee
     this.rating = 0.0,
+    this.totalReviews = 0,
     required this.profileBio,
     this.active = true,
     this.photoURL,
@@ -60,6 +62,7 @@ class DoctorModel {
       hospitals: hospitalsList,
       consultationFee: feeDouble,
       rating: (json['rating'] ?? 0).toDouble(),
+      totalReviews: json['totalReviews'] ?? 0,
       profileBio: json['profileBio'] ?? json['bio'] ?? '',
       active: json['active'] ?? true,
       photoURL: json['photoURL'],
@@ -75,6 +78,7 @@ class DoctorModel {
       'hospital': hospital, // Keep for backward compatibility
       'consultationFee': consultationFee,
       'rating': rating,
+      'totalReviews': totalReviews,
       'profileBio': profileBio,
       'active': active,
       'photoURL': photoURL,

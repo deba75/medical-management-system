@@ -3364,6 +3364,7 @@ def patient_appointments():
 def patient_appointment_detail(appointment_id):
     appointment = None
     prescription = None
+    review = None
 
     if db is not None:
         try:
@@ -3374,6 +3375,11 @@ def patient_appointment_detail(appointment_id):
                 appointment = update_appointment_status_if_overdue(appointment)
                 if appointment.get('prescription'):
                     prescription = appointment.get('prescription')
+                
+                # Check for existing review
+                r_docs = list(db.collection('doctor_reviews').where('appointmentId', '==', appointment_id).limit(1).stream())
+                if r_docs:
+                    review = r_docs[0].to_dict()
         except Exception as e:
             print(f"Error fetching appointment detail: {e}")
 
@@ -3381,7 +3387,83 @@ def patient_appointment_detail(appointment_id):
         flash('Appointment record not found.', 'warning')
         return redirect(url_for('patient_appointments'))
 
-    return render_template('patient/appointment_detail.html', active_page='appointments', appointment=appointment, prescription=prescription)
+    return render_template('patient/appointment_detail.html', active_page='appointments', appointment=appointment, prescription=prescription, review=review)
+
+
+@app.route('/patient/appointment/<appointment_id>/review', methods=['POST'])
+@patient_required
+def patient_submit_review(appointment_id):
+    rating = request.form.get('rating')
+    comment = request.form.get('comment', '').strip()
+    patient_id = session.get('user_id')
+    patient_name = session.get('user_name', 'Patient')
+
+    if not rating or not comment:
+        flash('Rating and comment are required.', 'danger')
+        return redirect(url_for('patient_appointment_detail', appointment_id=appointment_id))
+
+    try:
+        rating_val = int(rating)
+    except ValueError:
+        flash('Invalid rating value.', 'danger')
+        return redirect(url_for('patient_appointment_detail', appointment_id=appointment_id))
+
+    if db is not None:
+        try:
+            # 1. Fetch appointment details to get doctorId
+            appt_doc = db.collection('appointments').document(appointment_id).get()
+            if not appt_doc.exists:
+                flash('Appointment not found.', 'danger')
+                return redirect(url_for('patient_appointments'))
+
+            appt_data = appt_doc.to_dict()
+            doctor_id = appt_data.get('doctorId')
+
+            if not doctor_id:
+                flash('Doctor information not found for this appointment.', 'danger')
+                return redirect(url_for('patient_appointment_detail', appointment_id=appointment_id))
+
+            # 2. Save review to 'doctor_reviews' collection
+            new_review = {
+                'doctorId': doctor_id,
+                'patientId': patient_id,
+                'patientName': patient_name,
+                'appointmentId': appointment_id,
+                'rating': rating_val,
+                'comment': comment,
+                'createdAt': datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'tags': [],
+                'helpfulCount': 0,
+                'helpfulBy': []
+            }
+            db.collection('doctor_reviews').add(new_review)
+
+            # 3. Recalculate average rating for doctor
+            all_reviews = list(db.collection('doctor_reviews').where('doctorId', '==', doctor_id).stream())
+            total_rating = sum(float(r.to_dict().get('rating', 0.0)) for r in all_reviews)
+            avg_rating = round(total_rating / len(all_reviews), 1) if all_reviews else 0.0
+
+            # Update in doctors collection
+            db.collection('doctors').document(doctor_id).update({
+                'rating': avg_rating,
+                'totalReviews': len(all_reviews)
+            })
+
+            # Also update users collection if doctor is stored there
+            try:
+                db.collection('users').document(doctor_id).update({
+                    'rating': avg_rating,
+                    'totalReviews': len(all_reviews)
+                })
+            except Exception:
+                pass
+
+            flash('Thank you! Your review has been submitted successfully.', 'success')
+        except Exception as e:
+            print(f"Error submitting review: {e}")
+            flash('An error occurred while submitting your review.', 'danger')
+
+    return redirect(url_for('patient_appointment_detail', appointment_id=appointment_id))
 
 
 @app.route('/patient/prescriptions')

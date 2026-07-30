@@ -121,6 +121,71 @@
                 </div>
             </div>
         </div>
+
+        <!-- Doctor Review Card -->
+        <div class="card border-0 shadow-sm mt-4" style="border-radius: 16px;">
+            <div class="card-header bg-white py-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-star-fill text-warning me-2"></i>Doctor Review & Rating</h6>
+            </div>
+            <div class="card-body">
+                {% if review %}
+                <div class="text-center py-2">
+                    <div class="mb-2 text-warning fs-5">
+                        {% for i in range(1, 6) %}
+                            {% if i <= review.get('rating', 0)|int %}
+                            <i class="bi bi-star-fill"></i>
+                            {% else %}
+                            <i class="bi bi-star"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <p class="mb-0 fw-semibold text-dark">"{{ review.get('comment', '') }}"</p>
+                    <small class="text-muted d-block mt-2">Submitted on {{ review.get('createdAt', '').split('T')[0] }}</small>
+                </div>
+                {% else %}
+                <form method="POST" action="{{ url_for('patient_submit_review', appointment_id=appointment.get('id', '')) }}">
+                    <div class="mb-3 text-center">
+                        <label class="form-label fw-bold d-block">Select Rating</label>
+                        <div class="star-rating d-flex justify-content-center gap-2 fs-3">
+                            <i class="bi bi-star text-secondary star-icon" data-value="1" style="cursor: pointer;"></i>
+                            <i class="bi bi-star text-secondary star-icon" data-value="2" style="cursor: pointer;"></i>
+                            <i class="bi bi-star text-secondary star-icon" data-value="3" style="cursor: pointer;"></i>
+                            <i class="bi bi-star text-secondary star-icon" data-value="4" style="cursor: pointer;"></i>
+                            <i class="bi bi-star text-secondary star-icon" data-value="5" style="cursor: pointer;"></i>
+                        </div>
+                        <input type="hidden" name="rating" id="ratingInput" value="" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Review Comment</label>
+                        <textarea name="comment" class="form-control" rows="3" placeholder="Share your experience with this doctor..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-teal w-100 fw-bold" style="background-color: #0d9488; color: white;">
+                        Submit Review
+                    </button>
+                </form>
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.querySelectorAll('.star-icon').forEach(icon => {
+                        icon.addEventListener('click', function() {
+                            let val = this.getAttribute('data-value');
+                            document.getElementById('ratingInput').value = val;
+                            document.querySelectorAll('.star-icon').forEach(star => {
+                                let starVal = star.getAttribute('data-value');
+                                if (parseInt(starVal) <= parseInt(val)) {
+                                    star.classList.remove('bi-star', 'text-secondary');
+                                    star.classList.add('bi-star-fill', 'text-warning');
+                                } else {
+                                    star.classList.remove('bi-star-fill', 'text-warning');
+                                    star.classList.add('bi-star', 'text-secondary');
+                                }
+                            });
+                        });
+                    });
+                });
+                </script>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
