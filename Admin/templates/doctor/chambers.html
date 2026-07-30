@@ -49,16 +49,72 @@
                     <div class="list-group-item p-3">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <h6 class="fw-bold mb-1">{{ c.name }}</h6>
+                                <h6 class="fw-bold mb-1">{{ c.name or c.chamberName }}</h6>
                                 <p class="text-muted small mb-1"><i class="bi bi-geo-alt me-1"></i>{{ c.address }}</p>
                                 <p class="text-muted small mb-1"><i class="bi bi-telephone me-1"></i>{{ c.phone or 'N/A' }} | <i class="bi bi-clock me-1"></i>{{ c.visitingHours or 'N/A' }}</p>
                                 <span class="badge bg-success-subtle text-success">Fee: ৳{{ c.fee }}</span>
+                                {% if c.get('availability') %}
+                                <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#scheduleModal_{{ c.get('id') }}">
+                                    <i class="bi bi-calendar-event me-1"></i>View Schedule
+                                </button>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary ms-2"><i class="bi bi-calendar-x me-1"></i>No Schedule Configured</span>
+                                {% endif %}
                             </div>
                             <a href="{{ url_for('doctor_delete_chamber', index=loop.index0) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this chamber?')">
                                 <i class="bi bi-trash"></i>
                             </a>
                         </div>
                     </div>
+
+                    <!-- Modal for schedule details -->
+                    {% if c.get('availability') %}
+                    <div class="modal fade" id="scheduleModal_{{ c.get('id') }}" tabindex="-1" aria-labelledby="scheduleModalLabel_{{ c.get('id') }}" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold" id="scheduleModalLabel_{{ c.get('id') }}">
+                                        <i class="bi bi-calendar-check text-primary me-2"></i>{{ c.name or c.chamberName }} - Schedule Details
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div class="mb-4">
+                                        <h6 class="fw-bold mb-2 text-secondary small text-uppercase tracking-wider">Practice Days</h6>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            {% for day in c.get('availability', {}).get('availableDays', []) %}
+                                            <span class="badge bg-primary px-3 py-2 fs-7">{{ day }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div class="row mb-4">
+                                        <div class="col-6">
+                                            <h6 class="fw-bold mb-1 text-secondary small text-uppercase tracking-wider">Shift Hours</h6>
+                                            <span class="fw-semibold">{{ c.get('availability', {}).get('startTime', '09:00') }} - {{ c.get('availability', {}).get('endTime', '17:00') }}</span>
+                                        </div>
+                                        <div class="col-6">
+                                            <h6 class="fw-bold mb-1 text-secondary small text-uppercase tracking-wider">Slot Duration</h6>
+                                            <span class="fw-semibold">{{ c.get('availability', {}).get('slotDuration', 30) }} Minutes</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-2 text-secondary small text-uppercase tracking-wider">Generated Time Slots</h6>
+                                        <div class="d-flex flex-wrap gap-2" style="max-height: 180px; overflow-y: auto;">
+                                            {% for slot in c.get('generatedSlots', []) %}
+                                            <span class="badge bg-light text-dark border border-secondary-subtle py-2 px-3">
+                                                <i class="bi bi-clock me-1 text-primary"></i>{{ slot }}
+                                            </span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-0 pt-0">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                     {% endfor %}
                 </div>
                 {% else %}

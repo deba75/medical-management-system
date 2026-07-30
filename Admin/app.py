@@ -1848,41 +1848,138 @@ def doctor_view_prescription(prescription_id):
             
     return render_template('doctor/view_prescription.html', rx=rx, doctor=doctor_info)
 
+def generate_slots_list(start_time_str, end_time_str, duration_mins):
+    try:
+        # Convert times like "09:00" to minutes
+        start_parts = [int(x) for x in start_time_str.split(':')]
+        end_parts = [int(x) for x in end_time_str.split(':')]
+        
+        start_mins = start_parts[0] * 60 + start_parts[1]
+        end_mins = end_parts[0] * 60 + end_parts[1]
+        
+        slots = []
+        current = start_mins
+        while current + duration_mins <= end_mins:
+            next_time = current + duration_mins
+            
+            def to_ampm(total_mins):
+                h = total_mins // 60
+                m = total_mins % 60
+                ampm = "PM" if h >= 12 else "AM"
+                h_display = h % 12
+                h_display = 12 if h_display == 0 else h_display
+                m_str = f"0{m}" if m < 10 else f"{m}"
+                return f"{h_display}:{m_str} {ampm}"
+                
+            slots.append(f"{to_ampm(current)} - {to_ampm(next_time)}")
+            current = next_time
+        return slots
+    except Exception as e:
+        print(f"Error generating slots in python: {e}")
+        return []
+
+
 @app.route('/doctor/availability', methods=['GET', 'POST'])
 @doctor_required
 def doctor_availability():
     doctor_id = session.get('user_id')
     doctor_data = {}
+    chambers = []
+    selected_chamber_id = request.args.get('chamber_id') or request.form.get('chamber_id')
     
     if db is not None and doctor_id:
         doc_ref = db.collection('doctors').document(doctor_id)
+        doc = doc_ref.get()
+        if doc.exists:
+            doctor_data = doc.to_dict()
+            chambers = doctor_data.get('chambers', [])
+            
+        if not selected_chamber_id and chambers:
+            selected_chamber_id = chambers[0].get('id')
+            
         if request.method == 'POST':
+            selected_chamber_id = request.form.get('chamber_id')
+            if not selected_chamber_id:
+                flash('Please select a chamber first.', 'danger')
+                return redirect(url_for('doctor_availability'))
+                
             availableDays = request.form.getlist('availableDays')
             startTime = request.form.get('startTime')
             endTime = request.form.get('endTime')
             slotDuration = int(request.form.get('slotDuration', 30))
             maxPatientsPerSlot = int(request.form.get('maxPatientsPerSlot', 1))
+            
+            generated_slots = generate_slots_list(startTime, endTime, slotDuration)
+            
             availability_payload = {
                 'availableDays': availableDays,
                 'startTime': startTime,
                 'endTime': endTime,
                 'slotDuration': slotDuration,
-                'maxPatientsPerSlot': maxPatientsPerSlot
+                'maxPatientsPerSlot': maxPatientsPerSlot,
+                'generatedSlots': generated_slots
             }
+            
+            updated_chambers = []
+            for c in chambers:
+                if c.get('id') == selected_chamber_id:
+                    c['availability'] = availability_payload
+                    c['generatedSlots'] = generated_slots
+                    # Update other fields for displaying visiting hours
+                    days_str = ", ".join([d[:3] for d in availableDays])
+                    # format start/end time to AMPM
+                    try:
+                        sh_parts = [int(x) for x in startTime.split(':')]
+                        eh_parts = [int(x) for x in endTime.split(':')]
+                        sh_ampm = "AM" if sh_parts[0] < 12 else "PM"
+                        eh_ampm = "AM" if eh_parts[0] < 12 else "PM"
+                        sh_h = sh_parts[0] % 12
+                        sh_h = 12 if sh_h == 0 else sh_h
+                        eh_h = eh_parts[0] % 12
+                        eh_h = 12 if eh_h == 0 else eh_h
+                        c['visitingHours'] = f"{days_str} {sh_h}:{sh_parts[1]:02d} {sh_ampm} - {eh_h}:{eh_parts[1]:02d} {eh_ampm}"
+                    except Exception:
+                        c['visitingHours'] = f"{days_str} {startTime} - {endTime}"
+                updated_chambers.append(c)
+                
             doc_ref.set({
-                'availability': availability_payload,
+                'chambers': updated_chambers,
                 'updatedAt': datetime.now()
             }, merge=True)
-            flash('Schedule and availability updated!', 'success')
-            return redirect(url_for('doctor_availability'))
             
-        doc = doc_ref.get()
-        if doc.exists:
-            doctor_data = doc.to_dict()
+            try:
+                db.collection('users').document(doctor_id).set({
+                    'chambers': updated_chambers,
+                    'updatedAt': datetime.now()
+                }, merge=True)
+            except Exception as sync_err:
+                print(f"Error syncing to users: {sync_err}")
+                
+            try:
+                db.collection('chambers').document(selected_chamber_id).set({
+                    'availability': availability_payload,
+                    'generatedSlots': generated_slots,
+                    'updatedAt': datetime.now()
+                }, merge=True)
+            except Exception as top_err:
+                print(f"Top level chambers update error: {top_err}")
+                
+            flash('Schedule and availability updated for selected chamber!', 'success')
+            return redirect(url_for('doctor_availability', chamber_id=selected_chamber_id))
             
-    return render_template('doctor/availability.html',
-                           active_page='availability',
-                           doctor_data=doctor_data)
+        selected_chamber_data = {}
+        if selected_chamber_id:
+            for c in chambers:
+                if c.get('id') == selected_chamber_id:
+                    selected_chamber_data = c
+                    break
+                    
+        return render_template('doctor/availability.html',
+                               active_page='availability',
+                               chambers=chambers,
+                               selected_chamber_id=selected_chamber_id,
+                               selected_chamber_data=selected_chamber_data,
+                               doctor_data=doctor_data)
 
 @app.route('/doctor/chambers')
 @doctor_required
@@ -3120,7 +3217,9 @@ def patient_book_appointment(doctor_id):
                 doctor = doc_ref.to_dict()
                 doctor['id'] = doc_ref.id
                 chambers = doctor.get('chambers', [])
-                if doctor.get('generatedSlots'):
+                if chambers and chambers[0].get('generatedSlots'):
+                    time_slots = chambers[0].get('generatedSlots')
+                elif doctor.get('generatedSlots'):
                     time_slots = doctor.get('generatedSlots')
             
             # Fetch family members

@@ -57,38 +57,95 @@ class _BookAppointmentScreenState extends ConsumerState<BookAppointmentScreen> {
   }
 
   Future<void> _loadDoctorHospitals() async {
-    // TODO: Fetch hospitals where this doctor practices
-    // For now, using mock data
-    _doctorHospitals = [
-      Hospital(
-        id: 'h1',
-        name: 'City General Hospital',
-        address: '123 Main St',
-        city: 'Dhaka',
-        phone: '+880 1234567890',
-        email: 'info@citygeneral.com',
-        imageUrl: '',
-        rating: 4.5,
-        totalReviews: 100,
-        specialties: [],
-        isEmergencyAvailable: true,
-        description: '',
-      ),
-      Hospital(
-        id: 'h2',
-        name: 'Medicare Center',
-        address: '456 Park Ave',
-        city: 'Dhaka',
-        phone: '+880 1234567891',
-        email: 'info@medicare.com',
-        imageUrl: '',
-        rating: 4.3,
-        totalReviews: 80,
-        specialties: [],
-        isEmergencyAvailable: true,
-        description: '',
-      ),
-    ];
+    setState(() => _isLoadingSlots = true);
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('doctors')
+          .doc(widget.doctor.doctorId)
+          .get();
+          
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null && data['chambers'] != null && data['chambers'] is List) {
+          final chambersList = data['chambers'] as List<dynamic>;
+          _doctorHospitals = chambersList.map((c) {
+            final cMap = c as Map<String, dynamic>;
+            final cId = cMap['id'] ?? 'h1';
+            final cName = cMap['name'] ?? cMap['chamberName'] ?? 'Main Chamber';
+            final cAddress = cMap['address'] ?? '';
+            final cPhone = cMap['phone'] ?? '';
+            
+            final slotsList = cMap['generatedSlots'] as List<dynamic>? ?? [];
+            final timeSlots = slotsList.map((s) {
+              final parts = s.toString().split('-');
+              final start = parts.isNotEmpty ? parts[0].trim() : '09:00 AM';
+              final end = parts.length > 1 ? parts[1].trim() : '05:00 PM';
+              return TimeSlotModel(
+                slotId: UniqueKey().toString(),
+                start: start,
+                end: end,
+                hospitalId: cId,
+                hospitalName: cName,
+              );
+            }).toList();
+            
+            _availableSlotsByHospital[cId] = timeSlots;
+            
+            return Hospital(
+              id: cId,
+              name: cName,
+              address: cAddress,
+              city: 'Dhaka',
+              phone: cPhone,
+              email: '',
+              imageUrl: '',
+              rating: 5.0,
+              totalReviews: 1,
+              specialties: [],
+              isEmergencyAvailable: true,
+              description: '',
+            );
+          }).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading doctor chambers from Firestore: $e');
+    }
+
+    if (_doctorHospitals.isEmpty) {
+      _doctorHospitals = [
+        Hospital(
+          id: 'h1',
+          name: 'City General Hospital',
+          address: '123 Main St',
+          city: 'Dhaka',
+          phone: '+880 1234567890',
+          email: 'info@citygeneral.com',
+          imageUrl: '',
+          rating: 4.5,
+          totalReviews: 100,
+          specialties: [],
+          isEmergencyAvailable: true,
+          description: '',
+        ),
+      ];
+      _availableSlotsByHospital['h1'] = [
+        TimeSlotModel(
+          slotId: '1',
+          start: '09:00 AM',
+          end: '09:30 AM',
+          hospitalId: 'h1',
+          hospitalName: 'City General Hospital',
+        ),
+        TimeSlotModel(
+          slotId: '2',
+          start: '10:00 AM',
+          end: '10:30 AM',
+          hospitalId: 'h1',
+          hospitalName: 'City General Hospital',
+        ),
+      ];
+    }
     
     if (_doctorHospitals.isNotEmpty) {
       setState(() {
@@ -102,83 +159,7 @@ class _BookAppointmentScreenState extends ConsumerState<BookAppointmentScreen> {
     if (_selectedHospitalId == null) return;
     
     setState(() => _isLoadingSlots = true);
-
-    // TODO: Fetch from Firestore based on doctor schedule, date, and hospital
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Mock available slots grouped by hospital
-    _availableSlotsByHospital = {
-      'h1': [
-        TimeSlotModel(
-          slotId: '1',
-          start: '14:00',
-          end: '14:30',
-          hospitalId: 'h1',
-          hospitalName: 'City General Hospital',
-        ),
-        TimeSlotModel(
-          slotId: '2',
-          start: '14:30',
-          end: '15:00',
-          hospitalId: 'h1',
-          hospitalName: 'City General Hospital',
-        ),
-        TimeSlotModel(
-          slotId: '3',
-          start: '15:00',
-          end: '15:30',
-          isBooked: true,
-          hospitalId: 'h1',
-          hospitalName: 'City General Hospital',
-        ),
-        TimeSlotModel(
-          slotId: '4',
-          start: '15:30',
-          end: '16:00',
-          hospitalId: 'h1',
-          hospitalName: 'City General Hospital',
-        ),
-        TimeSlotModel(
-          slotId: '5',
-          start: '16:00',
-          end: '16:30',
-          hospitalId: 'h1',
-          hospitalName: 'City General Hospital',
-        ),
-      ],
-      'h2': [
-        TimeSlotModel(
-          slotId: '7',
-          start: '17:30',
-          end: '18:00',
-          hospitalId: 'h2',
-          hospitalName: 'Medicare Center',
-        ),
-        TimeSlotModel(
-          slotId: '8',
-          start: '18:00',
-          end: '18:30',
-          hospitalId: 'h2',
-          hospitalName: 'Medicare Center',
-        ),
-        TimeSlotModel(
-          slotId: '9',
-          start: '18:30',
-          end: '19:00',
-          hospitalId: 'h2',
-          hospitalName: 'Medicare Center',
-        ),
-        TimeSlotModel(
-          slotId: '10',
-          start: '19:00',
-          end: '19:30',
-          isBooked: true,
-          hospitalId: 'h2',
-          hospitalName: 'Medicare Center',
-        ),
-      ],
-    };
-
+    await Future.delayed(const Duration(milliseconds: 100));
     setState(() => _isLoadingSlots = false);
   }
 

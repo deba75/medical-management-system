@@ -12,13 +12,32 @@
                 </h6>
             </div>
             <div class="card-body p-4">
+                <!-- Chamber Selection Dropdown -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Select Active Practice Chamber</label>
+                    <select id="chamberSelector" class="form-select form-select-lg" onchange="onChamberSelectionChanged()">
+                        {% if chambers %}
+                            {% for c in chambers %}
+                            <option value="{{ c.get('id') }}" {% if selected_chamber_id == c.get('id') %}selected{% endif %}>
+                                {{ c.get('name') or c.get('chamberName') }} ({{ c.get('address') }})
+                            </option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="">No registered chambers. Please register a chamber first.</option>
+                        {% endif %}
+                    </select>
+                </div>
+
+                {% if selected_chamber_id %}
                 <form method="POST" action="{{ url_for('doctor_availability') }}">
+                    <input type="hidden" name="chamber_id" value="{{ selected_chamber_id }}">
+
                     <!-- Days Selector -->
                     <div class="mb-4">
                         <label class="form-label fw-bold">Select Active Practice Days</label>
                         <div class="d-flex flex-wrap gap-2">
                             {% set days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] %}
-                            {% set selected_days = doctor_data.availability.get('availableDays', ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']) if doctor_data.availability else ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'] %}
+                            {% set selected_days = selected_chamber_data.get('availability', {}).get('availableDays', ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday']) %}
                             {% for day in days %}
                             <input type="checkbox" class="btn-check" name="availableDays" value="{{ day }}" id="btn_day_{{ day }}"
                             {% if day in selected_days %}checked{% endif %}>
@@ -32,21 +51,21 @@
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Shift Start Time</label>
                             <input type="time" id="startTimeInput" name="startTime" class="form-control form-control-lg"
-                                   value="{{ doctor_data.availability.get('startTime', '09:00') if doctor_data.availability else '09:00' }}" onchange="generateTimeSlots()">
+                                   value="{{ selected_chamber_data.get('availability', {}).get('startTime', '09:00') }}" onchange="generateTimeSlots()">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Shift End Time</label>
                             <input type="time" id="endTimeInput" name="endTime" class="form-control form-control-lg"
-                                   value="{{ doctor_data.availability.get('endTime', '17:00') if doctor_data.availability else '17:00' }}" onchange="generateTimeSlots()">
+                                   value="{{ selected_chamber_data.get('availability', {}).get('endTime', '17:00') }}" onchange="generateTimeSlots()">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Slot Duration</label>
                             <select id="slotDurationSelect" name="slotDuration" class="form-select form-select-lg" onchange="generateTimeSlots()">
-                                <option value="15" {% if doctor_data.availability and doctor_data.availability.get('slotDuration') == 15 %}selected{% endif %}>15 Minutes</option>
-                                <option value="20" {% if doctor_data.availability and doctor_data.availability.get('slotDuration') == 20 %}selected{% endif %}>20 Minutes</option>
-                                <option value="30" {% if doctor_data.availability and (not doctor_data.availability or doctor_data.availability.get('slotDuration') == 30) %}selected{% endif %}>30 Minutes</option>
-                                <option value="45" {% if doctor_data.availability and doctor_data.availability.get('slotDuration') == 45 %}selected{% endif %}>45 Minutes</option>
-                                <option value="60" {% if doctor_data.availability and doctor_data.availability.get('slotDuration') == 60 %}selected{% endif %}>60 Minutes</option>
+                                <option value="15" {% if selected_chamber_data.get('availability', {}).get('slotDuration') == 15 %}selected{% endif %}>15 Minutes</option>
+                                <option value="20" {% if selected_chamber_data.get('availability', {}).get('slotDuration') == 20 %}selected{% endif %}>20 Minutes</option>
+                                <option value="30" {% if not selected_chamber_data.get('availability') or selected_chamber_data.get('availability', {}).get('slotDuration') == 30 %}selected{% endif %}>30 Minutes</option>
+                                <option value="45" {% if selected_chamber_data.get('availability', {}).get('slotDuration') == 45 %}selected{% endif %}>45 Minutes</option>
+                                <option value="60" {% if selected_chamber_data.get('availability', {}).get('slotDuration') == 60 %}selected{% endif %}>60 Minutes</option>
                             </select>
                         </div>
                     </div>
@@ -68,12 +87,26 @@
                         </button>
                     </div>
                 </form>
+                {% else %}
+                <div class="alert alert-info py-4 text-center border-0 shadow-sm rounded-3">
+                    <i class="bi bi-info-circle fs-2 d-block mb-2 text-primary"></i>
+                    <p class="mb-0 fw-semibold">Please register at least one practice chamber in the "Chambers" section to configure your schedules.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
 <script>
+function onChamberSelectionChanged() {
+    let selector = document.getElementById('chamberSelector');
+    let val = selector.value;
+    if (val) {
+        window.location.href = "{{ url_for('doctor_availability') }}?chamber_id=" + val;
+    }
+}
+
 function formatAMPM(timeStr) {
     let parts = timeStr.split(':');
     let hours = parseInt(parts[0]);
@@ -97,6 +130,7 @@ function generateTimeSlots() {
     let endMins = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
     
     let container = document.getElementById('slotsContainer');
+    if (!container) return;
     container.innerHTML = '';
     
     if (endMins <= startMins) {
@@ -136,7 +170,9 @@ function generateTimeSlots() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    {% if selected_chamber_id %}
     generateTimeSlots();
+    {% endif %}
 });
 </script>
 {% endblock %}

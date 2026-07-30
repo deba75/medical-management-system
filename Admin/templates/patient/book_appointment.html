@@ -41,9 +41,9 @@
                     {% if chambers %}
                     <div class="mb-3">
                         <label class="form-label fw-bold">Select Chamber</label>
-                        <select name="chamber" class="form-select" required>
+                        <select id="chamberSelect" name="chamber" class="form-select" onchange="onChamberChanged()" required>
                             {% for c in chambers %}
-                            <option value="{{ c.get('name', '') }}">{{ c.get('name', 'Chamber') }} - {{ c.get('address', '') }}</option>
+                            <option value="{{ c.name or c.chamberName }}" data-slots="{{ c.get('generatedSlots', []) | tojson | forceescape }}">{{ c.name or c.chamberName }} - {{ c.get('address', '') }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -56,7 +56,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold">Preferred Time Slot *</label>
-                            <select name="time_slot" class="form-select" required>
+                            <select id="timeSlotSelect" name="time_slot" class="form-select" required>
                                 {% for slot in time_slots %}
                                 <option value="{{ slot }}">{{ slot }}</option>
                                 {% endfor %}
@@ -93,4 +93,44 @@
         </div>
     </div>
 </div>
+
+<script>
+function onChamberChanged() {
+    let selectEl = document.getElementById('chamberSelect');
+    if (!selectEl) return;
+    let selectedOption = selectEl.options[selectEl.selectedIndex];
+    let slotsJson = selectedOption.getAttribute('data-slots');
+    let slots = [];
+    try {
+        slots = JSON.parse(slotsJson);
+    } catch(e) {
+        console.error("Error parsing slots:", e);
+    }
+    
+    let timeSlotSelect = document.getElementById('timeSlotSelect');
+    if (!timeSlotSelect) return;
+    timeSlotSelect.innerHTML = '';
+    
+    if (slots && slots.length > 0) {
+        slots.forEach(function(slot) {
+            let opt = document.createElement('option');
+            opt.value = slot;
+            opt.textContent = slot;
+            timeSlotSelect.appendChild(opt);
+        });
+    } else {
+        let defaultSlots = ['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM', '04:00 PM', '06:00 PM', '07:00 PM'];
+        defaultSlots.forEach(function(slot) {
+            let opt = document.createElement('option');
+            opt.value = slot;
+            opt.textContent = slot;
+            timeSlotSelect.appendChild(opt);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    onChamberChanged();
+});
+</script>
 {% endblock %}
