@@ -89,7 +89,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           Navigator.pushReplacementNamed(context, '/admin-verification');
         } else {
           final user = authService.currentUser;
-          if (user != null && !user.emailVerified) {
+          final requiresVerification = userData?.requiresEmailVerification ?? false;
+          if (requiresVerification && user != null && !user.emailVerified) {
             Navigator.pushReplacementNamed(context, '/email-verification');
           } else {
             Navigator.pushReplacementNamed(context, '/patient-home');

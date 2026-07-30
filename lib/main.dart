@@ -89,7 +89,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           } else if (userData?.role == UserRole.admin) {
             Navigator.pushReplacementNamed(context, '/admin-verification');
           } else {
-            if (!user.emailVerified) {
+            final requiresVerification = userData?.requiresEmailVerification ?? false;
+            if (requiresVerification && !user.emailVerified) {
               Navigator.pushReplacementNamed(context, '/email-verification');
             } else {
               Navigator.pushReplacementNamed(context, '/patient-home');

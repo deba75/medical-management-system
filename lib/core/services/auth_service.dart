@@ -41,6 +41,7 @@ class AuthService {
         profileCompleted: false,
         createdAt: DateTime.now(),
         dateOfBirth: dateOfBirth,
+        requiresEmailVerification: true,
       );
       
       await _firestore

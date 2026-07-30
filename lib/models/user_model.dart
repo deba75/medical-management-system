@@ -29,6 +29,7 @@ class UserModel {
   final DateTime createdAt;
   final DateTime? dateOfBirth;
   final String? patientId;
+  final bool requiresEmailVerification;
 
   UserModel({
     required this.userId,
@@ -41,6 +42,7 @@ class UserModel {
     required this.createdAt,
     this.dateOfBirth,
     this.patientId,
+    this.requiresEmailVerification = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -58,6 +60,7 @@ class UserModel {
       createdAt: _parseDateTime(json['createdAt']),
       dateOfBirth: _parseDateTimeNullable(json['dateOfBirth']),
       patientId: json['patientId'],
+      requiresEmailVerification: json['requiresEmailVerification'] ?? false,
     );
   }
 
@@ -73,6 +76,7 @@ class UserModel {
       'createdAt': createdAt.toIso8601String(),
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'patientId': patientId,
+      'requiresEmailVerification': requiresEmailVerification,
     };
   }
 }

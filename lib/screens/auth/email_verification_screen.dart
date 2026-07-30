@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/custom_button.dart';
@@ -43,6 +44,14 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
 
       if (updatedUser != null && updatedUser.emailVerified) {
         _timer?.cancel();
+        try {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(updatedUser.uid)
+              .update({'requiresEmailVerification': false});
+        } catch (dbErr) {
+          debugPrint('Error updating verification status in Firestore: $dbErr');
+        }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

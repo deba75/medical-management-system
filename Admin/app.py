@@ -298,6 +298,7 @@ def register_doctor():
                     'phone': phone,
                     'role': 'doctor',
                     'verificationStatus': 'pending',
+                    'requiresEmailVerification': True,
                     'createdAt': datetime.now()
                 })
 
@@ -388,6 +389,7 @@ def register_diagnostic():
                     'dghsCode': dghsCode,
                     'pathologistName': pathologistName,
                     'pathologistBmdcNumber': pathologistBmdcNumber,
+                    'requiresEmailVerification': True,
                     'createdAt': datetime.now()
                 })
 
@@ -482,6 +484,7 @@ def register_patient():
                     'blood_group': blood_group,
                     'emergency_contact': emergency_contact,
                     'isApproved': True,
+                    'requiresEmailVerification': True,
                     'createdAt': datetime.now()
                 })
 
@@ -2915,9 +2918,16 @@ def patient_required(f):
         user_id = session.get('user_id')
         if db is not None and user_id and user_id != 'demo_patient_id':
             try:
-                user_record = auth.get_user(user_id)
-                if not user_record.email_verified:
-                    return redirect(url_for('patient_verify_email'))
+                user_doc = db.collection('users').document(user_id).get()
+                if user_doc.exists:
+                    user_data = user_doc.to_dict()
+                    requires_verification = user_data.get('requiresEmailVerification', False)
+                    if requires_verification:
+                        user_record = auth.get_user(user_id)
+                        if not user_record.email_verified:
+                            return redirect(url_for('patient_verify_email'))
+                        else:
+                            db.collection('users').document(user_id).update({'requiresEmailVerification': False})
             except Exception as e:
                 print(f"Error checking email verification: {e}")
             
@@ -2939,6 +2949,7 @@ def patient_verify_email():
         try:
             user_record = auth.get_user(patient_id)
             if user_record.email_verified:
+                db.collection('users').document(patient_id).update({'requiresEmailVerification': False})
                 flash("Email verified successfully! Welcome to MediConnect.", "success")
                 return redirect(url_for('patient_dashboard'))
         except Exception as e:
@@ -2949,6 +2960,7 @@ def patient_verify_email():
             try:
                 user_record = auth.get_user(patient_id)
                 if user_record.email_verified:
+                    db.collection('users').document(patient_id).update({'requiresEmailVerification': False})
                     flash("Email verified successfully! Welcome.", "success")
                     return redirect(url_for('patient_dashboard'))
                 else:
