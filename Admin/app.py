@@ -194,6 +194,11 @@ def register_doctor():
                 try:
                     user_record = auth.create_user(email=email, password=password, display_name=name)
                     user_id = user_record.uid
+                    try:
+                        verification_link = auth.generate_email_verification_link(email)
+                        flash(f"A verification link has been generated: {verification_link}", "info")
+                    except Exception as ver_err:
+                        print(f"Firebase Auth Verification Link Error: {ver_err}")
                 except Exception as auth_err:
                     print(f"Firebase Auth Notice: {auth_err}")
 
@@ -275,6 +280,11 @@ def register_diagnostic():
                 try:
                     user_record = auth.create_user(email=email, password=password, display_name=name)
                     user_id = user_record.uid
+                    try:
+                        verification_link = auth.generate_email_verification_link(email)
+                        flash(f"A verification link has been generated: {verification_link}", "info")
+                    except Exception as ver_err:
+                        print(f"Firebase Auth Verification Link Error: {ver_err}")
                 except Exception as auth_err:
                     print(f"Firebase Auth Notice: {auth_err}")
 
@@ -362,6 +372,11 @@ def register_patient():
                 try:
                     user_record = auth.create_user(email=email, password=password, display_name=name)
                     user_id = user_record.uid
+                    try:
+                        verification_link = auth.generate_email_verification_link(email)
+                        flash(f"A verification link has been generated: {verification_link}", "info")
+                    except Exception as ver_err:
+                        print(f"Firebase Auth Verification Link Error: {ver_err}")
                 except Exception as auth_err:
                     print(f"Firebase Auth Notice: {auth_err}")
 

@@ -95,7 +95,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
       if (mounted) {
         setState(() => _isLoading = false);
 
-        _showSuccessSnackBar('Account created successfully!');
+        _showSuccessSnackBar('Account created successfully! A verification link has been sent to your email.');
 
         if (_selectedRole == UserRole.doctor) {
           Navigator.pushReplacementNamed(context, '/doctor-verification');

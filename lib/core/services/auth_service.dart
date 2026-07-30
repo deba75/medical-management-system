@@ -51,6 +51,13 @@ class AuthService {
       // Update display name
       await credential.user!.updateDisplayName(name);
       
+      // Send email verification link
+      try {
+        await credential.user!.sendEmailVerification();
+      } catch (e) {
+        // Allow signup to succeed even if email verification send fails (e.g., rate limits or mock environment)
+      }
+      
       return credential;
     } catch (e) {
       rethrow;
