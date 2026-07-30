@@ -501,8 +501,8 @@ def register_patient():
             session['user_email'] = email
             session['user_role'] = 'patient'
             session['user_name'] = name
-            flash('Logged in to Patient Web Portal (Demo Mode)', 'info')
-            return redirect(url_for('patient_dashboard'))
+            flash('Registered successfully in Demo Mode! Please verify your email.', 'info')
+            return redirect(url_for('patient_verify_email'))
 
     return render_template('register_patient.html')
 
@@ -580,6 +580,14 @@ def login():
                         flash(f'Welcome back, {name}!', 'success')
                         return redirect(url_for('diagnostic_dashboard'))
                     elif role == 'patient':
+                        if uid != 'demo_patient_id':
+                            try:
+                                user_record = auth.get_user(uid)
+                                if not user_record.email_verified:
+                                    flash(f'Welcome back, {name}! Please verify your email address.', 'warning')
+                                    return redirect(url_for('patient_verify_email'))
+                            except Exception as e:
+                                print(f"Error checking email verification: {e}")
                         flash(f'Welcome back, {name}!', 'success')
                         return redirect(url_for('patient_dashboard'))
                 
