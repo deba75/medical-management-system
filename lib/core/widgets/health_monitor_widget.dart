@@ -42,8 +42,8 @@ class _HealthMonitorWidgetState extends State<HealthMonitorWidget> {
     _fetchWatchData();
     _loadBloodDonationData();
 
-    // Auto-check for smartwatch vitals every 15 minutes while app/widget is active
-    _periodicTimer = Timer.periodic(const Duration(minutes: 15), (_) {
+    // Auto-check & auto-save smartwatch vitals to Firebase every 10 minutes
+    _periodicTimer = Timer.periodic(const Duration(minutes: 10), (_) {
       _fetchWatchData();
     });
   }
