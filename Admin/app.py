@@ -583,12 +583,15 @@ def login():
                         flash(f'Welcome back, {name}!', 'success')
                         return redirect(url_for('diagnostic_dashboard'))
                     elif role == 'patient':
-                        if uid != 'demo_patient_id':
+                        requires_verification = user.get('requiresEmailVerification', False)
+                        if requires_verification and uid != 'demo_patient_id':
                             try:
                                 user_record = auth.get_user(uid)
                                 if not user_record.email_verified:
                                     flash(f'Welcome back, {name}! Please verify your email address.', 'warning')
                                     return redirect(url_for('patient_verify_email'))
+                                else:
+                                    db.collection('users').document(uid).update({'requiresEmailVerification': False})
                             except Exception as e:
                                 print(f"Error checking email verification: {e}")
                         flash(f'Welcome back, {name}!', 'success')
