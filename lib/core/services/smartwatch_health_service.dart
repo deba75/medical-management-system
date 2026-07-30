@@ -176,7 +176,7 @@ class SmartwatchHealthService {
       // Group data points by source app to deduplicate between phone sensors and watch
       final Map<String, int> stepsBySource = {};
       final Map<String, int> caloriesBySource = {};
-      
+
       final Map<String, int> hrBySource = {};
       final Map<String, DateTime> hrTimeBySource = {};
 
@@ -189,9 +189,11 @@ class SmartwatchHealthService {
       for (final point in healthData) {
         final numValue = _extractNumericValue(point.value);
         if (numValue == null) continue;
-        
+
         // Extract source name (e.g. "Kieselect", "Google Fit") or package ID
-        final src = (point.sourceName.isNotEmpty ? point.sourceName : point.sourceId).toLowerCase();
+        final src =
+            (point.sourceName.isNotEmpty ? point.sourceName : point.sourceId)
+                .toLowerCase();
 
         if (point.type == HealthDataType.HEART_RATE) {
           final existingTime = hrTimeBySource[src];
@@ -214,7 +216,8 @@ class SmartwatchHealthService {
         } else if (point.type == HealthDataType.STEPS) {
           stepsBySource[src] = (stepsBySource[src] ?? 0) + numValue.round();
         } else if (point.type == HealthDataType.TOTAL_CALORIES_BURNED) {
-          caloriesBySource[src] = (caloriesBySource[src] ?? 0) + numValue.round();
+          caloriesBySource[src] =
+              (caloriesBySource[src] ?? 0) + numValue.round();
         }
       }
 
@@ -223,10 +226,15 @@ class SmartwatchHealthService {
       DateTime hrTimestamp = DateTime.now();
       if (hrBySource.isNotEmpty) {
         final watchKey = hrBySource.keys.firstWhere(
-          (k) => k.contains('kieselect') || k.contains('kies') || k.contains('watch'),
+          (k) =>
+              k.contains('kieselect') ||
+              k.contains('kies') ||
+              k.contains('watch'),
           orElse: () => '',
         );
-        final selectedKey = watchKey.isNotEmpty ? watchKey : hrBySource.keys.first;
+        final selectedKey = watchKey.isNotEmpty
+            ? watchKey
+            : hrBySource.keys.first;
         chosenHR = hrBySource[selectedKey]!;
         hrTimestamp = hrTimeBySource[selectedKey]!;
       }
@@ -235,20 +243,30 @@ class SmartwatchHealthService {
       int chosenSys = 120;
       if (sysBySource.isNotEmpty) {
         final watchKey = sysBySource.keys.firstWhere(
-          (k) => k.contains('kieselect') || k.contains('kies') || k.contains('watch'),
+          (k) =>
+              k.contains('kieselect') ||
+              k.contains('kies') ||
+              k.contains('watch'),
           orElse: () => '',
         );
-        final selectedKey = watchKey.isNotEmpty ? watchKey : sysBySource.keys.first;
+        final selectedKey = watchKey.isNotEmpty
+            ? watchKey
+            : sysBySource.keys.first;
         chosenSys = sysBySource[selectedKey]!;
       }
 
       int chosenDia = 80;
       if (diaBySource.isNotEmpty) {
         final watchKey = diaBySource.keys.firstWhere(
-          (k) => k.contains('kieselect') || k.contains('kies') || k.contains('watch'),
+          (k) =>
+              k.contains('kieselect') ||
+              k.contains('kies') ||
+              k.contains('watch'),
           orElse: () => '',
         );
-        final selectedKey = watchKey.isNotEmpty ? watchKey : diaBySource.keys.first;
+        final selectedKey = watchKey.isNotEmpty
+            ? watchKey
+            : diaBySource.keys.first;
         chosenDia = diaBySource[selectedKey]!;
       }
 
@@ -256,7 +274,10 @@ class SmartwatchHealthService {
       int chosenSteps = 955; // Default mock fallback matching Kieselect
       if (stepsBySource.isNotEmpty) {
         final watchKey = stepsBySource.keys.firstWhere(
-          (k) => k.contains('kieselect') || k.contains('kies') || k.contains('watch'),
+          (k) =>
+              k.contains('kieselect') ||
+              k.contains('kies') ||
+              k.contains('watch'),
           orElse: () => '',
         );
         if (watchKey.isNotEmpty) {
@@ -270,13 +291,18 @@ class SmartwatchHealthService {
       int chosenCalories = 35; // Default mock fallback matching Kieselect
       if (caloriesBySource.isNotEmpty) {
         final watchKey = caloriesBySource.keys.firstWhere(
-          (k) => k.contains('kieselect') || k.contains('kies') || k.contains('watch'),
+          (k) =>
+              k.contains('kieselect') ||
+              k.contains('kies') ||
+              k.contains('watch'),
           orElse: () => '',
         );
         if (watchKey.isNotEmpty) {
           chosenCalories = caloriesBySource[watchKey]!;
         } else {
-          chosenCalories = caloriesBySource.values.reduce((a, b) => a > b ? a : b);
+          chosenCalories = caloriesBySource.values.reduce(
+            (a, b) => a > b ? a : b,
+          );
         }
       }
 

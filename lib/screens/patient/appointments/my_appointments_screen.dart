@@ -10,6 +10,9 @@ import '../../../models/appointment_model.dart';
 import 'appointment_detail_screen.dart';
 import '../doctors/search_doctors_screen.dart';
 
+import '../../../core/widgets/family_member_selector.dart';
+import '../../../core/providers/family_member_provider.dart';
+
 class MyAppointmentsScreen extends ConsumerStatefulWidget {
   const MyAppointmentsScreen({super.key});
 
@@ -76,6 +79,7 @@ class _MyAppointmentsScreenState extends ConsumerState<MyAppointmentsScreen>
   @override
   Widget build(BuildContext context) {
     final appointmentsAsync = ref.watch(userAppointmentsProvider);
+    final selectedMember = ref.watch(selectedFamilyMemberProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -89,41 +93,64 @@ class _MyAppointmentsScreenState extends ConsumerState<MyAppointmentsScreen>
           ],
         ),
       ),
-      body: appointmentsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('Error loading appointments'),
-              TextButton(
-                onPressed: () => ref.invalidate(userAppointmentsProvider),
-                child: const Text('Retry'),
+      body: Column(
+        children: [
+          const FamilyMemberSelector(showAddButton: true),
+          Expanded(
+            child: appointmentsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    const Text('Error loading appointments'),
+                    TextButton(
+                      onPressed: () => ref.invalidate(userAppointmentsProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
               ),
-            ],
+              data: (appointments) {
+                final filteredByMember = appointments.where((apt) {
+                  if (selectedMember == null) {
+                    return apt.familyMemberId == null || apt.familyMemberId!.isEmpty;
+                  } else {
+                    return apt.familyMemberId == selectedMember.id;
+                  }
+                }).toList();
+
+                return TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _AppointmentsList(
+                      appointments: _getFilteredAppointments(filteredByMember, null),
+                      emptyMessage: selectedMember == null 
+                          ? 'No appointments yet'
+                          : 'No appointments for ${selectedMember.name}',
+                    ),
+                    _AppointmentsList(
+                      appointments:
+                          _getFilteredAppointments(filteredByMember, AppointmentStatus.upcoming),
+                      emptyMessage: selectedMember == null
+                          ? 'No upcoming appointments'
+                          : 'No upcoming appointments for ${selectedMember.name}',
+                    ),
+                    _AppointmentsList(
+                      appointments:
+                          _getFilteredAppointments(filteredByMember, AppointmentStatus.completed),
+                      emptyMessage: selectedMember == null
+                          ? 'No completed appointments'
+                          : 'No completed appointments for ${selectedMember.name}',
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
-        ),
-        data: (appointments) => TabBarView(
-          controller: _tabController,
-          children: [
-            _AppointmentsList(
-              appointments: _getFilteredAppointments(appointments, null),
-              emptyMessage: 'No appointments yet',
-            ),
-            _AppointmentsList(
-              appointments:
-                  _getFilteredAppointments(appointments, AppointmentStatus.upcoming),
-              emptyMessage: 'No upcoming appointments',
-            ),
-            _AppointmentsList(
-              appointments:
-                  _getFilteredAppointments(appointments, AppointmentStatus.completed),
-              emptyMessage: 'No completed appointments',
-            ),
-          ],
-        ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {

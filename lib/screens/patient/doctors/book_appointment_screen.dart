@@ -450,6 +450,61 @@ class _BookAppointmentScreenState extends ConsumerState<BookAppointmentScreen> {
     setState(() => _isBooking = true);
 
     try {
+      final selectedFamilyMember = ref.read(selectedFamilyMemberProvider);
+      final effectiveDoctorId = widget.doctor.userId.isNotEmpty 
+          ? widget.doctor.userId 
+          : widget.doctor.doctorId;
+
+      // Duplicate Check: Same Doctor, Same Recipient (Self or specific family member), Same Day
+      final startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('appointments')
+          .where('doctorId', isEqualTo: effectiveDoctorId)
+          .where('patientId', isEqualTo: user.uid)
+          .get();
+
+      final hasDuplicate = querySnapshot.docs.any((doc) {
+        final data = doc.data();
+        final dateVal = data['date'];
+        DateTime docDate;
+        if (dateVal is Timestamp) {
+          docDate = dateVal.toDate();
+        } else if (dateVal is String) {
+          docDate = DateTime.tryParse(dateVal) ?? DateTime.now();
+        } else {
+          return false;
+        }
+
+        final docFamilyMemberId = data['familyMemberId'];
+        final targetFamilyMemberId = selectedFamilyMember?.id;
+
+        final isSameDay = docDate.year == startOfDay.year &&
+            docDate.month == startOfDay.month &&
+            docDate.day == startOfDay.day;
+
+        final isSameRecipient = docFamilyMemberId == targetFamilyMemberId;
+        final status = data['status'];
+        final isCancelled = status == 'cancelled';
+
+        return isSameDay && isSameRecipient && !isCancelled;
+      });
+
+      if (hasDuplicate) {
+        setState(() => _isBooking = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                selectedFamilyMember == null
+                    ? 'You already have an appointment with this doctor on this day!'
+                    : '${selectedFamilyMember.name} already has an appointment with this doctor on this day!',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
       // Debug: Print doctor info
       debugPrint('=== BOOKING DEBUG ===');
       debugPrint('Doctor doctorId (doc ID): ${widget.doctor.doctorId}');
@@ -466,7 +521,6 @@ class _BookAppointmentScreenState extends ConsumerState<BookAppointmentScreen> {
       final accountUserOwnerName = patientDoc.data()?['name'] ?? 'Patient';
 
       // Check if booking is for a selected family member
-      final selectedFamilyMember = ref.read(selectedFamilyMemberProvider);
       final effectivePatientName = selectedFamilyMember != null 
           ? '${selectedFamilyMember.name} (${selectedFamilyMember.relationship})'
           : accountUserOwnerName;
@@ -477,12 +531,6 @@ class _BookAppointmentScreenState extends ConsumerState<BookAppointmentScreen> {
         orElse: () => _doctorHospitals.first,
       );
 
-      // Use doctor.userId (Firebase Auth UID) as doctorId for proper sync
-      // Fallback to doctorId if userId is empty (for manually created doctors)
-      final effectiveDoctorId = widget.doctor.userId.isNotEmpty 
-          ? widget.doctor.userId 
-          : widget.doctor.doctorId;
-      
       debugPrint('Using effective doctorId: $effectiveDoctorId');
       
       final docRef = FirebaseFirestore.instance.collection('appointments').doc();

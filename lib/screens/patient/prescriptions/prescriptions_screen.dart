@@ -67,9 +67,16 @@ class _PrescriptionsScreenState extends ConsumerState<PrescriptionsScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [_buildDoctorPrescriptionsTab(), _buildMyPrescriptionsTab()],
+      body: Column(
+        children: [
+          const FamilyMemberSelector(showAddButton: true),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [_buildDoctorPrescriptionsTab(), _buildMyPrescriptionsTab()],
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _isUploading
@@ -93,6 +100,7 @@ class _PrescriptionsScreenState extends ConsumerState<PrescriptionsScreen>
 
   // Doctor Prescribed Prescriptions
   Widget _buildDoctorPrescriptionsTab() {
+    final selectedMember = ref.watch(selectedFamilyMemberProvider);
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('prescriptions')
@@ -104,12 +112,23 @@ class _PrescriptionsScreenState extends ConsumerState<PrescriptionsScreen>
           return const Center(child: CircularProgressIndicator());
         }
 
-        final prescriptions = snapshot.data?.docs ?? [];
+        final allPrescriptions = snapshot.data?.docs ?? [];
+        final prescriptions = allPrescriptions.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final famId = data['familyMemberId'];
+          if (selectedMember == null) {
+            return famId == null || famId == '';
+          } else {
+            return famId == selectedMember.id;
+          }
+        }).toList();
 
         if (prescriptions.isEmpty) {
-          return const EmptyStateWidget(
+          return EmptyStateWidget(
             icon: Icons.receipt_long_outlined,
-            title: 'No doctor prescriptions',
+            title: selectedMember == null 
+                ? 'No doctor prescriptions'
+                : 'No prescriptions for ${selectedMember.name}',
             subtitle:
                 'Prescriptions from your doctors will appear here after consultations',
           );
@@ -142,6 +161,7 @@ class _PrescriptionsScreenState extends ConsumerState<PrescriptionsScreen>
 
   // My Uploaded Prescriptions
   Widget _buildMyPrescriptionsTab() {
+    final selectedMember = ref.watch(selectedFamilyMemberProvider);
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('prescriptions')
@@ -153,12 +173,23 @@ class _PrescriptionsScreenState extends ConsumerState<PrescriptionsScreen>
           return const Center(child: CircularProgressIndicator());
         }
 
-        final prescriptions = snapshot.data?.docs ?? [];
+        final allPrescriptions = snapshot.data?.docs ?? [];
+        final prescriptions = allPrescriptions.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final famId = data['familyMemberId'];
+          if (selectedMember == null) {
+            return famId == null || famId == '';
+          } else {
+            return famId == selectedMember.id;
+          }
+        }).toList();
 
         if (prescriptions.isEmpty) {
           return EmptyStateWidget(
             icon: Icons.upload_file_outlined,
-            title: 'No uploaded prescriptions',
+            title: selectedMember == null 
+                ? 'No uploaded prescriptions'
+                : 'No uploaded prescriptions for ${selectedMember.name}',
             subtitle: 'Upload your prescriptions here for easy access',
             actionText: 'Upload Prescription',
             onAction: () => _showAddPrescriptionDialog(context),

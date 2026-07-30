@@ -45,11 +45,18 @@ class _MedicalHistoryScreenState extends ConsumerState<MedicalHistoryScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildAutoHistoryTab(),
-          _buildManualHistoryTab(),
+          const FamilyMemberSelector(showAddButton: true),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildAutoHistoryTab(),
+                _buildManualHistoryTab(),
+              ],
+            ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -63,6 +70,7 @@ class _MedicalHistoryScreenState extends ConsumerState<MedicalHistoryScreen>
 
   // Auto History - from appointments
   Widget _buildAutoHistoryTab() {
+    final selectedMember = ref.watch(selectedFamilyMemberProvider);
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('appointments')
@@ -74,13 +82,24 @@ class _MedicalHistoryScreenState extends ConsumerState<MedicalHistoryScreen>
           return const Center(child: CircularProgressIndicator());
         }
 
-        final appointments = snapshot.data?.docs ?? [];
+        final allAppointments = snapshot.data?.docs ?? [];
+        final appointments = allAppointments.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final famId = data['familyMemberId'];
+          if (selectedMember == null) {
+            return famId == null || famId == '';
+          } else {
+            return famId == selectedMember.id;
+          }
+        }).toList();
         
         if (appointments.isEmpty) {
-          return const EmptyStateWidget(
+          return EmptyStateWidget(
             icon: Icons.history_outlined,
-            title: 'No visit history',
-            subtitle: 'Your completed appointments will appear here automatically',
+            title: selectedMember == null
+                ? 'No visit history'
+                : 'No visit history for ${selectedMember.name}',
+            subtitle: 'Completed appointments will appear here automatically',
           );
         }
 
@@ -116,6 +135,7 @@ class _MedicalHistoryScreenState extends ConsumerState<MedicalHistoryScreen>
 
   // Manual History - added by patient
   Widget _buildManualHistoryTab() {
+    final selectedMember = ref.watch(selectedFamilyMemberProvider);
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('medicalHistory')
@@ -127,13 +147,24 @@ class _MedicalHistoryScreenState extends ConsumerState<MedicalHistoryScreen>
           return const Center(child: CircularProgressIndicator());
         }
 
-        final records = snapshot.data?.docs ?? [];
+        final allRecords = snapshot.data?.docs ?? [];
+        final records = allRecords.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final famId = data['familyMemberId'];
+          if (selectedMember == null) {
+            return famId == null || famId == '';
+          } else {
+            return famId == selectedMember.id;
+          }
+        }).toList();
         
         if (records.isEmpty) {
           return EmptyStateWidget(
             icon: Icons.note_add_outlined,
-            title: 'No manual records',
-            subtitle: 'Add your past medical records here',
+            title: selectedMember == null
+                ? 'No manual records'
+                : 'No manual records for ${selectedMember.name}',
+            subtitle: 'Add past medical records here',
             actionText: 'Add History',
             onAction: () => _showAddHistoryDialog(context),
           );

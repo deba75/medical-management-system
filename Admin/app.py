@@ -2938,6 +2938,7 @@ def patient_book_appointment(doctor_id):
     doctor = None
     chambers = []
     time_slots = ['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM', '04:00 PM', '06:00 PM', '07:00 PM']
+    family_members = []
 
     if db is not None:
         try:
@@ -2948,8 +2949,15 @@ def patient_book_appointment(doctor_id):
                 chambers = doctor.get('chambers', [])
                 if doctor.get('generatedSlots'):
                     time_slots = doctor.get('generatedSlots')
+            
+            # Fetch family members
+            m_docs = db.collection('users').document(patient_id).collection('family_members').get()
+            for d in m_docs:
+                m_data = d.to_dict()
+                m_data['id'] = d.id
+                family_members.append(m_data)
         except Exception as e:
-            print(f"Error loading doctor for booking: {e}")
+            print(f"Error loading doctor/family info for booking: {e}")
 
     if not doctor:
         doctor = {'id': doctor_id, 'name': 'Specialist', 'specialization': 'General', 'consultationFee': 500}
@@ -2961,16 +2969,56 @@ def patient_book_appointment(doctor_id):
         c_type = request.form.get('consultation_type', 'in_person')
         payment_method = request.form.get('payment_method', 'cash')
         symptoms = request.form.get('symptoms', '')
+        recipient = request.form.get('recipient', 'self')
         fee = float(doctor.get('consultationFee', 500))
+
+        family_member_id = None
+        family_member_name = None
+        family_member_relationship = None
+
+        if recipient != 'self' and family_members:
+            selected_member = next((m for m in family_members if m['id'] == recipient), None)
+            if selected_member:
+                family_member_id = selected_member['id']
+                family_member_name = selected_member.get('name')
+                family_member_relationship = selected_member.get('relationship')
+                patient_name = f"{family_member_name} ({family_member_relationship})"
 
         if db is not None:
             try:
+                # Duplicate Check: Same Doctor, Same Recipient, Same Day (active appointments)
+                existing_docs = db.collection('appointments') \
+                    .where('doctorId', '==', doctor_id) \
+                    .where('date', '==', appt_date) \
+                    .where('patientId', '==', patient_id) \
+                    .stream()
+                
+                has_duplicate = False
+                for doc in existing_docs:
+                    doc_data = doc.to_dict()
+                    if doc_data.get('status') == 'cancelled':
+                        continue
+                    
+                    doc_family_member_id = doc_data.get('familyMemberId')
+                    if doc_family_member_id == family_member_id:
+                        has_duplicate = True
+                        break
+                
+                if has_duplicate:
+                    recipient_name = family_member_name if family_member_name else "you"
+                    flash(f"An appointment is already scheduled with Dr. {doctor.get('name')} on {appt_date} for {recipient_name}!", "danger")
+                    min_date = datetime.now().strftime('%Y-%m-%d')
+                    return render_template('patient/book_appointment.html', active_page='doctors', doctor=doctor, chambers=chambers, time_slots=time_slots, min_date=min_date, family_members=family_members)
+
                 appt_ref = db.collection('appointments').document()
                 appt_data = {
                     'id': appt_ref.id,
                     'patientId': patient_id,
                     'patientName': patient_name,
                     'patientEmail': patient_email,
+                    'familyMemberId': family_member_id,
+                    'familyMemberName': family_member_name,
+                    'familyMemberRelationship': family_member_relationship,
                     'doctorId': doctor_id,
                     'doctorName': doctor.get('name', 'Doctor'),
                     'specialization': doctor.get('specialization', 'General Practitioner'),
@@ -2996,7 +3044,7 @@ def patient_book_appointment(doctor_id):
             return redirect(url_for('patient_appointments'))
 
     min_date = datetime.now().strftime('%Y-%m-%d')
-    return render_template('patient/book_appointment.html', active_page='doctors', doctor=doctor, chambers=chambers, time_slots=time_slots, min_date=min_date)
+    return render_template('patient/book_appointment.html', active_page='doctors', doctor=doctor, chambers=chambers, time_slots=time_slots, min_date=min_date, family_members=family_members)
 
 
 @app.route('/patient/appointments')

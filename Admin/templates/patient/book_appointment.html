@@ -26,6 +26,18 @@
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('patient_book_appointment', doctor_id=doctor.get('id', '')) }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Appointment For / Recipient *</label>
+                        <select name="recipient" class="form-select" required>
+                            <option value="self">Myself ({{ session.get('user_name', 'Patient') }})</option>
+                            {% if family_members %}
+                                {% for member in family_members %}
+                                <option value="{{ member.get('id') }}">{{ member.get('name') }} ({{ member.get('relationship') }})</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+
                     {% if chambers %}
                     <div class="mb-3">
                         <label class="form-label fw-bold">Select Chamber</label>
