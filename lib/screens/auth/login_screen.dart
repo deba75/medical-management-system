@@ -88,7 +88,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         } else if (userData?.role == UserRole.admin) {
           Navigator.pushReplacementNamed(context, '/admin-verification');
         } else {
-          Navigator.pushReplacementNamed(context, '/patient-home');
+          final user = authService.currentUser;
+          if (user != null && !user.emailVerified) {
+            Navigator.pushReplacementNamed(context, '/email-verification');
+          } else {
+            Navigator.pushReplacementNamed(context, '/patient-home');
+          }
         }
       }
     } catch (e) {

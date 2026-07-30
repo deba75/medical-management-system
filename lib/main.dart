@@ -14,6 +14,7 @@ import 'screens/doctor/home/doctor_home_screen.dart';
 import 'screens/doctor/verification/doctor_verification_screen.dart';
 import 'screens/diagnostic_centre/diagnostic_centre_dashboard_screen.dart';
 import 'screens/diagnostic_centre/verification/diagnostic_centre_verification_screen.dart';
+import 'screens/auth/email_verification_screen.dart';
 import 'screens/admin/admin_verification_screen.dart';
 
 void main() async {
@@ -43,6 +44,7 @@ class MyApp extends ConsumerWidget {
       home: const SplashScreen(),
       routes: {
         '/login': (context) => const LoginScreen(),
+        '/email-verification': (context) => const EmailVerificationScreen(),
         '/patient-home': (context) => const PatientHomeScreen(),
         '/patient-profile': (context) => const PatientProfileScreen(),
         '/doctor-home': (context) => const DoctorHomeScreen(),
@@ -87,7 +89,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           } else if (userData?.role == UserRole.admin) {
             Navigator.pushReplacementNamed(context, '/admin-verification');
           } else {
-            Navigator.pushReplacementNamed(context, '/patient-home');
+            if (!user.emailVerified) {
+              Navigator.pushReplacementNamed(context, '/email-verification');
+            } else {
+              Navigator.pushReplacementNamed(context, '/patient-home');
+            }
           }
           return;
         }

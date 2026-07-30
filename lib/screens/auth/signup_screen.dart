@@ -98,11 +98,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
         _showSuccessSnackBar('Account created successfully! A verification link has been sent to your email.');
 
         if (_selectedRole == UserRole.doctor) {
-          Navigator.pushReplacementNamed(context, '/doctor-verification');
+           Navigator.pushReplacementNamed(context, '/doctor-verification');
         } else if (_selectedRole == UserRole.diagnosticCentre) {
-          Navigator.pushReplacementNamed(context, '/diagnostic-centre-verification');
+           Navigator.pushReplacementNamed(context, '/diagnostic-centre-verification');
         } else {
-          Navigator.pushReplacementNamed(context, '/patient-home');
+           Navigator.pushReplacementNamed(context, '/email-verification');
         }
       }
     } catch (e) {

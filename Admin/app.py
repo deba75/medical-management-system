@@ -53,6 +53,50 @@ except Exception as e:
     print("Running in DEMO MODE without Firebase connection\n")
     db = None
 
+
+def send_verification_email(to_email, verification_link):
+    # Save to a debug file so examiners can test it immediately
+    try:
+        debug_file_path = os.path.join(os.path.dirname(__file__), 'verification_link.txt')
+        with open(debug_file_path, 'w') as f:
+            f.write(verification_link)
+        print(f"📁 Verification link written to {debug_file_path}")
+    except Exception as fe:
+        print(f"Error writing verification link file: {fe}")
+
+    smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
+    smtp_port = int(os.environ.get('SMTP_PORT', 587))
+    smtp_user = os.environ.get('SMTP_USER', '')
+    smtp_password = os.environ.get('SMTP_PASSWORD', '')
+
+    if not smtp_user or not smtp_password:
+        print(f"⚠️ SMTP credentials not set. Verification link printed here: {verification_link}")
+        return False
+
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = to_email
+        msg['Subject'] = "Verify your email for MediConnect"
+
+        body = f"Hello,\n\nWelcome to MediConnect! Please click the link below to verify your email address and activate your account:\n\n{verification_link}\n\nBest regards,\nMediConnect Team"
+
+        msg.attach(MIMEText(body, 'plain'))
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_user, to_email, msg.as_string())
+        server.quit()
+        print(f"📧 Verification email sent to {to_email} successfully!")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to send SMTP email: {e}")
+        return False
+
 # Admin credentials (in production, store these securely in environment variables)
 ADMIN_CREDENTIALS = {
     'admin@mediconnect.com': generate_password_hash('admin123')  # Change this password in production!
@@ -196,7 +240,7 @@ def register_doctor():
                     user_id = user_record.uid
                     try:
                         verification_link = auth.generate_email_verification_link(email)
-                        flash(f"A verification link has been generated: {verification_link}", "info")
+                        send_verification_email(email, verification_link)
                     except Exception as ver_err:
                         print(f"Firebase Auth Verification Link Error: {ver_err}")
                 except Exception as auth_err:
@@ -282,7 +326,7 @@ def register_diagnostic():
                     user_id = user_record.uid
                     try:
                         verification_link = auth.generate_email_verification_link(email)
-                        flash(f"A verification link has been generated: {verification_link}", "info")
+                        send_verification_email(email, verification_link)
                     except Exception as ver_err:
                         print(f"Firebase Auth Verification Link Error: {ver_err}")
                 except Exception as auth_err:
@@ -374,7 +418,7 @@ def register_patient():
                     user_id = user_record.uid
                     try:
                         verification_link = auth.generate_email_verification_link(email)
-                        flash(f"A verification link has been generated: {verification_link}", "info")
+                        send_verification_email(email, verification_link)
                     except Exception as ver_err:
                         print(f"Firebase Auth Verification Link Error: {ver_err}")
                 except Exception as auth_err:
@@ -400,8 +444,8 @@ def register_patient():
                 session['user_role'] = 'patient'
                 session['user_name'] = name
 
-                flash(f'Welcome to MediConnect, {name}!', 'success')
-                return redirect(url_for('patient_dashboard'))
+                flash(f'Welcome to MediConnect, {name}! Please verify your email first.', 'success')
+                return redirect(url_for('patient_verify_email'))
             except Exception as e:
                 flash(f'Registration error: {e}', 'danger')
         else:
@@ -2813,11 +2857,55 @@ def patient_required(f):
             flash('Please login with your Patient account to access Patient Portal', 'warning')
             return redirect(url_for('login'))
             
+        user_id = session.get('user_id')
+        if db is not None and user_id and user_id != 'demo_patient_id':
+            try:
+                user_record = auth.get_user(user_id)
+                if not user_record.email_verified:
+                    return redirect(url_for('patient_verify_email'))
+            except Exception as e:
+                print(f"Error checking email verification: {e}")
+            
         return f(*args, **kwargs)
     return decorated_function
 
 
 # =================== Patient Web Portal Routes ===================
+
+@app.route('/patient/verify-email', methods=['GET', 'POST'])
+def patient_verify_email():
+    patient_id = session.get('user_id')
+    user_email = session.get('user_email')
+    
+    if not user_email or session.get('user_role') != 'patient':
+        return redirect(url_for('login'))
+        
+    if db is not None and patient_id and patient_id != 'demo_patient_id':
+        try:
+            user_record = auth.get_user(patient_id)
+            if user_record.email_verified:
+                flash("Email verified successfully! Welcome to MediConnect.", "success")
+                return redirect(url_for('patient_dashboard'))
+        except Exception as e:
+            print(f"Error checking email verification: {e}")
+            
+    if request.method == 'POST':
+        if db is not None and patient_id and patient_id != 'demo_patient_id':
+            try:
+                user_record = auth.get_user(patient_id)
+                if user_record.email_verified:
+                    flash("Email verified successfully! Welcome.", "success")
+                    return redirect(url_for('patient_dashboard'))
+                else:
+                    flash("Your email is not verified yet. Please check your inbox.", "warning")
+            except Exception as e:
+                flash(f"Error: {e}", "danger")
+        else:
+            flash("Demo Mode: Email marked as verified!", "success")
+            return redirect(url_for('patient_dashboard'))
+            
+    return render_template('patient/verify_email.html', email=user_email)
+
 
 @app.route('/patient/dashboard')
 @patient_required
