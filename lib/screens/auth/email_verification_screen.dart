@@ -110,10 +110,9 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
             icon: const Icon(Icons.logout),
             onPressed: () async {
               _timer?.cancel();
+              final navigator = Navigator.of(context);
               await FirebaseAuth.instance.signOut();
-              if (mounted) {
-                Navigator.pushReplacementNamed(context, '/login');
-              }
+              navigator.pushReplacementNamed('/login');
             },
           ),
         ],
