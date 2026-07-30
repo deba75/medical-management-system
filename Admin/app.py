@@ -97,6 +97,50 @@ def send_verification_email(to_email, verification_link):
         print(f"❌ Failed to send SMTP email: {e}")
         return False
 
+
+def send_firebase_verification_email_rest(email, password):
+    api_key = os.environ.get('FIREBASE_API_KEY', 'AIzaSyDS1dZxMZbvT8YlefebfPJfKsbsHqPu9Zs')
+    sign_in_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}"
+    payload = {
+        "email": email,
+        "password": password,
+        "returnSecureToken": True
+    }
+    
+    try:
+        req = urllib.request.Request(
+            sign_in_url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req) as response:
+            res_data = json.loads(response.read().decode('utf-8'))
+            id_token = res_data.get('idToken')
+            
+        if not id_token:
+            print("❌ REST Sign in failed, no idToken returned")
+            return False
+            
+        send_code_url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={api_key}"
+        code_payload = {
+            "requestType": "VERIFY_EMAIL",
+            "idToken": id_token
+        }
+        
+        req_code = urllib.request.Request(
+            send_code_url,
+            data=json.dumps(code_payload).encode('utf-8'),
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req_code) as response_code:
+            res_code_data = json.loads(response_code.read().decode('utf-8'))
+            print("✅ Firebase Verification Email Triggered via REST API:", res_code_data)
+            return True
+            
+    except Exception as e:
+        print(f"❌ Error triggering Firebase email verification via REST: {e}")
+        return False
+
 # Admin credentials (in production, store these securely in environment variables)
 ADMIN_CREDENTIALS = {
     'admin@mediconnect.com': generate_password_hash('admin123')  # Change this password in production!
@@ -241,6 +285,7 @@ def register_doctor():
                     try:
                         verification_link = auth.generate_email_verification_link(email)
                         send_verification_email(email, verification_link)
+                        send_firebase_verification_email_rest(email, password)
                     except Exception as ver_err:
                         print(f"Firebase Auth Verification Link Error: {ver_err}")
                 except Exception as auth_err:
@@ -327,6 +372,7 @@ def register_diagnostic():
                     try:
                         verification_link = auth.generate_email_verification_link(email)
                         send_verification_email(email, verification_link)
+                        send_firebase_verification_email_rest(email, password)
                     except Exception as ver_err:
                         print(f"Firebase Auth Verification Link Error: {ver_err}")
                 except Exception as auth_err:
@@ -419,6 +465,7 @@ def register_patient():
                     try:
                         verification_link = auth.generate_email_verification_link(email)
                         send_verification_email(email, verification_link)
+                        send_firebase_verification_email_rest(email, password)
                     except Exception as ver_err:
                         print(f"Firebase Auth Verification Link Error: {ver_err}")
                 except Exception as auth_err:
