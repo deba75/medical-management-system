@@ -232,6 +232,8 @@ class TestItem {
   final double price;
   final String? description;
   final int? preparationHours; // Fasting hours required
+  final String? diagnosticCentreId;
+  final String? diagnosticCentreName;
 
   TestItem({
     required this.testId,
@@ -240,6 +242,8 @@ class TestItem {
     required this.price,
     this.description,
     this.preparationHours,
+    this.diagnosticCentreId,
+    this.diagnosticCentreName,
   });
 
   factory TestItem.fromJson(Map<String, dynamic> json) {
@@ -250,6 +254,8 @@ class TestItem {
       price: (json['price'] ?? 0).toDouble(),
       description: json['description'],
       preparationHours: json['preparationHours'],
+      diagnosticCentreId: json['diagnosticCentreId'] ?? json['centreId'],
+      diagnosticCentreName: json['diagnosticCentreName'] ?? json['centreName'],
     );
   }
 
@@ -261,6 +267,8 @@ class TestItem {
       'price': price,
       'description': description,
       'preparationHours': preparationHours,
+      'diagnosticCentreId': diagnosticCentreId,
+      'diagnosticCentreName': diagnosticCentreName,
     };
   }
 }
@@ -274,6 +282,8 @@ class AvailableLabTest {
   final List<String> parameters;
   final int? preparationHours;
   final String? reportTime;
+  final String? centreId;
+  final String? centreName;
 
   AvailableLabTest({
     required this.id,
@@ -284,6 +294,8 @@ class AvailableLabTest {
     required this.parameters,
     this.preparationHours,
     this.reportTime,
+    this.centreId,
+    this.centreName,
   });
 
   factory AvailableLabTest.fromJson(Map<String, dynamic> json, String id) {
@@ -296,6 +308,8 @@ class AvailableLabTest {
       parameters: List<String>.from(json['parameters'] ?? []),
       preparationHours: json['preparationHours'],
       reportTime: json['reportTime'],
+      centreId: json['centreId'],
+      centreName: json['centreName'] ?? json['diagnosticCentreName'],
     );
   }
 
@@ -308,6 +322,8 @@ class AvailableLabTest {
       'parameters': parameters,
       'preparationHours': preparationHours,
       'reportTime': reportTime,
+      'centreId': centreId,
+      'centreName': centreName,
     };
   }
 }

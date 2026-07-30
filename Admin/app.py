@@ -2324,6 +2324,13 @@ def diagnostic_add_test():
 
     if db is not None:
         try:
+            # Fetch diagnostic center name
+            centre_name = "MediCare Diagnostics"
+            if centre_id:
+                diag_doc = db.collection('diagnostic_centres').document(centre_id).get()
+                if diag_doc.exists:
+                    centre_name = diag_doc.to_dict().get('name', 'MediCare Diagnostics')
+
             ref = db.collection('available_lab_tests').document()
             test_id = ref.id
             test_data = {
@@ -2339,6 +2346,8 @@ def diagnostic_add_test():
                 'reportDeliveryTime': turnaroundTime,
                 'isAvailable': True,
                 'centreId': centre_id,
+                'centreName': centre_name,
+                'diagnosticCentreName': centre_name,
                 'createdAt': datetime.now()
             }
             ref.set(test_data)

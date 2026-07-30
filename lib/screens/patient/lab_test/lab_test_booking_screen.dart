@@ -275,12 +275,36 @@ class _LabTestBookingScreenState extends ConsumerState<LabTestBookingScreen>
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      test.category,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 13,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          test.category,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                        ),
+                        if (test.centreName != null && test.centreName!.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(color: Colors.grey[400], shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              test.centreName!,
+                              style: const TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     if (test.preparationHours != null && test.preparationHours! > 0) ...[
                       const SizedBox(height: 4),
@@ -305,9 +329,9 @@ class _LabTestBookingScreenState extends ConsumerState<LabTestBookingScreen>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '₹${test.price.toStringAsFixed(0)}',
+                    'BDT ${test.price.toStringAsFixed(0)}',
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primaryColor,
                     ),
@@ -352,6 +376,8 @@ class _LabTestBookingScreenState extends ConsumerState<LabTestBookingScreen>
         price: test.price,
         description: test.description,
         preparationHours: test.preparationHours,
+        diagnosticCentreId: test.centreId,
+        diagnosticCentreName: test.centreName,
       ));
     });
   }
@@ -1610,8 +1636,8 @@ class _LabTestBookingScreenState extends ConsumerState<LabTestBookingScreen>
         familyMemberId: familyMember?.id,
         familyMemberName: familyMember?.name,
         familyMemberRelationship: familyMember?.relationship,
-        diagnosticCentreId: 'default',
-        diagnosticCentreName: 'MediCare Diagnostics',
+        diagnosticCentreId: _cart.isNotEmpty ? (_cart.first.diagnosticCentreId ?? 'default') : 'default',
+        diagnosticCentreName: _cart.isNotEmpty ? (_cart.first.diagnosticCentreName ?? 'MediCare Diagnostics') : 'MediCare Diagnostics',
         tests: _cart,
         status: LabTestStatus.pending,
         collectionType: collectionType,
