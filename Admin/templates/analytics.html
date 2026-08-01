@@ -3,6 +3,7 @@
 {% block title %}Analytics - MediConnect Admin{% endblock %}
 
 {% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
     .card {
         transition: transform 0.2s;
@@ -52,81 +53,85 @@
      data-specializations='{{ specializations_data | tojson }}'>
 </div>
 
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3">Analytics Dashboard</h1>
-        <div class="d-flex gap-2">
-            <select class="form-select" id="timeRange" style="width: auto;">
-                <option value="7">Last 7 Days</option>
-                <option value="30" selected>Last 30 Days</option>
-                <option value="90">Last 90 Days</option>
-                <option value="365">Last Year</option>
-            </select>
-            <button class="btn btn-outline-primary" id="refreshBtn">
-                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-            </button>
-        </div>
-    </div>
-
+<div class="container-fluid py-4 position-relative">
     <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
     </div>
 
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">System Analytics & Reports</h1>
+            <p class="text-muted">Real-time statistics and insights from live system data</p>
+        </div>
+        <div class="d-flex gap-2">
+            <select id="timeRange" class="form-select form-select-sm" style="width: auto;">
+                <option value="7">Last 7 Days</option>
+                <option value="30" selected>Last 30 Days</option>
+                <option value="90">Last 90 Days</option>
+                <option value="365">Last Year</option>
+            </select>
+            <button id="refreshBtn" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+        </div>
+    </div>
+
     <!-- Summary Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-sm-6">
             <div class="card bg-gradient-primary text-white shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="mb-1">Total Users</h6>
-                            <h3 class="mb-0">{{ analytics.total_users }}</h3>
-                            <small>+{{ analytics.new_users_percent }}% this month</small>
+                            <h6 class="text-uppercase mb-1" style="font-size: 0.8rem; opacity: 0.9;">Total Users</h6>
+                            <h3 class="display-6 fw-bold mb-0">{{ analytics.total_users }}</h3>
+                            <small class="opacity-75"><i class="bi bi-arrow-up me-1"></i>{{ analytics.new_users_percent }}% new this week</small>
                         </div>
                         <i class="bi bi-people-fill" style="font-size: 3rem; opacity: 0.3;"></i>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-xl-3 col-sm-6">
             <div class="card bg-gradient-success text-white shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="mb-1">Total Appointments</h6>
-                            <h3 class="mb-0">{{ analytics.total_appointments }}</h3>
-                            <small>{{ analytics.appointments_this_month }} this month</small>
+                            <h6 class="text-uppercase mb-1" style="font-size: 0.8rem; opacity: 0.9;">Total Appointments</h6>
+                            <h3 class="display-6 fw-bold mb-0">{{ analytics.total_appointments }}</h3>
+                            <small class="opacity-75"><i class="bi bi-calendar-check me-1"></i>{{ analytics.appointments_this_month }} this month</small>
                         </div>
-                        <i class="bi bi-calendar-check-fill" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <i class="bi bi-calendar-event-fill" style="font-size: 3rem; opacity: 0.3;"></i>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-xl-3 col-sm-6">
             <div class="card bg-gradient-info text-white shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="mb-1">Approved Doctors</h6>
-                            <h3 class="mb-0">{{ analytics.approved_doctors }}</h3>
-                            <small>{{ analytics.pending_verifications }} pending</small>
+                            <h6 class="text-uppercase mb-1" style="font-size: 0.8rem; opacity: 0.9;">Active Doctors</h6>
+                            <h3 class="display-6 fw-bold mb-0">{{ analytics.approved_doctors }}</h3>
+                            <small class="opacity-75"><i class="bi bi-exclamation-triangle me-1"></i>{{ analytics.pending_verifications }} pending</small>
                         </div>
                         <i class="bi bi-person-badge-fill" style="font-size: 3rem; opacity: 0.3;"></i>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-gradient-warning text-dark shadow-sm">
+        <div class="col-xl-3 col-sm-6">
+            <div class="card bg-gradient-warning text-white shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="mb-1">Avg Response Time</h6>
-                            <h3 class="mb-0">{{ analytics.avg_response_time }}h</h3>
-                            <small>Verification approval</small>
+                            <h6 class="text-uppercase mb-1" style="font-size: 0.8rem; opacity: 0.9;">Avg Response Time</h6>
+                            <h3 class="display-6 fw-bold mb-0">{{ analytics.avg_response_time }}h</h3>
+                            <small class="opacity-75"><i class="bi bi-clock-history me-1"></i>For doctor verifications</small>
                         </div>
                         <i class="bi bi-clock-fill" style="font-size: 3rem; opacity: 0.3;"></i>
                     </div>
@@ -142,8 +147,10 @@
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>User Registration Trends</h5>
                 </div>
-                <div class="card-body text-center">
-                    <img id="registrationChartImg" class="img-fluid rounded" src="data:image/png;base64,{{ charts.registration }}" alt="Registration Trends" style="max-height: 350px;" />
+                <div class="card-body">
+                    <div style="height: 320px; position: relative;">
+                        <canvas id="registrationChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -152,8 +159,10 @@
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>User Distribution</h5>
                 </div>
-                <div class="card-body text-center">
-                    <img id="userDistributionChartImg" class="img-fluid rounded" src="data:image/png;base64,{{ charts.user_distribution }}" alt="User Distribution" style="max-height: 350px;" />
+                <div class="card-body">
+                    <div style="height: 320px; position: relative;">
+                        <canvas id="userDistributionChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -166,8 +175,10 @@
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Appointments Over Time</h5>
                 </div>
-                <div class="card-body text-center">
-                    <img id="appointmentsChartImg" class="img-fluid rounded" src="data:image/png;base64,{{ charts.appointments }}" alt="Appointments Over Time" style="max-height: 300px;" />
+                <div class="card-body">
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="appointmentsChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -176,8 +187,10 @@
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bi bi-check2-circle me-2"></i>Doctor Verification Status</h5>
                 </div>
-                <div class="card-body text-center">
-                    <img id="verificationStatusChartImg" class="img-fluid rounded" src="data:image/png;base64,{{ charts.verification }}" alt="Verification Status" style="max-height: 300px;" />
+                <div class="card-body">
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="verificationStatusChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -190,14 +203,16 @@
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Top Specializations by Appointments</h5>
                 </div>
-                <div class="card-body text-center">
-                    <img id="specializationsChartImg" class="img-fluid rounded" src="data:image/png;base64,{{ charts.specializations }}" alt="Top Specializations" style="max-height: 350px;" />
+                <div class="card-body">
+                    <div style="height: 320px; position: relative;">
+                        <canvas id="specializationsChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Recent Activity -->
+    <!-- Recent Activity & Alerts -->
     <div class="row">
         <div class="col-lg-6">
             <div class="card shadow-sm">
@@ -219,16 +234,15 @@
                                 {% elif activity.type == 'doctor_rejected' %}
                                 <span class="badge bg-danger">Rejected</span>
                                 {% elif activity.type == 'new_signup' %}
-                                <span class="badge bg-primary">New User</span>
+                                <span class="badge bg-primary">New Signup</span>
                                 {% elif activity.type == 'appointment' %}
                                 <span class="badge bg-info">Appointment</span>
                                 {% endif %}
                             </small>
                         </div>
-                        {% endfor %}
-                        {% if not recent_activities %}
+                        {% else %}
                         <p class="text-muted text-center py-4">No recent activities</p>
-                        {% endif %}
+                        {% endfor %}
                     </div>
                 </div>
             </div>
@@ -236,19 +250,18 @@
         <div class="col-lg-6">
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Alerts & Notifications</h5>
+                    <h5 class="mb-0"><i class="bi bi-bell me-2"></i>System Alerts</h5>
                 </div>
-                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                <div class="card-body">
                     {% for alert in alerts %}
                     <div class="alert alert-{{ alert.type }} alert-dismissible fade show" role="alert">
                         <strong>{{ alert.title }}</strong><br>
                         {{ alert.message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
-                    {% endfor %}
-                    {% if not alerts %}
+                    {% else %}
                     <p class="text-muted text-center py-4">No alerts at this time</p>
-                    {% endif %}
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -256,9 +269,133 @@
 </div>
 
 <script>
-// Initialize all charts
+let chartInstances = {};
+
+// Initialize all charts using HTML5 Canvas Chart.js
 function initializeCharts() {
-    // Matplotlib charts are initialized on the backend and loaded as static images.
+    try {
+        const chartDataEl = document.getElementById('chartData');
+        const registrationData = JSON.parse(chartDataEl.getAttribute('data-registration'));
+        const userDistribution = JSON.parse(chartDataEl.getAttribute('data-user-distribution'));
+        const appointmentsData = JSON.parse(chartDataEl.getAttribute('data-appointments'));
+        const verificationData = JSON.parse(chartDataEl.getAttribute('data-verification'));
+        const specializationsData = JSON.parse(chartDataEl.getAttribute('data-specializations'));
+
+        // 1. User Registration Trends (Line Chart)
+        const ctxReg = document.getElementById('registrationChart').getContext('2d');
+        chartInstances.registration = new Chart(ctxReg, {
+            type: 'line',
+            data: {
+                labels: registrationData.dates,
+                datasets: [{
+                    label: 'New Registrations',
+                    data: registrationData.counts,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.15)',
+                    fill: true,
+                    tension: 0.35,
+                    borderWidth: 2,
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        });
+
+        // 2. User Distribution (Doughnut Chart)
+        const ctxUserDist = document.getElementById('userDistributionChart').getContext('2d');
+        chartInstances.userDistribution = new Chart(ctxUserDist, {
+            type: 'doughnut',
+            data: {
+                labels: ['Doctors', 'Patients'],
+                datasets: [{
+                    data: [userDistribution.doctors, userDistribution.patients],
+                    backgroundColor: ['#0dcaf0', '#198754']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        // 3. Appointments Over Time (Bar Chart)
+        const ctxAppt = document.getElementById('appointmentsChart').getContext('2d');
+        chartInstances.appointments = new Chart(ctxAppt, {
+            type: 'bar',
+            data: {
+                labels: appointmentsData.dates,
+                datasets: [{
+                    label: 'Appointments',
+                    data: appointmentsData.counts,
+                    backgroundColor: '#198754',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        });
+
+        // 4. Doctor Verification Status (Doughnut Chart)
+        const ctxVer = document.getElementById('verificationStatusChart').getContext('2d');
+        chartInstances.verification = new Chart(ctxVer, {
+            type: 'doughnut',
+            data: {
+                labels: ['Approved', 'Pending', 'Rejected'],
+                datasets: [{
+                    data: [verificationData.approved, verificationData.pending, verificationData.rejected],
+                    backgroundColor: ['#198754', '#ffc107', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        // 5. Top Specializations (Horizontal Bar Chart)
+        const ctxSpec = document.getElementById('specializationsChart').getContext('2d');
+        chartInstances.specializations = new Chart(ctxSpec, {
+            type: 'bar',
+            data: {
+                labels: specializationsData.names,
+                datasets: [{
+                    label: 'Appointments',
+                    data: specializationsData.counts,
+                    backgroundColor: '#0d6efd',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { precision: 0 } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error initializing Chart.js charts:', error);
+    }
 }
 
 // Function to update dashboard data
@@ -317,22 +454,29 @@ function updateDashboard() {
 
 // Function to update charts with new data
 function updateCharts(data) {
-    if (data.charts) {
-        if (data.charts.registration) {
-            document.getElementById('registrationChartImg').src = 'data:image/png;base64,' + data.charts.registration;
-        }
-        if (data.charts.user_distribution) {
-            document.getElementById('userDistributionChartImg').src = 'data:image/png;base64,' + data.charts.user_distribution;
-        }
-        if (data.charts.appointments) {
-            document.getElementById('appointmentsChartImg').src = 'data:image/png;base64,' + data.charts.appointments;
-        }
-        if (data.charts.verification) {
-            document.getElementById('verificationStatusChartImg').src = 'data:image/png;base64,' + data.charts.verification;
-        }
-        if (data.charts.specializations) {
-            document.getElementById('specializationsChartImg').src = 'data:image/png;base64,' + data.charts.specializations;
-        }
+    if (!data) return;
+    if (data.registration_data && chartInstances.registration) {
+        chartInstances.registration.data.labels = data.registration_data.dates;
+        chartInstances.registration.data.datasets[0].data = data.registration_data.counts;
+        chartInstances.registration.update();
+    }
+    if (data.user_distribution && chartInstances.userDistribution) {
+        chartInstances.userDistribution.data.datasets[0].data = [data.user_distribution.doctors, data.user_distribution.patients];
+        chartInstances.userDistribution.update();
+    }
+    if (data.appointments_data && chartInstances.appointments) {
+        chartInstances.appointments.data.labels = data.appointments_data.dates;
+        chartInstances.appointments.data.datasets[0].data = data.appointments_data.counts;
+        chartInstances.appointments.update();
+    }
+    if (data.verification_data && chartInstances.verification) {
+        chartInstances.verification.data.datasets[0].data = [data.verification_data.approved, data.verification_data.pending, data.verification_data.rejected];
+        chartInstances.verification.update();
+    }
+    if (data.specializations_data && chartInstances.specializations) {
+        chartInstances.specializations.data.labels = data.specializations_data.names;
+        chartInstances.specializations.data.datasets[0].data = data.specializations_data.counts;
+        chartInstances.specializations.update();
     }
 }
 

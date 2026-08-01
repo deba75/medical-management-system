@@ -9,11 +9,6 @@ import json
 import urllib.request
 import urllib.parse
 from werkzeug.security import check_password_hash, generate_password_hash
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import io
-import base64
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'mediconnect-admin-secret-key-change-in-production')
@@ -1340,184 +1335,6 @@ def parse_to_datetime(val):
     return dt
 
 
-def generate_base64_charts(data):
-    charts = {}
-    try:
-        # Common chart styling parameters to look premium
-        plt.rcParams['font.sans-serif'] = 'DejaVu Sans'
-        plt.rcParams['font.family'] = 'sans-serif'
-        
-        # 1. User Registration Trends (Line Chart)
-        try:
-            reg_data = data['registration_data']
-            dates = reg_data['dates']
-            counts = reg_data['counts']
-            
-            fig, ax = plt.subplots(figsize=(8, 4.5))
-            ax.plot(dates, counts, marker='o', linestyle='-', color='#0d6efd', linewidth=2.5, markersize=6)
-            ax.set_title('User Registration Trends (Last 30 Days)', fontsize=12, fontweight='bold', pad=15)
-            ax.set_xlabel('Date', fontsize=10, labelpad=10)
-            ax.set_ylabel('New Users', fontsize=10, labelpad=10)
-            ax.grid(True, linestyle='--', alpha=0.5)
-            
-            if len(dates) > 10:
-                sparse_indices = list(range(0, len(dates), len(dates) // 8))
-                if len(dates) - 1 not in sparse_indices:
-                    sparse_indices.append(len(dates) - 1)
-                ax.set_xticks(sparse_indices)
-                ax.set_xticklabels([dates[i] for i in sparse_indices], rotation=30, ha='right')
-            else:
-                plt.xticks(rotation=30, ha='right')
-                
-            fig.tight_layout()
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150)
-            buf.seek(0)
-            charts['registration'] = base64.b64encode(buf.read()).decode('utf-8')
-            plt.close(fig)
-        except Exception as e:
-            print(f"Error generating registration chart: {e}")
-            charts['registration'] = ""
-            
-        # 2. User Distribution (Pie Chart)
-        try:
-            user_dist = data['user_distribution']
-            labels = ['Doctors', 'Patients']
-            sizes = [user_dist['doctors'], user_dist['patients']]
-            
-            fig, ax = plt.subplots(figsize=(5, 4.5))
-            if sum(sizes) == 0:
-                sizes = [1, 1]
-                autopct = lambda p: '0%'
-            else:
-                autopct = '%1.1f%%'
-                
-            wedges, texts, autotexts = ax.pie(
-                sizes, 
-                labels=labels, 
-                autopct=autopct, 
-                startangle=90, 
-                colors=['#0dcaf0', '#198754'], 
-                wedgeprops=dict(width=0.4, edgecolor='w')
-            )
-            for autotext in autotexts:
-                autotext.set_color('white')
-                autotext.set_weight('bold')
-            ax.set_title('User Distribution', fontsize=12, fontweight='bold', pad=15)
-            
-            fig.tight_layout()
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150)
-            buf.seek(0)
-            charts['user_distribution'] = base64.b64encode(buf.read()).decode('utf-8')
-            plt.close(fig)
-        except Exception as e:
-            print(f"Error generating user distribution chart: {e}")
-            charts['user_distribution'] = ""
-
-        # 3. Appointments Over Time (Bar Chart)
-        try:
-            appt_data = data['appointments_data']
-            dates = appt_data['dates']
-            counts = appt_data['counts']
-            
-            fig, ax = plt.subplots(figsize=(8, 4))
-            ax.bar(dates, counts, color='#198754', width=0.6, edgecolor='none', alpha=0.9)
-            ax.set_title('Appointments Over Time', fontsize=12, fontweight='bold', pad=15)
-            ax.set_xlabel('Date', fontsize=10, labelpad=10)
-            ax.set_ylabel('Number of Appointments', fontsize=10, labelpad=10)
-            ax.grid(True, axis='y', linestyle='--', alpha=0.5)
-            
-            if len(dates) > 8:
-                sparse_indices = list(range(0, len(dates), len(dates) // 6))
-                if len(dates) - 1 not in sparse_indices:
-                    sparse_indices.append(len(dates) - 1)
-                ax.set_xticks(sparse_indices)
-                ax.set_xticklabels([dates[i] for i in sparse_indices], rotation=30, ha='right')
-            else:
-                plt.xticks(rotation=30, ha='right')
-                
-            fig.tight_layout()
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150)
-            buf.seek(0)
-            charts['appointments'] = base64.b64encode(buf.read()).decode('utf-8')
-            plt.close(fig)
-        except Exception as e:
-            print(f"Error generating appointments chart: {e}")
-            charts['appointments'] = ""
-
-        # 4. Doctor Verification Status (Pie Chart)
-        try:
-            ver_data = data['verification_data']
-            labels = ['Approved', 'Pending', 'Rejected']
-            sizes = [ver_data['approved'], ver_data['pending'], ver_data['rejected']]
-            
-            fig, ax = plt.subplots(figsize=(5, 4))
-            if sum(sizes) == 0:
-                sizes = [1, 1, 1]
-                autopct = lambda p: '0%'
-            else:
-                autopct = '%1.1f%%'
-                
-            wedges, texts, autotexts = ax.pie(
-                sizes,
-                labels=labels,
-                autopct=autopct,
-                startangle=140,
-                colors=['#198754', '#ffc107', '#dc3545'],
-                wedgeprops=dict(width=0.4, edgecolor='w')
-            )
-            for autotext in autotexts:
-                autotext.set_color('black' if autotext.get_text() == 'Pending' else 'white')
-                autotext.set_weight('bold')
-            ax.set_title('Doctor Verification Status', fontsize=12, fontweight='bold', pad=15)
-            
-            fig.tight_layout()
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150)
-            buf.seek(0)
-            charts['verification'] = base64.b64encode(buf.read()).decode('utf-8')
-            plt.close(fig)
-        except Exception as e:
-            print(f"Error generating verification chart: {e}")
-            charts['verification'] = ""
-
-        # 5. Top Specializations (Horizontal Bar Chart)
-        try:
-            spec_data = data['specializations_data']
-            names = spec_data['names']
-            counts = spec_data['counts']
-            
-            names_rev = list(reversed(names))
-            counts_rev = list(reversed(counts))
-            
-            fig, ax = plt.subplots(figsize=(8, 4))
-            bars = ax.barh(names_rev, counts_rev, color='#0d6efd', height=0.55, alpha=0.9)
-            ax.set_title('Top Specializations by Appointments', fontsize=12, fontweight='bold', pad=15)
-            ax.set_xlabel('Number of Appointments', fontsize=10, labelpad=10)
-            ax.grid(True, axis='x', linestyle='--', alpha=0.5)
-            
-            for bar in bars:
-                width = bar.get_width()
-                ax.text(width + 0.1, bar.get_y() + bar.get_height()/2, f'{int(width)}', 
-                        va='center', ha='left', fontsize=9, fontweight='bold', color='#333333')
-                        
-            fig.tight_layout()
-            buf = io.BytesIO()
-            fig.savefig(buf, format='png', dpi=150)
-            buf.seek(0)
-            charts['specializations'] = base64.b64encode(buf.read()).decode('utf-8')
-            plt.close(fig)
-        except Exception as e:
-            print(f"Error generating specializations chart: {e}")
-            charts['specializations'] = ""
-            
-    except Exception as general_err:
-        print(f"General error rendering matplotlib charts: {general_err}")
-    return charts
-
-
 def get_analytics_data(time_range_days=30):
     empty_input = {
         'registration_data': {'dates': [], 'counts': []},
@@ -1544,8 +1361,7 @@ def get_analytics_data(time_range_days=30):
             'verification_data': empty_input['verification_data'],
             'specializations_data': empty_input['specializations_data'],
             'recent_activities': [],
-            'alerts': [],
-            'charts': generate_base64_charts(empty_input)
+            'alerts': []
         }
         
     try:
@@ -1709,7 +1525,8 @@ def get_analytics_data(time_range_days=30):
                 'message': f"{stats['pending_verifications']} doctor verification(s) awaiting review"
             })
             
-        chart_input = {
+        return {
+            'analytics': analytics_data,
             'registration_data': {
                 'dates': dates_reg,
                 'counts': registration_counts
@@ -1730,31 +1547,14 @@ def get_analytics_data(time_range_days=30):
             'specializations_data': {
                 'names': spec_names,
                 'counts': spec_counts_list
-            }
-        }
-            
-        return {
-            'analytics': analytics_data,
-            'registration_data': chart_input['registration_data'],
-            'user_distribution': chart_input['user_distribution'],
-            'appointments_data': chart_input['appointments_data'],
-            'verification_data': chart_input['verification_data'],
-            'specializations_data': chart_input['specializations_data'],
+            },
             'recent_activities': recent_activities,
-            'alerts': alerts,
-            'charts': generate_base64_charts(chart_input)
+            'alerts': alerts
         }
     except Exception as e:
         print(f"Error compiling analytics: {e}")
         import traceback
         traceback.print_exc()
-        fallback_input = {
-            'registration_data': {'dates': [], 'counts': []},
-            'user_distribution': {'doctors': 0, 'patients': 0},
-            'appointments_data': {'dates': [], 'counts': []},
-            'verification_data': {'approved': 0, 'pending': 0, 'rejected': 0},
-            'specializations_data': {'names': [], 'counts': []}
-        }
         return {
             'analytics': {
                 'total_users': stats['total_doctors'] + stats['total_patients'] if 'stats' in locals() else 0,
@@ -1765,14 +1565,13 @@ def get_analytics_data(time_range_days=30):
                 'pending_verifications': stats['pending_verifications'] if 'stats' in locals() else 0,
                 'avg_response_time': 12
             },
-            'registration_data': fallback_input['registration_data'],
-            'user_distribution': fallback_input['user_distribution'],
-            'appointments_data': fallback_input['appointments_data'],
-            'verification_data': fallback_input['verification_data'],
-            'specializations_data': fallback_input['specializations_data'],
+            'registration_data': empty_input['registration_data'],
+            'user_distribution': empty_input['user_distribution'],
+            'appointments_data': empty_input['appointments_data'],
+            'verification_data': empty_input['verification_data'],
+            'specializations_data': empty_input['specializations_data'],
             'recent_activities': [],
-            'alerts': [],
-            'charts': generate_base64_charts(fallback_input)
+            'alerts': []
         }
 
 
@@ -1789,8 +1588,7 @@ def analytics():
                              verification_data=data['verification_data'],
                              specializations_data=data['specializations_data'],
                              recent_activities=data['recent_activities'],
-                             alerts=data['alerts'],
-                             charts=data.get('charts', {}))
+                             alerts=data['alerts'])
     except Exception as e:
         flash(f'Error loading analytics: {str(e)}', 'danger')
         return render_template('analytics.html', 
@@ -1801,8 +1599,7 @@ def analytics():
                              verification_data={'approved': 0, 'pending': 0, 'rejected': 0},
                              specializations_data={'names': [], 'counts': []},
                              recent_activities=[],
-                             alerts=[],
-                             charts={})
+                             alerts=[])
 
 
 @app.route('/api/analytics')
