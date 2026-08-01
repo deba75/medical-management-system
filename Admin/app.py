@@ -1297,6 +1297,49 @@ def delete_diagnostic_centre(centre_id):
 
 # =================== Analytics Routes ===================
 
+def parse_to_date_str(val):
+    if not val:
+        return None
+    if isinstance(val, datetime):
+        return val.strftime('%Y-%m-%d')
+    if hasattr(val, 'strftime'):
+        try:
+            return val.strftime('%Y-%m-%d')
+        except Exception:
+            pass
+    val_str = str(val).strip()
+    if len(val_str) >= 10 and val_str[:10].count('-') == 2:
+        return val_str[:10]
+    return None
+
+
+def parse_to_datetime(val):
+    if not val:
+        return None
+    dt = None
+    if isinstance(val, datetime):
+        dt = val
+    elif hasattr(val, 'date') and callable(getattr(val, 'date')):
+        try:
+            dt = datetime(val.year, val.month, val.day, getattr(val, 'hour', 0), getattr(val, 'minute', 0), getattr(val, 'second', 0))
+        except Exception:
+            pass
+    if not dt:
+        val_str = str(val).strip()
+        try:
+            dt = datetime.fromisoformat(val_str.replace('Z', '+00:00')[:19])
+        except Exception:
+            pass
+        if not dt:
+            try:
+                dt = datetime.strptime(val_str[:10], '%Y-%m-%d')
+            except Exception:
+                pass
+    if dt and hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
+        dt = dt.replace(tzinfo=None)
+    return dt
+
+
 def generate_base64_charts(data):
     charts = {}
     try:
@@ -1457,7 +1500,7 @@ def generate_base64_charts(data):
             
             for bar in bars:
                 width = bar.get_width()
-                ax.text(width + 0.3, bar.get_y() + bar.get_height()/2, f'{int(width)}', 
+                ax.text(width + 0.1, bar.get_y() + bar.get_height()/2, f'{int(width)}', 
                         va='center', ha='left', fontsize=9, fontweight='bold', color='#333333')
                         
             fig.tight_layout()
@@ -1476,14 +1519,15 @@ def generate_base64_charts(data):
 
 
 def get_analytics_data(time_range_days=30):
+    empty_input = {
+        'registration_data': {'dates': [], 'counts': []},
+        'user_distribution': {'doctors': 0, 'patients': 0},
+        'appointments_data': {'dates': [], 'counts': []},
+        'verification_data': {'approved': 0, 'pending': 0, 'rejected': 0},
+        'specializations_data': {'names': [], 'counts': []}
+    }
+    
     if db is None:
-        empty_data = {
-            'registration_data': {'dates': [], 'counts': []},
-            'user_distribution': {'doctors': 0, 'patients': 0},
-            'appointments_data': {'dates': [], 'counts': []},
-            'verification_data': {'approved': 0, 'pending': 0, 'rejected': 0},
-            'specializations_data': {'names': [], 'counts': []}
-        }
         return {
             'analytics': {
                 'total_users': 0,
@@ -1494,70 +1538,67 @@ def get_analytics_data(time_range_days=30):
                 'pending_verifications': 0,
                 'avg_response_time': 12
             },
-            'registration_data': empty_data['registration_data'],
-            'user_distribution': empty_data['user_distribution'],
-            'appointments_data': empty_data['appointments_data'],
-            'verification_data': empty_data['verification_data'],
-            'specializations_data': empty_data['specializations_data'],
+            'registration_data': empty_input['registration_data'],
+            'user_distribution': empty_input['user_distribution'],
+            'appointments_data': empty_input['appointments_data'],
+            'verification_data': empty_input['verification_data'],
+            'specializations_data': empty_input['specializations_data'],
             'recent_activities': [],
             'alerts': [],
-            'charts': generate_base64_charts(empty_data)
+            'charts': generate_base64_charts(empty_input)
         }
         
     try:
         stats = get_stats()
         
-        # 1. Generate date ranges for charts based on time_range_days
-        dates_reg = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(time_range_days, -1, -1)]
+        # 1. Generate date range for registration chart
+        today = datetime.now()
+        dates_reg = [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(time_range_days, -1, -1)]
         registration_counts = [0] * len(dates_reg)
         
-        # Generate dates for appointments
-        appt_days = max(7, time_range_days // 2)
-        dates_appt = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(appt_days, -1, -1)]
+        # Generate date range for appointments chart
+        appt_days = max(14, time_range_days // 2)
+        dates_appt = [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(appt_days, -1, -1)]
         appointments_counts = [0] * len(dates_appt)
         
-        # Load all users from Firestore
+        # 2. Load users from Firestore
         all_users = list(db.collection('users').stream())
         
         for u in all_users:
             u_data = u.to_dict()
-            c_at = u_data.get('createdAt')
-            if c_at:
-                if isinstance(c_at, datetime):
-                    u_date = c_at.strftime('%Y-%m-%d')
-                else:
-                    u_date = str(c_at)[:10]
-                if u_date in dates_reg:
-                    idx = dates_reg.index(u_date)
-                    registration_counts[idx] += 1
-                    
-        # Load all appointments from Firestore
+            u_date = parse_to_date_str(u_data.get('createdAt'))
+            if u_date and u_date in dates_reg:
+                idx = dates_reg.index(u_date)
+                registration_counts[idx] += 1
+                
+        # 3. Load appointments from Firestore
         all_appointments = list(db.collection('appointments').stream())
         
         for appt in all_appointments:
             appt_data = appt.to_dict()
-            appt_date = appt_data.get('date')
-            if not appt_date:
-                c_at = appt_data.get('createdAt')
-                if c_at:
-                    if isinstance(c_at, datetime):
-                        appt_date = c_at.strftime('%Y-%m-%d')
-                    else:
-                        appt_date = str(c_at)[:10]
-            
+            appt_date = parse_to_date_str(appt_data.get('date')) or parse_to_date_str(appt_data.get('createdAt'))
             if appt_date and appt_date in dates_appt:
                 idx = dates_appt.index(appt_date)
                 appointments_counts[idx] += 1
                 
-        # Count appointments by doctor specialization
+        # 4. Count specializations from appointments (and fallback to doctors collection if needed)
         spec_counts = {}
         for appt in all_appointments:
             appt_data = appt.to_dict()
             spec = appt_data.get('specialization')
             if spec:
-                spec = spec.strip().title()
-                spec_counts[spec] = spec_counts.get(spec, 0) + 1
+                spec_clean = str(spec).strip().title()
+                spec_counts[spec_clean] = spec_counts.get(spec_clean, 0) + 1
                 
+        if not spec_counts:
+            all_doctors_docs = list(db.collection('doctors').stream())
+            for d in all_doctors_docs:
+                d_data = d.to_dict()
+                spec = d_data.get('specialization')
+                if spec:
+                    spec_clean = str(spec).strip().title()
+                    spec_counts[spec_clean] = spec_counts.get(spec_clean, 0) + 1
+                    
         sorted_specs = sorted(spec_counts.items(), key=lambda x: x[1], reverse=True)[:6]
         if not sorted_specs:
             sorted_specs = [('General Medicine', 0)]
@@ -1565,28 +1606,28 @@ def get_analytics_data(time_range_days=30):
         spec_names = [s[0] for s in sorted_specs]
         spec_counts_list = [s[1] for s in sorted_specs]
         
-        # Count new users in last 7 days
-        seven_days_ago = datetime.now() - timedelta(days=7)
+        # 5. Count new users in last 7 days
+        seven_days_ago = today - timedelta(days=7)
         new_users_count = 0
         for u in all_users:
             u_data = u.to_dict()
-            c_at = u_data.get('createdAt')
-            if c_at and isinstance(c_at, datetime) and c_at >= seven_days_ago:
+            dt_obj = parse_to_datetime(u_data.get('createdAt'))
+            if dt_obj and datetime(dt_obj.year, dt_obj.month, dt_obj.day) >= datetime(seven_days_ago.year, seven_days_ago.month, seven_days_ago.day):
                 new_users_count += 1
                 
         total_users_count = len(all_users)
         new_users_percent = round((new_users_count / total_users_count) * 100) if total_users_count > 0 else 0
         
-        # Count appointments this month
-        current_month_str = datetime.now().strftime('%Y-%m')
+        # 6. Count appointments this month
+        current_month_prefix = today.strftime('%Y-%m')
         appointments_this_month = 0
         for appt in all_appointments:
             appt_data = appt.to_dict()
-            appt_date = appt_data.get('date', '')
-            if appt_date.startswith(current_month_str):
+            a_date_str = parse_to_date_str(appt_data.get('date')) or parse_to_date_str(appt_data.get('createdAt'))
+            if a_date_str and a_date_str.startswith(current_month_prefix):
                 appointments_this_month += 1
                 
-        # Summary Analytics data
+        # 7. Summary Analytics
         analytics_data = {
             'total_users': stats['total_doctors'] + stats['total_patients'],
             'new_users_percent': new_users_percent,
@@ -1597,57 +1638,59 @@ def get_analytics_data(time_range_days=30):
             'avg_response_time': 12
         }
         
-        # Recent Activities Feed
-        recent_activities = []
-        
+        # 8. Recent Activities Feed
         sorted_users = []
         for u in all_users:
             u_data = u.to_dict()
-            c_at = u_data.get('createdAt')
-            if c_at and isinstance(c_at, datetime):
-                sorted_users.append((c_at, u_data))
+            dt_obj = parse_to_datetime(u_data.get('createdAt'))
+            if dt_obj:
+                sorted_users.append((dt_obj, u_data))
         sorted_users.sort(key=lambda x: x[0], reverse=True)
         
         sorted_appts = []
         for appt in all_appointments:
             appt_data = appt.to_dict()
-            c_at = appt_data.get('createdAt')
-            if c_at and isinstance(c_at, datetime):
-                sorted_appts.append((c_at, appt_data))
+            dt_obj = parse_to_datetime(appt_data.get('createdAt')) or parse_to_datetime(appt_data.get('date'))
+            if dt_obj:
+                sorted_appts.append((dt_obj, appt_data))
         sorted_appts.sort(key=lambda x: x[0], reverse=True)
         
         events = []
         for dt, u in sorted_users[:5]:
-            diff = datetime.now() - dt
+            dt_clean = datetime(dt.year, dt.month, dt.day, getattr(dt, 'hour', 0), getattr(dt, 'minute', 0), getattr(dt, 'second', 0))
+            diff = today - dt_clean
+            seconds = max(0, int(diff.total_seconds()))
             if diff.days > 0:
                 time_str = f"{diff.days} days ago"
-            elif diff.seconds // 3600 > 0:
-                time_str = f"{diff.seconds // 3600} hours ago"
+            elif seconds // 3600 > 0:
+                time_str = f"{seconds // 3600} hours ago"
             else:
-                time_str = f"{max(1, diff.seconds // 60)} minutes ago"
+                time_str = f"{max(1, seconds // 60)} minutes ago"
                 
             events.append({
-                'time_dt': dt,
+                'time_dt': dt_clean,
                 'type': 'new_signup',
                 'title': 'New Registration',
-                'description': f"{u.get('role', 'Patient').title()} {u.get('name')} registered",
+                'description': f"{u.get('role', 'Patient').title()} {u.get('name', 'User')} registered",
                 'time': time_str
             })
             
         for dt, appt in sorted_appts[:5]:
-            diff = datetime.now() - dt
+            dt_clean = datetime(dt.year, dt.month, dt.day, getattr(dt, 'hour', 0), getattr(dt, 'minute', 0), getattr(dt, 'second', 0))
+            diff = today - dt_clean
+            seconds = max(0, int(diff.total_seconds()))
             if diff.days > 0:
                 time_str = f"{diff.days} days ago"
-            elif diff.seconds // 3600 > 0:
-                time_str = f"{diff.seconds // 3600} hours ago"
+            elif seconds // 3600 > 0:
+                time_str = f"{seconds // 3600} hours ago"
             else:
-                time_str = f"{max(1, diff.seconds // 60)} minutes ago"
+                time_str = f"{max(1, seconds // 60)} minutes ago"
                 
             events.append({
-                'time_dt': dt,
+                'time_dt': dt_clean,
                 'type': 'appointment',
                 'title': 'Appointment Booked',
-                'description': f"Patient {appt.get('patientName')} booked Dr. {appt.get('doctorName')}",
+                'description': f"Patient {appt.get('patientName', 'Patient')} booked Dr. {appt.get('doctorName', 'Doctor')}",
                 'time': time_str
             })
             
@@ -1703,6 +1746,8 @@ def get_analytics_data(time_range_days=30):
         }
     except Exception as e:
         print(f"Error compiling analytics: {e}")
+        import traceback
+        traceback.print_exc()
         fallback_input = {
             'registration_data': {'dates': [], 'counts': []},
             'user_distribution': {'doctors': 0, 'patients': 0},
