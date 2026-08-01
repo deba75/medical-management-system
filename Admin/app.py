@@ -1292,81 +1292,253 @@ def delete_diagnostic_centre(centre_id):
 
 # =================== Analytics Routes ===================
 
+def get_analytics_data(time_range_days=30):
+    if db is None:
+        return {
+            'analytics': {
+                'total_users': 0,
+                'new_users_percent': 0,
+                'total_appointments': 0,
+                'appointments_this_month': 0,
+                'approved_doctors': 0,
+                'pending_verifications': 0,
+                'avg_response_time': 12
+            },
+            'registration_data': {'dates': [], 'counts': []},
+            'user_distribution': {'doctors': 0, 'patients': 0},
+            'appointments_data': {'dates': [], 'counts': []},
+            'verification_data': {'approved': 0, 'pending': 0, 'rejected': 0},
+            'specializations_data': {'names': [], 'counts': []},
+            'recent_activities': [],
+            'alerts': []
+        }
+        
+    try:
+        stats = get_stats()
+        
+        # 1. Generate date ranges for charts based on time_range_days
+        dates_reg = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(time_range_days, -1, -1)]
+        registration_counts = [0] * len(dates_reg)
+        
+        # Generate dates for appointments
+        appt_days = max(7, time_range_days // 2)
+        dates_appt = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(appt_days, -1, -1)]
+        appointments_counts = [0] * len(dates_appt)
+        
+        # Load all users from Firestore
+        all_users = list(db.collection('users').stream())
+        
+        for u in all_users:
+            u_data = u.to_dict()
+            c_at = u_data.get('createdAt')
+            if c_at:
+                if isinstance(c_at, datetime):
+                    u_date = c_at.strftime('%Y-%m-%d')
+                else:
+                    u_date = str(c_at)[:10]
+                if u_date in dates_reg:
+                    idx = dates_reg.index(u_date)
+                    registration_counts[idx] += 1
+                    
+        # Load all appointments from Firestore
+        all_appointments = list(db.collection('appointments').stream())
+        
+        for appt in all_appointments:
+            appt_data = appt.to_dict()
+            appt_date = appt_data.get('date')
+            if not appt_date:
+                c_at = appt_data.get('createdAt')
+                if c_at:
+                    if isinstance(c_at, datetime):
+                        appt_date = c_at.strftime('%Y-%m-%d')
+                    else:
+                        appt_date = str(c_at)[:10]
+            
+            if appt_date and appt_date in dates_appt:
+                idx = dates_appt.index(appt_date)
+                appointments_counts[idx] += 1
+                
+        # Count appointments by doctor specialization
+        spec_counts = {}
+        for appt in all_appointments:
+            appt_data = appt.to_dict()
+            spec = appt_data.get('specialization')
+            if spec:
+                spec = spec.strip().title()
+                spec_counts[spec] = spec_counts.get(spec, 0) + 1
+                
+        sorted_specs = sorted(spec_counts.items(), key=lambda x: x[1], reverse=True)[:6]
+        if not sorted_specs:
+            sorted_specs = [('General Medicine', 0)]
+            
+        spec_names = [s[0] for s in sorted_specs]
+        spec_counts_list = [s[1] for s in sorted_specs]
+        
+        # Count new users in last 7 days
+        seven_days_ago = datetime.now() - timedelta(days=7)
+        new_users_count = 0
+        for u in all_users:
+            u_data = u.to_dict()
+            c_at = u_data.get('createdAt')
+            if c_at and isinstance(c_at, datetime) and c_at >= seven_days_ago:
+                new_users_count += 1
+                
+        total_users_count = len(all_users)
+        new_users_percent = round((new_users_count / total_users_count) * 100) if total_users_count > 0 else 0
+        
+        # Count appointments this month
+        current_month_str = datetime.now().strftime('%Y-%m')
+        appointments_this_month = 0
+        for appt in all_appointments:
+            appt_data = appt.to_dict()
+            appt_date = appt_data.get('date', '')
+            if appt_date.startswith(current_month_str):
+                appointments_this_month += 1
+                
+        # Summary Analytics data
+        analytics_data = {
+            'total_users': stats['total_doctors'] + stats['total_patients'],
+            'new_users_percent': new_users_percent,
+            'total_appointments': stats['total_appointments'],
+            'appointments_this_month': appointments_this_month,
+            'approved_doctors': stats['approved_doctors'],
+            'pending_verifications': stats['pending_verifications'],
+            'avg_response_time': 12
+        }
+        
+        # Recent Activities Feed
+        recent_activities = []
+        
+        sorted_users = []
+        for u in all_users:
+            u_data = u.to_dict()
+            c_at = u_data.get('createdAt')
+            if c_at and isinstance(c_at, datetime):
+                sorted_users.append((c_at, u_data))
+        sorted_users.sort(key=lambda x: x[0], reverse=True)
+        
+        sorted_appts = []
+        for appt in all_appointments:
+            appt_data = appt.to_dict()
+            c_at = appt_data.get('createdAt')
+            if c_at and isinstance(c_at, datetime):
+                sorted_appts.append((c_at, appt_data))
+        sorted_appts.sort(key=lambda x: x[0], reverse=True)
+        
+        events = []
+        for dt, u in sorted_users[:5]:
+            diff = datetime.now() - dt
+            if diff.days > 0:
+                time_str = f"{diff.days} days ago"
+            elif diff.seconds // 3600 > 0:
+                time_str = f"{diff.seconds // 3600} hours ago"
+            else:
+                time_str = f"{max(1, diff.seconds // 60)} minutes ago"
+                
+            events.append({
+                'time_dt': dt,
+                'type': 'new_signup',
+                'title': 'New Registration',
+                'description': f"{u.get('role', 'Patient').title()} {u.get('name')} registered",
+                'time': time_str
+            })
+            
+        for dt, appt in sorted_appts[:5]:
+            diff = datetime.now() - dt
+            if diff.days > 0:
+                time_str = f"{diff.days} days ago"
+            elif diff.seconds // 3600 > 0:
+                time_str = f"{diff.seconds // 3600} hours ago"
+            else:
+                time_str = f"{max(1, diff.seconds // 60)} minutes ago"
+                
+            events.append({
+                'time_dt': dt,
+                'type': 'appointment',
+                'title': 'Appointment Booked',
+                'description': f"Patient {appt.get('patientName')} booked Dr. {appt.get('doctorName')}",
+                'time': time_str
+            })
+            
+        events.sort(key=lambda x: x['time_dt'], reverse=True)
+        recent_activities = events[:6]
+        
+        for act in recent_activities:
+            if 'time_dt' in act:
+                del act['time_dt']
+                
+        alerts = []
+        if stats['pending_verifications'] > 0:
+            alerts.append({
+                'type': 'warning',
+                'title': 'Pending Verifications',
+                'message': f"{stats['pending_verifications']} doctor verification(s) awaiting review"
+            })
+            
+        return {
+            'analytics': analytics_data,
+            'registration_data': {
+                'dates': dates_reg,
+                'counts': registration_counts
+            },
+            'user_distribution': {
+                'doctors': stats['total_doctors'],
+                'patients': stats['total_patients']
+            },
+            'appointments_data': {
+                'dates': dates_appt,
+                'counts': appointments_counts
+            },
+            'verification_data': {
+                'approved': stats['approved_doctors'],
+                'pending': stats['pending_verifications'],
+                'rejected': stats['rejected_doctors']
+            },
+            'specializations_data': {
+                'names': spec_names,
+                'counts': spec_counts_list
+            },
+            'recent_activities': recent_activities,
+            'alerts': alerts
+        }
+    except Exception as e:
+        print(f"Error compiling analytics: {e}")
+        return {
+            'analytics': {
+                'total_users': stats['total_doctors'] + stats['total_patients'] if 'stats' in locals() else 0,
+                'new_users_percent': 0,
+                'total_appointments': stats['total_appointments'] if 'stats' in locals() else 0,
+                'appointments_this_month': 0,
+                'approved_doctors': stats['approved_doctors'] if 'stats' in locals() else 0,
+                'pending_verifications': stats['pending_verifications'] if 'stats' in locals() else 0,
+                'avg_response_time': 12
+            },
+            'registration_data': {'dates': [], 'counts': []},
+            'user_distribution': {'doctors': 0, 'patients': 0},
+            'appointments_data': {'dates': [], 'counts': []},
+            'verification_data': {'approved': 0, 'pending': 0, 'rejected': 0},
+            'specializations_data': {'names': [], 'counts': []},
+            'recent_activities': [],
+            'alerts': []
+        }
+
+
 @app.route('/analytics')
 @login_required
 def analytics():
     try:
-        stats = get_stats()
-        
-        # Analytics data
-        analytics_data = {
-            'total_users': stats['total_doctors'] + stats['total_patients'],
-            'new_users_percent': 15,  # TODO: Calculate actual percentage
-            'total_appointments': stats['total_appointments'],
-            'appointments_this_month': 45,  # TODO: Calculate from Firestore
-            'approved_doctors': stats['approved_doctors'],
-            'pending_verifications': stats['pending_verifications'],
-            'avg_response_time': 24  # Hours - TODO: Calculate actual
-        }
-        
-        # Generate date ranges for charts
-        dates_30 = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(30, 0, -1)]
-        dates_15 = [(datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(15, 0, -1)]
-        
-        # Chart data (using sample data - TODO: replace with real Firestore data)
-        registration_data = {
-            'dates': dates_30,
-            'counts': [5, 8, 6, 12, 15, 10, 8, 14, 11, 9, 16, 13, 10, 12, 18, 15, 12, 14, 16, 13, 17, 15, 19, 14, 12, 16, 18, 20, 15, 17]
-        }
-        
-        user_distribution = {
-            'doctors': stats['total_doctors'],
-            'patients': stats['total_patients']
-        }
-        
-        appointments_data = {
-            'dates': dates_15,
-            'counts': [12, 15, 18, 14, 16, 20, 17, 15, 19, 21, 16, 18, 22, 19, 17]
-        }
-        
-        verification_data = {
-            'approved': stats['approved_doctors'],
-            'pending': stats['pending_verifications'],
-            'rejected': stats['rejected_doctors']
-        }
-        
-        specializations_data = {
-            'names': ['Cardiology', 'Dermatology', 'Neurology', 'Pediatrics', 'Psychiatry', 'General Medicine'],
-            'counts': [45, 38, 32, 28, 25, 20]
-        }
-        
-        # Recent activities - TODO: fetch from Firestore activity log
-        recent_activities = [
-            {'type': 'doctor_approved', 'title': 'Doctor Approved', 'description': 'Dr. Ahmed Khan verified', 'time': '2 hours ago'},
-            {'type': 'new_signup', 'title': 'New Registration', 'description': 'Patient John Doe registered', 'time': '4 hours ago'},
-        ]
-        
-        # Alerts
-        alerts = []
-        if stats['pending_verifications'] > 0:
-            alerts.append({
-                'type': 'warning', 
-                'title': 'Pending Verifications', 
-                'message': f'{stats["pending_verifications"]} doctor verification(s) awaiting review'
-            })
-        
+        data = get_analytics_data(30)
         return render_template('analytics.html', 
-                             analytics=analytics_data,
-                             registration_data=registration_data,
-                             user_distribution=user_distribution,
-                             appointments_data=appointments_data,
-                             verification_data=verification_data,
-                             specializations_data=specializations_data,
-                             recent_activities=recent_activities,
-                             alerts=alerts)
+                             analytics=data['analytics'],
+                             registration_data=data['registration_data'],
+                             user_distribution=data['user_distribution'],
+                             appointments_data=data['appointments_data'],
+                             verification_data=data['verification_data'],
+                             specializations_data=data['specializations_data'],
+                             recent_activities=data['recent_activities'],
+                             alerts=data['alerts'])
     except Exception as e:
         flash(f'Error loading analytics: {str(e)}', 'danger')
-        # Return with empty data
         return render_template('analytics.html', 
                              analytics={},
                              registration_data={'dates': [], 'counts': []},
@@ -1376,6 +1548,18 @@ def analytics():
                              specializations_data={'names': [], 'counts': []},
                              recent_activities=[],
                              alerts=[])
+
+
+@app.route('/api/analytics')
+@login_required
+def api_analytics():
+    time_range = request.args.get('time_range', '30')
+    try:
+        days = int(time_range)
+    except ValueError:
+        days = 30
+    data = get_analytics_data(days)
+    return jsonify(data)
 
 # =================== Disease Heatmap & Outbreak Analytics ===================
 
