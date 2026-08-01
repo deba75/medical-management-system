@@ -3,7 +3,6 @@
 {% block title %}Analytics - MediConnect Admin{% endblock %}
 
 {% block head %}
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <style>
     .card {
         transition: transform 0.2s;
@@ -143,8 +142,8 @@
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>User Registration Trends</h5>
                 </div>
-                <div class="card-body">
-                    <div id="registrationChart" style="height: 350px;"></div>
+                <div class="card-body text-center">
+                    <img id="registrationChartImg" class="img-fluid rounded" src="data:image/png;base64,{{ charts.registration }}" alt="Registration Trends" style="max-height: 350px;" />
                 </div>
             </div>
         </div>
@@ -153,8 +152,8 @@
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>User Distribution</h5>
                 </div>
-                <div class="card-body">
-                    <div id="userDistributionChart" style="height: 350px;"></div>
+                <div class="card-body text-center">
+                    <img id="userDistributionChartImg" class="img-fluid rounded" src="data:image/png;base64,{{ charts.user_distribution }}" alt="User Distribution" style="max-height: 350px;" />
                 </div>
             </div>
         </div>
@@ -167,8 +166,8 @@
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Appointments Over Time</h5>
                 </div>
-                <div class="card-body">
-                    <div id="appointmentsChart" style="height: 300px;"></div>
+                <div class="card-body text-center">
+                    <img id="appointmentsChartImg" class="img-fluid rounded" src="data:image/png;base64,{{ charts.appointments }}" alt="Appointments Over Time" style="max-height: 300px;" />
                 </div>
             </div>
         </div>
@@ -177,8 +176,8 @@
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bi bi-check2-circle me-2"></i>Doctor Verification Status</h5>
                 </div>
-                <div class="card-body">
-                    <div id="verificationStatusChart" style="height: 300px;"></div>
+                <div class="card-body text-center">
+                    <img id="verificationStatusChartImg" class="img-fluid rounded" src="data:image/png;base64,{{ charts.verification }}" alt="Verification Status" style="max-height: 300px;" />
                 </div>
             </div>
         </div>
@@ -191,8 +190,8 @@
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Top Specializations by Appointments</h5>
                 </div>
-                <div class="card-body">
-                    <div id="specializationsChart" style="height: 350px;"></div>
+                <div class="card-body text-center">
+                    <img id="specializationsChartImg" class="img-fluid rounded" src="data:image/png;base64,{{ charts.specializations }}" alt="Top Specializations" style="max-height: 350px;" />
                 </div>
             </div>
         </div>
@@ -257,119 +256,9 @@
 </div>
 
 <script>
-// Store chart instances for later updates
-let charts = {};
-
 // Initialize all charts
 function initializeCharts() {
-    // User Registration Trends Chart
-    try {
-        const chartDataEl = document.getElementById('chartData');
-        const registrationData = JSON.parse(chartDataEl.getAttribute('data-registration'));
-        const registrationTrace = {
-            x: registrationData.dates,
-            y: registrationData.counts,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Registrations',
-            line: {color: '#0d6efd', width: 3},
-            marker: {size: 8}
-        };
-        charts.registration = Plotly.newPlot('registrationChart', [registrationTrace], {
-            margin: {t: 20, r: 20, b: 40, l: 50},
-            xaxis: {title: 'Date'},
-            yaxis: {title: 'New Users'},
-            responsive: true
-        });
-    } catch (error) {
-        console.error('Error initializing registration chart:', error);
-        document.getElementById('registrationChart').innerHTML = '<div class="alert alert-warning">Unable to load chart data</div>';
-    }
-
-    // User Distribution Pie Chart
-    try {
-        const chartDataEl = document.getElementById('chartData');
-        const userDistribution = JSON.parse(chartDataEl.getAttribute('data-user-distribution'));
-        const pieTrace = {
-            values: [userDistribution.doctors, userDistribution.patients],
-            labels: ['Doctors', 'Patients'],
-            type: 'pie',
-            marker: {colors: ['#0dcaf0', '#198754']},
-            textinfo: 'label+percent',
-            textposition: 'outside'
-        };
-        charts.userDistribution = Plotly.newPlot('userDistributionChart', [pieTrace], {
-            margin: {t: 20, r: 20, b: 20, l: 20},
-            responsive: true
-        });
-    } catch (error) {
-        console.error('Error initializing user distribution chart:', error);
-        document.getElementById('userDistributionChart').innerHTML = '<div class="alert alert-warning">Unable to load chart data</div>';
-    }
-
-    // Appointments Over Time Chart
-    try {
-        const chartDataEl = document.getElementById('chartData');
-        const appointmentsData = JSON.parse(chartDataEl.getAttribute('data-appointments'));
-        const appointmentsTrace = {
-            x: appointmentsData.dates,
-            y: appointmentsData.counts,
-            type: 'bar',
-            marker: {color: '#198754'}
-        };
-        charts.appointments = Plotly.newPlot('appointmentsChart', [appointmentsTrace], {
-            margin: {t: 20, r: 20, b: 40, l: 50},
-            xaxis: {title: 'Date'},
-            yaxis: {title: 'Appointments'},
-            responsive: true
-        });
-    } catch (error) {
-        console.error('Error initializing appointments chart:', error);
-        document.getElementById('appointmentsChart').innerHTML = '<div class="alert alert-warning">Unable to load chart data</div>';
-    }
-
-    // Doctor Verification Status Chart
-    try {
-        const chartDataEl = document.getElementById('chartData');
-        const verificationData = JSON.parse(chartDataEl.getAttribute('data-verification'));
-        const verificationTrace = {
-            values: [verificationData.approved, verificationData.pending, verificationData.rejected],
-            labels: ['Approved', 'Pending', 'Rejected'],
-            type: 'pie',
-            marker: {colors: ['#198754', '#ffc107', '#dc3545']},
-            textinfo: 'label+percent',
-            textposition: 'outside'
-        };
-        charts.verification = Plotly.newPlot('verificationStatusChart', [verificationTrace], {
-            margin: {t: 20, r: 20, b: 20, l: 20},
-            responsive: true
-        });
-    } catch (error) {
-        console.error('Error initializing verification chart:', error);
-        document.getElementById('verificationStatusChart').innerHTML = '<div class="alert alert-warning">Unable to load chart data</div>';
-    }
-
-    // Top Specializations Chart
-    try {
-        const chartDataEl = document.getElementById('chartData');
-        const specializationsData = JSON.parse(chartDataEl.getAttribute('data-specializations'));
-        const specializationsTrace = {
-            x: specializationsData.counts,
-            y: specializationsData.names,
-            type: 'bar',
-            orientation: 'h',
-            marker: {color: '#0d6efd'}
-        };
-        charts.specializations = Plotly.newPlot('specializationsChart', [specializationsTrace], {
-            margin: {t: 20, r: 20, b: 40, l: 150},
-            xaxis: {title: 'Number of Appointments'},
-            yaxis: {title: ''},
-            responsive: true
-        });
-    } catch (error) {
-        console.error('Error initializing specializations chart:', error);
-        document.getElementById('specializationsChart').innerHTML = '<div class="alert alert-warning">Unable to load chart data</div>';
-    }
+    // Matplotlib charts are initialized on the backend and loaded as static images.
 }
 
 // Function to update dashboard data
@@ -428,83 +317,22 @@ function updateDashboard() {
 
 // Function to update charts with new data
 function updateCharts(data) {
-    // Update registration chart
-    if (data.registration_data && charts.registration) {
-        Plotly.react('registrationChart', [{
-            x: data.registration_data.dates,
-            y: data.registration_data.counts,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Registrations',
-            line: {color: '#0d6efd', width: 3},
-            marker: {size: 8}
-        }], {
-            margin: {t: 20, r: 20, b: 40, l: 50},
-            xaxis: {title: 'Date'},
-            yaxis: {title: 'New Users'},
-            responsive: true
-        });
-    }
-    
-    // Update user distribution chart
-    if (data.user_distribution && charts.userDistribution) {
-        Plotly.react('userDistributionChart', [{
-            values: [data.user_distribution.doctors, data.user_distribution.patients],
-            labels: ['Doctors', 'Patients'],
-            type: 'pie',
-            marker: {colors: ['#0dcaf0', '#198754']},
-            textinfo: 'label+percent',
-            textposition: 'outside'
-        }], {
-            margin: {t: 20, r: 20, b: 20, l: 20},
-            responsive: true
-        });
-    }
-    
-    // Update appointments chart
-    if (data.appointments_data && charts.appointments) {
-        Plotly.react('appointmentsChart', [{
-            x: data.appointments_data.dates,
-            y: data.appointments_data.counts,
-            type: 'bar',
-            marker: {color: '#198754'}
-        }], {
-            margin: {t: 20, r: 20, b: 40, l: 50},
-            xaxis: {title: 'Date'},
-            yaxis: {title: 'Appointments'},
-            responsive: true
-        });
-    }
-    
-    // Update verification status chart
-    if (data.verification_data && charts.verification) {
-        Plotly.react('verificationStatusChart', [{
-            values: [data.verification_data.approved, data.verification_data.pending, data.verification_data.rejected],
-            labels: ['Approved', 'Pending', 'Rejected'],
-            type: 'pie',
-            marker: {colors: ['#198754', '#ffc107', '#dc3545']},
-            textinfo: 'label+percent',
-            textposition: 'outside'
-        }], {
-            margin: {t: 20, r: 20, b: 20, l: 20},
-            responsive: true
-        });
-    }
-    
-    // Update specializations chart
-    if (data.specializations_data && charts.specializations) {
-        Plotly.react('specializationsChart', [{
-            x: data.specializations_data.counts,
-            y: data.specializations_data.names,
-            type: 'bar',
-            orientation: 'h',
-            marker: {color: '#0d6efd'}
-        }], {
-            margin: {t: 20, r: 20, b: 40, l: 150},
-            xaxis: {title: 'Number of Appointments'},
-            yaxis: {title: ''},
-            responsive: true
-        });
+    if (data.charts) {
+        if (data.charts.registration) {
+            document.getElementById('registrationChartImg').src = 'data:image/png;base64,' + data.charts.registration;
+        }
+        if (data.charts.user_distribution) {
+            document.getElementById('userDistributionChartImg').src = 'data:image/png;base64,' + data.charts.user_distribution;
+        }
+        if (data.charts.appointments) {
+            document.getElementById('appointmentsChartImg').src = 'data:image/png;base64,' + data.charts.appointments;
+        }
+        if (data.charts.verification) {
+            document.getElementById('verificationStatusChartImg').src = 'data:image/png;base64,' + data.charts.verification;
+        }
+        if (data.charts.specializations) {
+            document.getElementById('specializationsChartImg').src = 'data:image/png;base64,' + data.charts.specializations;
+        }
     }
 }
 
@@ -607,13 +435,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add event listener for refresh button
     document.getElementById('refreshBtn').addEventListener('click', updateDashboard);
-    
-    // Make charts responsive to window resize
-    window.addEventListener('resize', function() {
-        Object.values(charts).forEach(chart => {
-            if (chart) Plotly.Plots.resize(chart);
-        });
-    });
 });
 </script>
 {% endblock %}
