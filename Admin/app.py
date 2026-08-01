@@ -827,6 +827,39 @@ def reject_doctor(doctor_id):
     
     return redirect(url_for('doctor_detail', doctor_id=doctor_id))
 
+@app.route('/doctors/<doctor_id>/update_specialization', methods=['POST'])
+@login_required
+def update_doctor_specialization(doctor_id):
+    if db is None:
+        flash('Firebase not connected. Cannot update specialization.', 'warning')
+        return redirect(url_for('doctor_detail', doctor_id=doctor_id))
+    
+    try:
+        new_specialization = request.form.get('specialization', '').strip()
+        if not new_specialization:
+            flash('Specialization cannot be empty', 'danger')
+            return redirect(url_for('doctor_detail', doctor_id=doctor_id))
+            
+        doctor_ref = db.collection('doctors').document(doctor_id)
+        doctor_ref.update({
+            'specialization': new_specialization,
+            'updatedAt': datetime.now()
+        })
+        
+        user_ref = db.collection('users').document(doctor_id)
+        if user_ref.get().exists:
+            user_ref.update({
+                'specialization': new_specialization,
+                'updatedAt': datetime.now()
+            })
+            
+        flash(f'Doctor specialization updated to "{new_specialization}" successfully!', 'success')
+    except Exception as e:
+        flash(f'Error updating specialization: {str(e)}', 'danger')
+        
+    return redirect(url_for('doctor_detail', doctor_id=doctor_id))
+
+
 @app.route('/doctors/<doctor_id>/restrict', methods=['POST'])
 @login_required
 def restrict_doctor(doctor_id):
@@ -852,6 +885,32 @@ def restrict_doctor(doctor_id):
     
     return redirect(url_for('doctor_detail', doctor_id=doctor_id))
 
+
+@app.route('/doctors/<doctor_id>/unrestrict', methods=['POST'])
+@login_required
+def unrestrict_doctor(doctor_id):
+    if db is None:
+        flash('Firebase not connected. Cannot unrestrict doctor.', 'warning')
+        return redirect(url_for('doctors'))
+    
+    try:
+        doctor_ref = db.collection('doctors').document(doctor_id)
+        doctor_ref.update({
+            'isRestricted': False,
+            'updatedAt': datetime.now()
+        })
+        
+        user_ref = db.collection('users').document(doctor_id)
+        if user_ref.get().exists:
+            user_ref.update({'isRestricted': False, 'updatedAt': datetime.now()})
+        
+        flash('Doctor restriction lifted successfully', 'success')
+    except Exception as e:
+        flash(f'Error unrestricting doctor: {str(e)}', 'danger')
+    
+    return redirect(url_for('doctor_detail', doctor_id=doctor_id))
+
+
 @app.route('/doctors/<doctor_id>/delete', methods=['POST'])
 @login_required
 def delete_doctor(doctor_id):
@@ -870,7 +929,7 @@ def delete_doctor(doctor_id):
         except Exception as auth_error:
             print(f"Error deleting from Firebase Auth: {auth_error}")
         
-        flash('Doctor deleted successfully', 'success')
+        flash('Doctor deleted successfully from system and Firebase', 'success')
         return redirect(url_for('doctors'))
     except Exception as e:
         flash(f'Error deleting doctor: {str(e)}', 'danger')

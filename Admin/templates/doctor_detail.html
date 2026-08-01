@@ -99,6 +99,20 @@
                         </div>
                     </div>
                     
+                    <hr class="my-3">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold text-primary"><i class="bi bi-pencil-square me-1"></i>Doctor Specialization (Editable by Admin)</label>
+                            <form method="POST" action="{{ url_for('update_doctor_specialization', doctor_id=doctor.id) }}" class="d-flex gap-2">
+                                <input type="text" class="form-control" name="specialization" value="{{ doctor.specialization or '' }}" required placeholder="Enter specialization (e.g. Cardiology, Neurology, Dermatology)">
+                                <button type="submit" class="btn btn-primary text-nowrap">
+                                    <i class="bi bi-save me-1"></i> Save Specialization
+                                </button>
+                            </form>
+                            <div class="form-text text-muted">Updating here syncs directly to Firebase Firestore for all patient apps and search filters.</div>
+                        </div>
+                    </div>
+                    
                     {% if doctor.rejectionReason %}
                     <div class="alert alert-danger">
                         <strong><i class="bi bi-exclamation-triangle me-2"></i>Rejection Reason:</strong><br>
@@ -207,44 +221,50 @@
                 </div>
             </div>
 
-            <!-- Admin Actions -->
-            {% if doctor.verificationStatus == 'pending' or doctor.verificationStatus == 'rejected' %}
+            <!-- Admin Actions Card -->
             <div class="card shadow-sm mt-3">
-                <div class="card-header bg-light">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Admin Actions</h5>
+                    {% if doctor.get('isRestricted') %}
+                    <span class="badge bg-danger"><i class="bi bi-ban me-1"></i> Access Restricted</span>
+                    {% endif %}
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('approve_doctor', doctor_id=doctor.id) }}" class="d-inline">
-                        <button type="submit" class="btn btn-success me-2">
-                            <i class="bi bi-check-circle me-1"></i> Approve Doctor
-                        </button>
-                    </form>
-                    
-                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
-                        <i class="bi bi-x-circle me-1"></i> Reject Application
-                    </button>
-                </div>
-            </div>
-            {% endif %}
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if doctor.verificationStatus != 'approved' %}
+                        <form method="POST" action="{{ url_for('approve_doctor', doctor_id=doctor.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle me-1"></i> Approve Doctor
+                            </button>
+                        </form>
+                        {% endif %}
 
-            {% if doctor.verificationStatus == 'approved' %}
-            <div class="card shadow-sm mt-3">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Admin Actions</h5>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('restrict_doctor', doctor_id=doctor.id) }}" class="d-inline">
-                        <button type="submit" class="btn btn-warning me-2">
-                            <i class="bi bi-ban me-1"></i> Restrict Access
+                        {% if doctor.verificationStatus != 'rejected' %}
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                            <i class="bi bi-x-circle me-1"></i> Reject Application
                         </button>
-                    </form>
-                    
-                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                        <i class="bi bi-trash me-1"></i> Delete Doctor
-                    </button>
+                        {% endif %}
+
+                        {% if doctor.get('isRestricted') %}
+                        <form method="POST" action="{{ url_for('unrestrict_doctor', doctor_id=doctor.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle-fill me-1"></i> Unrestrict Access
+                            </button>
+                        </form>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('restrict_doctor', doctor_id=doctor.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-ban me-1"></i> Restrict Access
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        <button type="button" class="btn btn-danger ms-auto" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="bi bi-trash me-1"></i> Delete Doctor
+                        </button>
+                    </div>
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 </div>

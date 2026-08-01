@@ -61,6 +61,12 @@
                             <i class="bi bi-file-earmark me-1"></i>Documents Required
                         </span>
                         {% endif %}
+
+                        {% if doctor.get('isRestricted') %}
+                        <span class="badge bg-danger ms-1">
+                            <i class="bi bi-ban me-1"></i>Restricted
+                        </span>
+                        {% endif %}
                     </td>
                     <td>
                         {% if doctor.get('submittedAt') %}
@@ -70,19 +76,40 @@
                         {% endif %}
                     </td>
                     <td>
-                        <a href="{{ url_for('doctor_detail', doctor_id=doctor.id) }}" class="btn btn-sm btn-info text-white me-1">
-                            <i class="bi bi-eye me-1"></i>View
-                        </a>
-                        {% if doctor.get('verificationStatus') == 'pending' %}
-                        <form method="POST" action="{{ url_for('approve_doctor', doctor_id=doctor.id) }}" class="d-inline">
-                            <button type="submit" class="btn btn-sm btn-success me-1">
-                                <i class="bi bi-check-lg"></i> Approve
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('doctor_detail', doctor_id=doctor.id) }}" class="btn btn-info text-white me-1" title="View & Edit Details">
+                                <i class="bi bi-eye me-1"></i>View
+                            </a>
+                            
+                            {% if doctor.get('verificationStatus') == 'pending' %}
+                            <form method="POST" action="{{ url_for('approve_doctor', doctor_id=doctor.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-success me-1" title="Approve Doctor">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-danger me-1" data-bs-toggle="modal" data-bs-target="#rejectModal{{ doctor.id }}" title="Reject Doctor">
+                                <i class="bi bi-x-lg"></i>
                             </button>
-                        </form>
-                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ doctor.id }}">
-                            <i class="bi bi-x-lg"></i> Reject
-                        </button>
-                        {% endif %}
+                            {% endif %}
+
+                            {% if doctor.get('isRestricted') %}
+                            <form method="POST" action="{{ url_for('unrestrict_doctor', doctor_id=doctor.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-outline-success me-1" title="Unrestrict Access">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <form method="POST" action="{{ url_for('restrict_doctor', doctor_id=doctor.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-outline-warning me-1" title="Restrict Access">
+                                    <i class="bi bi-ban"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ doctor.id }}" title="Delete Doctor">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 
@@ -112,6 +139,27 @@
                     </div>
                 </div>
                 {% endif %}
+
+                <!-- Delete Modal for each doctor -->
+                <div class="modal fade" id="deleteModal{{ doctor.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="POST" action="{{ url_for('delete_doctor', doctor_id=doctor.id) }}">
+                                <div class="modal-header bg-danger text-white">
+                                    <h5 class="modal-title">Confirm Delete {{ doctor.get('name', 'Doctor') }}</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body text-start">
+                                    <p class="mb-0">Are you sure you want to permanently delete doctor <strong>{{ doctor.get('name') }}</strong> ({{ doctor.get('email') }})? This will delete the doctor record from Firebase Firestore and Authentication.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-danger">Delete Permanently</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 {% endfor %}
                 
                 {% if not doctors %}
