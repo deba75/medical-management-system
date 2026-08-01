@@ -53,14 +53,14 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-warning text-dark shadow-sm">
+            <div class="card bg-danger text-white shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="mb-0">Restricted</h6>
-                            <h3 class="mb-0">{{ stats.restricted }}</h3>
+                            <h6 class="mb-0">Banned</h6>
+                            <h3 class="mb-0">{{ stats.banned if stats.banned is defined else stats.restricted }}</h3>
                         </div>
-                        <i class="bi bi-person-x-fill" style="font-size: 2rem; opacity: 0.5;"></i>
+                        <i class="bi bi-slash-circle" style="font-size: 2rem; opacity: 0.5;"></i>
                     </div>
                 </div>
             </div>
@@ -92,7 +92,7 @@
                         <select class="form-select" name="status">
                             <option value="">All Status</option>
                             <option value="active" {{ 'selected' if request.args.get('status') == 'active' else '' }}>Active</option>
-                            <option value="restricted" {{ 'selected' if request.args.get('status') == 'restricted' else '' }}>Restricted</option>
+                            <option value="banned" {{ 'selected' if request.args.get('status') in ['banned', 'restricted'] else '' }}>Banned</option>
                         </select>
                     </div>
                     <div class="col-md-3">

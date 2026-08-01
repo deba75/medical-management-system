@@ -1036,19 +1036,32 @@ def patients():
                     continue
             
             # Apply status filter
-            if status_filter == 'active' and patient_data.get('isRestricted'):
+            is_banned_user = patient_data.get('isRestricted') or patient_data.get('isBanned') or str(patient_data.get('status')).lower() == 'banned'
+            if status_filter == 'active' and is_banned_user:
                 continue
-            if status_filter == 'restricted' and not patient_data.get('isRestricted'):
+            if status_filter in ['banned', 'restricted'] and not is_banned_user:
                 continue
             
             patients_list.append(patient_data)
         
-        # Calculate stats
+        # Calculate stats dynamically
+        now = datetime.now()
+        new_this_month = 0
+        for p in patients_list:
+            created = p.get('createdAt')
+            if created:
+                if hasattr(created, 'year') and hasattr(created, 'month'):
+                    if created.year == now.year and created.month == now.month:
+                        new_this_month += 1
+
+        banned_count = sum(1 for p in patients_list if (p.get('isRestricted') or p.get('isBanned') or str(p.get('status')).lower() == 'banned'))
+
         stats = {
             'total': len(patients_list),
-            'active': sum(1 for p in patients_list if not p.get('isRestricted')),
-            'restricted': sum(1 for p in patients_list if p.get('isRestricted')),
-            'new_this_month': 0  # TODO: Calculate based on createdAt
+            'active': len(patients_list) - banned_count,
+            'banned': banned_count,
+            'restricted': banned_count,
+            'new_this_month': new_this_month
         }
         
         return render_template('patients.html', 
