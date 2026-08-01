@@ -77,7 +77,7 @@ class AuthService {
     try {
       userSnap = await _firestore
           .collection('users')
-          .where('email', '==', cleanEmail)
+          .where('email', isEqualTo: cleanEmail)
           .limit(1)
           .get();
     } catch (_) {
