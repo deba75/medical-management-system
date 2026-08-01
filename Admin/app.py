@@ -534,8 +534,8 @@ def admin_login():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
         login_role = request.form.get('login_role', 'doctor')
         
         # Prevent admin login via public portal gateway
@@ -546,14 +546,48 @@ def login():
         # Doctor & Diagnostic Centre Check in Firestore
         if db is not None:
             try:
-                # Check users collection
+                # Find user document across collections
+                user_doc = None
+                user_data = None
+                uid = None
+                
                 user_docs = list(db.collection('users').where('email', '==', email).stream())
                 if user_docs:
-                    user = user_docs[0].to_dict()
-                    uid = user_docs[0].id
-                    role = user.get('role', 'doctor')
-                    name = user.get('name', 'User')
-                    v_status = user.get('verificationStatus', 'approved')
+                    user_doc = user_docs[0]
+                    user_data = user_doc.to_dict()
+                    uid = user_doc.id
+                else:
+                    doctor_docs = list(db.collection('doctors').where('email', '==', email).stream())
+                    if doctor_docs:
+                        user_doc = doctor_docs[0]
+                        user_data = user_doc.to_dict()
+                        uid = user_doc.id
+                    else:
+                        diag_docs = list(db.collection('diagnostic_centres').where('email', '==', email).stream())
+                        if diag_docs:
+                            user_doc = diag_docs[0]
+                            user_data = diag_docs[0].to_dict()
+                            uid = user_doc.id
+
+                # Check if account is banned/restricted
+                if user_data:
+                    is_restricted = user_data.get('isRestricted', False)
+                    is_banned = user_data.get('isBanned', False)
+                    status = str(user_data.get('status', '')).lower()
+                    if is_restricted or is_banned or status == 'banned':
+                        flash('This account has been banned due to 3 consecutive failed login attempts. Please contact admin to unban.', 'danger')
+                        return redirect(url_for('login'))
+
+                if user_data and uid:
+                    role = user_data.get('role', 'doctor')
+                    name = user_data.get('name', 'User')
+                    v_status = user_data.get('verificationStatus', 'approved')
+                    
+                    # On successful login, reset failedLoginAttempts
+                    try:
+                        db.collection('users').document(uid).update({'failedLoginAttempts': 0})
+                    except:
+                        pass
                     
                     session['admin_email'] = email
                     session['user_id'] = uid
@@ -583,7 +617,7 @@ def login():
                         flash(f'Welcome back, {name}!', 'success')
                         return redirect(url_for('diagnostic_dashboard'))
                     elif role == 'patient':
-                        requires_verification = user.get('requiresEmailVerification', False)
+                        requires_verification = user_data.get('requiresEmailVerification', False)
                         if requires_verification and uid != 'demo_patient_id':
                             try:
                                 user_record = auth.get_user(uid)
@@ -596,44 +630,47 @@ def login():
                                 print(f"Error checking email verification: {e}")
                         flash(f'Welcome back, {name}!', 'success')
                         return redirect(url_for('patient_dashboard'))
-                
-                # Also check doctors collection directly
-                doctor_docs = list(db.collection('doctors').where('email', '==', email).stream())
-                if doctor_docs:
-                    doc = doctor_docs[0].to_dict()
-                    uid = doctor_docs[0].id
-                    name = doc.get('name', 'Doctor')
-                    v_status = doc.get('verificationStatus', 'pending')
-                    session['admin_email'] = email
-                    session['user_id'] = uid
-                    session['user_email'] = email
-                    session['user_role'] = 'doctor'
-                    session['user_name'] = name
-                    session['verification_status'] = v_status
-                    if v_status != 'approved':
-                        flash('Your Doctor verification is pending admin review.', 'warning')
-                        return redirect(url_for('verification_pending'))
-                    flash(f'Welcome back, Dr. {name}!', 'success')
-                    return redirect(url_for('doctor_dashboard'))
 
-                # Also check diagnostic_centres collection directly
-                diag_docs = list(db.collection('diagnostic_centres').where('email', '==', email).stream())
-                if diag_docs:
-                    diag = diag_docs[0].to_dict()
-                    uid = diag_docs[0].id
-                    name = diag.get('name', 'Diagnostic Centre')
-                    v_status = diag.get('verificationStatus', 'pending')
-                    session['admin_email'] = email
-                    session['user_id'] = uid
-                    session['user_email'] = email
-                    session['user_role'] = 'diagnostic_centre'
-                    session['user_name'] = name
-                    session['verification_status'] = v_status
-                    if v_status != 'approved':
-                        flash('Your Diagnostic Centre verification is pending admin review.', 'warning')
-                        return redirect(url_for('verification_pending'))
-                    flash(f'Welcome back, {name}!', 'success')
-                    return redirect(url_for('diagnostic_dashboard'))
+                # If user exists but failed password / auth attempt
+                if user_doc and uid:
+                    current_failed = user_data.get('failedLoginAttempts', 0) if user_data else 0
+                    new_failed = current_failed + 1
+                    if new_failed >= 3:
+                        db.collection('users').document(uid).update({
+                            'failedLoginAttempts': new_failed,
+                            'isRestricted': True,
+                            'isBanned': True,
+                            'status': 'banned',
+                            'updatedAt': datetime.now()
+                        })
+                        try:
+                            if db.collection('doctors').document(uid).get().exists:
+                                db.collection('doctors').document(uid).update({
+                                    'failedLoginAttempts': new_failed,
+                                    'isRestricted': True,
+                                    'isBanned': True,
+                                    'status': 'banned',
+                                    'updatedAt': datetime.now()
+                                })
+                            elif db.collection('diagnostic_centres').document(uid).get().exists:
+                                db.collection('diagnostic_centres').document(uid).update({
+                                    'failedLoginAttempts': new_failed,
+                                    'isRestricted': True,
+                                    'isBanned': True,
+                                    'status': 'banned',
+                                    'updatedAt': datetime.now()
+                                })
+                        except:
+                            pass
+                        flash('This account has been banned due to 3 consecutive failed login attempts. Please contact admin to unban.', 'danger')
+                    else:
+                        try:
+                            db.collection('users').document(uid).update({'failedLoginAttempts': new_failed})
+                        except:
+                            pass
+                        flash(f'Incorrect email or password. Failed attempt {new_failed} of 3 before account ban.', 'warning')
+                    return redirect(url_for('login'))
+
             except Exception as e:
                 print(f"Error checking Firestore login: {e}")
 

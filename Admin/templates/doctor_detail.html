@@ -38,7 +38,9 @@
                     <h4 class="mb-1">{{ doctor.name }}</h4>
                     <p class="text-muted mb-2">{{ doctor.specialization or 'General Practitioner' }}</p>
                     
-                    {% if doctor.verificationStatus == 'approved' %}
+                    {% if doctor.get('isRestricted') or doctor.get('isBanned') or doctor.get('status') == 'banned' %}
+                    <span class="badge bg-danger mb-3"><i class="bi bi-slash-circle me-1"></i> Banned</span>
+                    {% elif doctor.verificationStatus == 'approved' %}
                     <span class="badge bg-success mb-3"><i class="bi bi-check-circle"></i> Approved</span>
                     {% elif doctor.verificationStatus == 'pending' %}
                     <span class="badge bg-warning text-dark mb-3"><i class="bi bi-clock-history"></i> Pending</span>

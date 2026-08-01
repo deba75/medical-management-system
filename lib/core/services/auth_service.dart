@@ -65,16 +65,130 @@ class AuthService {
     }
   }
   
-  /// Sign in with email and password
+  /// Sign in with email and password, tracking failed attempts and banning after 3 consecutive failures
   Future<UserCredential> signIn({
     required String email,
     required String password,
   }) async {
+    final cleanEmail = email.trim();
+    
+    // Check if user is already banned/restricted in Firestore
+    QuerySnapshot userSnap;
     try {
-      return await _auth.signInWithEmailAndPassword(
-        email: email,
+      userSnap = await _firestore
+          .collection('users')
+          .where('email', '==', cleanEmail)
+          .limit(1)
+          .get();
+    } catch (_) {
+      userSnap = await _firestore
+          .collection('users')
+          .limit(0)
+          .get();
+    }
+
+    DocumentSnapshot? userDoc = userSnap.docs.isNotEmpty ? userSnap.docs.first : null;
+    
+    if (userDoc != null && userDoc.exists) {
+      final data = userDoc.data() as Map<String, dynamic>;
+      final isRestricted = data['isRestricted'] == true;
+      final isBanned = data['isBanned'] == true;
+      final status = data['status']?.toString().toLowerCase();
+      
+      if (isRestricted || isBanned || status == 'banned') {
+        throw FirebaseAuthException(
+          code: 'user-disabled',
+          message: 'This account has been banned due to 3 consecutive failed login attempts. Please contact admin.',
+        );
+      }
+    }
+
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: cleanEmail,
         password: password,
       );
+      
+      // On successful sign in, reset failedLoginAttempts to 0
+      if (userDoc != null && userDoc.exists) {
+        await _firestore.collection('users').doc(userDoc.id).update({
+          'failedLoginAttempts': 0,
+        });
+        
+        final role = (userDoc.data() as Map<String, dynamic>)['role'];
+        if (role == 'doctor') {
+          final docRef = _firestore.collection('doctors').doc(userDoc.id);
+          final dDoc = await docRef.get();
+          if (dDoc.exists) {
+            await docRef.update({'failedLoginAttempts': 0});
+          }
+        }
+      }
+      
+      return credential;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        if (userDoc != null && userDoc.exists) {
+          final data = userDoc.data() as Map<String, dynamic>;
+          final currentAttempts = (data['failedLoginAttempts'] as num?)?.toInt() ?? 0;
+          final newAttempts = currentAttempts + 1;
+          final userId = userDoc.id;
+          final role = data['role']?.toString();
+          
+          if (newAttempts >= 3) {
+            // Ban the user in users collection
+            await _firestore.collection('users').doc(userId).update({
+              'failedLoginAttempts': newAttempts,
+              'isRestricted': true,
+              'isBanned': true,
+              'status': 'banned',
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+            
+            // Sync to doctors or diagnostic_centres collection if applicable
+            if (role == 'doctor') {
+              final docRef = _firestore.collection('doctors').doc(userId);
+              final dDoc = await docRef.get();
+              if (dDoc.exists) {
+                await docRef.update({
+                  'failedLoginAttempts': newAttempts,
+                  'isRestricted': true,
+                  'isBanned': true,
+                  'status': 'banned',
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+              }
+            } else if (role == 'diagnostic_centre' || role == 'diagnostic') {
+              final diagRef = _firestore.collection('diagnostic_centres').doc(userId);
+              final dDoc = await diagRef.get();
+              if (dDoc.exists) {
+                await diagRef.update({
+                  'failedLoginAttempts': newAttempts,
+                  'isRestricted': true,
+                  'isBanned': true,
+                  'status': 'banned',
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+              }
+            }
+            
+            throw FirebaseAuthException(
+              code: 'user-disabled',
+              message: 'This account has been banned due to 3 consecutive failed login attempts. Please contact admin.',
+            );
+          } else {
+            await _firestore.collection('users').doc(userId).update({
+              'failedLoginAttempts': newAttempts,
+            });
+            
+            throw FirebaseAuthException(
+              code: 'wrong-password',
+              message: 'Incorrect password. Attempt $newAttempts of 3 before account is banned.',
+            );
+          }
+        }
+      }
+      rethrow;
     } catch (e) {
       rethrow;
     }
